@@ -1,0 +1,69 @@
+#!/bin/bash -v
+
+apt-get update -y
+apt-get upgrade -y
+apt-get install -y wireguard-dkms wireguard-tools 
+
+umask 077
+#TODO make server public key available outside the vm instance
+wg genkey | tee /tmp/server_privatekey | wg pubkey > /tmp/server_publickey
+
+MYV4IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+
+cat > /etc/wireguard/wg0.conf <<- EOF
+[Interface]
+Address = $MYV4IP/24
+PrivateKey = $(cat /tmp/server_privatekey)
+ListenPort = 51820
+PostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+[Peer]
+PublicKey = XSGknxaW7PwqiFD061TemUozeTxxafusIRr5dz2fUhw=
+AllowedIPs = 10.8.0.2/32
+PersistentKeepalive = 25
+EOF
+
+chown -R root:root /etc/wireguard/
+chmod -R og-rwx /etc/wireguard/*
+sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf
+sysctl -p
+ufw allow ssh
+ufw allow ${wg_server_port}/udp
+ufw --force enable
+systemctl enable wg-quick@wg0.service
+systemctl start wg-quick@wg0.service
+
+MAILJET_AUTH="${mailjet_api_credentials}"
+
+if [ "$MAILJET_AUTH" != "" ]; then
+
+    # TODO make the list of emails configurable per client ip
+    cat > /tmp/wireguard.email <<- EOF
+    {
+    "Messages":[
+        {
+        "From": {
+            "Email": "wireguard@fr123k.uk",
+            "Name": "Wireguard $MYV4IP"
+        },
+        "To": [
+            {
+            "Email": "fr12_k@yahoo.com",
+            "Name": "Frank"
+            }
+        ],
+        "Subject": "Wireguard publickey",
+        "TextPart": "The wireguard public key is $(cat /tmp/server_publickey) and the ip address $MYV4IP",
+        "CustomID": "Wireguard Publickey"
+        }
+    ]
+    }
+EOF
+
+    curl -s -X POST \
+    --user "${mailjet_api_credentials}" \
+    https://api.mailjet.com/v3.1/send \
+    -H 'Content-Type: application/json' \
+    --data "@/tmp/wireguard.email"
+fi
