@@ -1,0 +1,39 @@
+language: go
+os: linux
+arch: arm64-graviton2
+dist: bionic
+
+sudo: required
+
+addons:
+  apt:
+    update: true
+
+go:
+  - 1.14.x
+
+env:
+  global:
+    - GO111MODULE=off
+    - AWS_DEFAULT_REGION=eu-west-1
+    - secure: Rd1vlqB1fFUy2+fMG1sesQ7XADgVfF3e/atf8cR54GGhyUzpi0x5A6MLGsEKIkEITzXWsTv2gcsB1G2wyaBERDFIx4lGG2rst8s3PHHqUODB1dTlXm5u/UJu2u2Nb24lL5ObZxQfVcXFha6zCB6Im8oBtdodn2oqIT0HbCX5YJNnQFN9UG4uC4sriJPWABPFmRefQvU1wUvGXYeNHeEFqq2ERNboX8AqIpgEFTaAwF5RSuYOud/Pey75PRpuLB1B+yyoX6g5W9RpJJOfvY6+K+yJIh0yhN9u/2bFmg+DSy2SfbtD5njKlteP9wof56Dz8sqtilou3kRwwTd1LE6dnitI+5c/UCRBTqEi0HnYIZfZkAGPjYV0fX38UqG1AI9m/7qQQWy35YwZxDpVRRPmzQ16i6aBWUebdnd8UrnTg4dT5VkfEJgXc1Rk+qajahk9lSKIxCDnhlymkvGGWKwME5QIGy8DmzVE0Uzuft8rRPZngN9l1cBDDZJ+ldbEDzQTiAN3QgnnNiO5NUjHj0HBU/x3U99rYBw5duK8NtLaTrJTup5CpWPMIcq2xG8qv+Ty0E+TC0kn0TFyKoFmFUY5Ob3qIwh9zxMl1MG3jU23P0JgcP5gIl2YWN5TOLscvB6XVaKAVK2pZ3DZ6ayacaA9sBqpxajKzFaDuZiwYGXw0Pw=
+    - secure: O7aqNpKZX3jAlIy2IJQjqMRBCRzEnrau5M/zKaXNduxVvR0D9+iTzZj5m4LxZ/LiZyCjhXsZfwh0TWL8zaPD1cXnIRaTudJP0uhGCXzJiXCtHI2yMgxxcqrc0O6EqiZrFtJebFrEba405ZzfZWHdLPNffd4SqXnkVE2tDm+Sb9RUaoxNElGg6IATvPPAebbubS5XA2J9JfY0yv/P7kNU076OQtqK6ijCfGY/V4LR6hmgrPS4h2uAwT8GYScppht5gqZ7ITVshz4+WUGSBPj2PNQaqi4RnT+CRjvFQhFpceebZDe46j/zu75mhSNzJ1IRB9Ddi7/LMAHOuuqTnIXHQsJo4BZnYIdCU6E/MEbqEP/KHKIrDK2ln1s8845jzf8WJaVWPwE5X/rYkctqU6L9DKJB5mD1rt7d6R+CkEWQUu/BdLAR+Z0+BXR2HIk2fsE92Yl24RDEaOCid0UaOqK+gAVhjwFBGiGCDvUgcLF6zvR00LzfwxUf/VfJkkciXK0tBRQWzS51XJKyGBg60JMAKNvZMBu8u9cetLCnWpszWFcFmXWzyPZBF1OGZwxwdlHG8yZjKQI1ZbOUOuvsq0ODOCBs86+hqmikUBC/rdcZrj96sECP0wSPgc+Ca+Ksc1oozCYbbVboEPcdwwothIxe01rT3sZRVkcxci1K4jy9RO4=
+
+services:
+  - docker
+
+before_install:
+  - sudo apt-get install wireguard
+  - sudo modprobe wireguard
+  - curl -fsSL https://get.pulumi.com/ | sh
+  - export PATH=$PATH:$HOME/.pulumi/bin
+  - pulumi version
+
+script:
+  - make wireguard-client-keys
+  - export TF_VAR_client_public_key=$(cat ./test/tmp/client_publickey)
+  - make travis
+  - make validate
+
+after_script:
+  - make clean

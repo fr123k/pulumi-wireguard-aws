@@ -19,7 +19,11 @@ func main() {
 
 		// awsKeyID := config.Require("key")
 		// awsKeySecret := config.Require("secret")
-		return createJenkinsVM(ctx)
+		vpc, subnet, err := createVPC(ctx)
+		if err != nil {
+			return err
+		}
+		return createWireguardVM(ctx, vpc, subnet)
 	})
 }
 
@@ -59,10 +63,13 @@ func createVPC(ctx *pulumi.Context) (*ec2.Vpc, *ec2.Subnet, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Export IDs of the created resources to the Pulumi stack
+	ctx.Export("Subnet-ID", subnet.ID())
 	return vpc, subnet, nil
 }
 
-func getUserData(fileName string) (*string, error) {
+func readFile(fileName string) (*string, error) {
 	b, err := ioutil.ReadFile(fileName) // just pass the file name
 	if err != nil {
 		return nil, err
@@ -72,11 +79,11 @@ func getUserData(fileName string) (*string, error) {
 }
 
 func getCloudInitYaml(fileName string, awsKeyID string, awsKeySecret string) (*string, error) {
-	b, err := ioutil.ReadFile(fileName) // just pass the file name
+	data, err := readFile(fileName)
 	if err != nil {
 		return nil, err
 	}
-	yaml := parseCloudInitYaml(string(b), awsKeyID, awsKeySecret)
+	yaml := parseCloudInitYaml(*data, awsKeyID, awsKeySecret)
 	return &yaml, nil
 }
 
@@ -100,9 +107,7 @@ func parseCloudInitYaml(content string, awsKeyID string, awsKeySecret string) st
 	return result
 }
 
-func createJenkinsVM(ctx *pulumi.Context) error {
-
-	vpc, subnet, err := createVPC(ctx)
+func createWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) error {
 
 	sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", &ec2.SecurityGroupArgs{
 		Description: pulumi.String("Terraform Managed. Allow Wireguard client traffic from internet."),
@@ -182,7 +187,7 @@ func createJenkinsVM(ctx *pulumi.Context) error {
 		Filters: []aws.GetAmiFilter{
 			{
 				Name:   "name",
-				Values: []string{"ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-20200129"},
+				Values: []string{"ubuntu/images/hvm-ssd/ubuntu-*-18.04-amd64-server-*"},
 			},
 		},
 		Owners:     []string{"099720109477"},
@@ -195,7 +200,7 @@ func createJenkinsVM(ctx *pulumi.Context) error {
 
 	//TODO cloud-init use only if jenkins ami doesn't exists.
 	// yaml, err := getCloudInitYaml("cloud-init/cloud-init.yaml", awsKeyID, awsKeySecret)
-	yaml, err := getUserData("cloud-init/user-data.txt")
+	yaml, err := readFile("cloud-init/user-data.txt")
 
 	if err != nil {
 		return err
@@ -203,14 +208,29 @@ func createJenkinsVM(ctx *pulumi.Context) error {
 
 	ctx.Export("cloud-init", pulumi.String(*yaml))
 
-	server, err := ec2.NewInstance(ctx, "witreguard", &ec2.InstanceArgs{
+	publicKey, err := readFile("keys/wireguard.pem.pub")
+
+	if err != nil {
+		return err
+	}
+
+	keyPair, err := ec2.NewKeyPair(ctx, "wireguard", &ec2.KeyPairArgs{
+		KeyName: pulumi.String("wireguard"),
+		PublicKey: pulumi.String(*publicKey),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	server, err := ec2.NewInstance(ctx, "wireguard", &ec2.InstanceArgs{
 		AssociatePublicIpAddress: pulumi.Bool(true),
 		Tags: pulumi.StringMap{
-			"Name": pulumi.String("witreguard"),
+			"Name": pulumi.String("wireguard"),
 			"JobUrl": pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
 		},
 		InstanceType: pulumi.String(size),
-		KeyName:      pulumi.String("development"), //create the keypair with pulumi
+		KeyName:      keyPair.KeyName, //create the keypair with pulumi
 		Ami:          pulumi.String(ami.Id),
 		UserData:     pulumi.String(*yaml),
 		SubnetId:     subnet.ID(),

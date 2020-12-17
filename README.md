@@ -37,10 +37,10 @@ history.
  export AWS_DEFAULT_REGION=eu-west-1 
 ```
 
-# Terraform Wireguard
+# Pulumi Wireguard
 
 To achieve the best customization to your scenario just fork this repository and adjust the
-terraform code to your needs. This whole repository is a result of one weekend work and
+pulumi code to your needs. This whole repository is a result of one weekend work and
 properly slightly away from perfection but hopefully a good starting point for running
 your own wireguard VPN server in AWS.
 
