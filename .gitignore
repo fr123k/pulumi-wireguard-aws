@@ -1,0 +1,7 @@
+*.pem
+*.pem.pub
+.vscode/settings.json
+tmp/
+output/
+pulumi-wireguard-aws
+Pulumi.wireguard-ec2.yaml
