@@ -78,32 +78,23 @@ func readFile(fileName string) (*string, error) {
 	return &yaml, nil
 }
 
-func getCloudInitYaml(fileName string, awsKeyID string, awsKeySecret string) (*string, error) {
+func getUserData(fileName string) (*string, error) {
 	data, err := readFile(fileName)
 	if err != nil {
 		return nil, err
 	}
-	yaml := parseCloudInitYaml(*data, awsKeyID, awsKeySecret)
+	yaml := parseUserData(*data)
 	return &yaml, nil
 }
 
-func parseCloudInitYaml(content string, awsKeyID string, awsKeySecret string) string {
-	adminPassword, ok := os.LookupEnv("ADMIN_PASSWORD")
+func parseUserData(content string) string {
+	clientPublicKey, ok := os.LookupEnv("CLIENT_PUBLICKEY")
 	var result string
 	if ok == true {
-		result = strings.ReplaceAll(content, "{{ ADMIN_PASSWORD }}", "ADMIN_PASSWORD="+adminPassword)
+		result = strings.ReplaceAll(content, "{{ CLIENT_PUBLICKEY }}", clientPublicKey)
 	} else {
-		result = strings.ReplaceAll(content, "{{ ADMIN_PASSWORD }}", "")
+		result = strings.ReplaceAll(content, "{{ CLIENT_PUBLICKEY }}", "")
 	}
-	seedBranchJobs, ok2 := os.LookupEnv("SEED_BRANCH_JOBS")
-	if ok2 == true {
-		result = strings.ReplaceAll(result, "{{ SEED_BRANCH_JOBS }}", "SEED_BRANCH_JOBS="+seedBranchJobs)
-	} else {
-		result = strings.ReplaceAll(result, "{{ SEED_BRANCH_JOBS }}", "SEED_BRANCH_JOBS=origin/master")
-	}
-	result = strings.ReplaceAll(result, "{{ AWS_KEY_ID }}", "AWS_KEY_ID="+awsKeyID)
-	result = strings.ReplaceAll(result, "{{ AWS_KEY_SECRET }}", "AWS_KEY_SECRET="+awsKeySecret)
-
 	return result
 }
 
@@ -200,7 +191,7 @@ func createWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) er
 
 	//TODO cloud-init use only if jenkins ami doesn't exists.
 	// yaml, err := getCloudInitYaml("cloud-init/cloud-init.yaml", awsKeyID, awsKeySecret)
-	yaml, err := readFile("cloud-init/user-data.txt")
+	yaml, err := getUserData("cloud-init/user-data.txt")
 
 	if err != nil {
 		return err

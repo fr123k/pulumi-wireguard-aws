@@ -19,7 +19,7 @@ PostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACC
 PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
 
 [Peer]
-PublicKey = XSGknxaW7PwqiFD061TemUozeTxxafusIRr5dz2fUhw=
+PublicKey = {{ CLIENT_PUBLICKEY }}
 AllowedIPs = 10.8.0.2/32
 PersistentKeepalive = 25
 EOF
