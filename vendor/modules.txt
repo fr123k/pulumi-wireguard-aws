@@ -2,6 +2,9 @@
 github.com/blang/semver
 # github.com/cheggaaa/pb v1.0.18
 github.com/cheggaaa/pb
+# github.com/creasty/defaults v1.5.1
+## explicit
+github.com/creasty/defaults
 # github.com/djherbis/times v1.2.0
 github.com/djherbis/times
 # github.com/emirpasic/gods v1.12.0
@@ -60,6 +63,9 @@ github.com/pkg/errors
 ## explicit
 github.com/pulumi/pulumi-aws/sdk/v3/go/aws
 github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2
+# github.com/pulumi/pulumi-hcloud/sdk v0.4.0
+## explicit
+github.com/pulumi/pulumi-hcloud/sdk/go/hcloud
 # github.com/pulumi/pulumi/sdk/v2 v2.15.6
 ## explicit
 github.com/pulumi/pulumi/sdk/v2/go/common/apitype
