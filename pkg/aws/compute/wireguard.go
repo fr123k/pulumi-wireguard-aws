@@ -3,6 +3,7 @@ package compute
 import (
 	"os"
 
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws"
@@ -13,7 +14,7 @@ import (
 const size = "t2.large"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) error {
+func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 	sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", &ec2.SecurityGroupArgs{
 		Description: pulumi.String("Terraform Managed. Allow Wireguard client traffic from internet."),
 		Ingress: ec2.SecurityGroupIngressArray{
@@ -138,7 +139,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) er
 		KeyName:      keyPair.KeyName, //create the keypair with pulumi
 		Ami:          pulumi.String(ami.Id),
 		UserData:     pulumi.String(*yaml),
-		SubnetId:     subnet.ID(),
+		SubnetId:     vpc.SubnetResults[0].ID(),
 
 		VpcSecurityGroupIds: pulumi.StringArray{
 			sgExternal.ID(), sgAdmin.ID(),

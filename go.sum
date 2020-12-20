@@ -27,6 +27,8 @@ github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfc
 github.com/cpuguy83/go-md2man/v2 v2.0.0/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
 github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7DoTY=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
+github.com/creasty/defaults v1.5.1 h1:j8WexcS3d/t4ZmllX4GEkl4wIB/trOr035ajcLHCISM=
+github.com/creasty/defaults v1.5.1/go.mod h1:FPZ+Y0WNrbqOVw+c6av63eyHUAl6pMHZwqLPvXUZGfY=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
@@ -154,8 +156,12 @@ github.com/pulumi/pulumi-aws v3.21.0+incompatible h1:reCb89DKhvtxqKWOl4hUSWfxpPe
 github.com/pulumi/pulumi-aws/sdk v1.31.0 h1:E6RfPg46zsDJLidyh1vC7Gq9M5zFbjnezJqcG7zKchw=
 github.com/pulumi/pulumi-aws/sdk/v3 v3.21.0 h1:Yo98VmnyQNIvnM5PgbR4UZq84NcGqzX21C4qr318lOM=
 github.com/pulumi/pulumi-aws/sdk/v3 v3.21.0/go.mod h1:Tiu0MSxPkufZDbNTXNMb8cKiIRWLt+7spM3DPuzLcBc=
+github.com/pulumi/pulumi-hcloud v0.4.0 h1:dE1weHeGg2ubs05BdlYwTwUYC3A7HQjGJNwu2/a/HAo=
+github.com/pulumi/pulumi-hcloud/sdk v0.4.0 h1:3WntNnN5WzG7brGeL+p2g0AmrHT2NLFWF5U4ViU3Z04=
+github.com/pulumi/pulumi-hcloud/sdk v0.4.0/go.mod h1:94LcxwZUuVHv+PTq03/sCxkp/+XD7m1i9ozfH9OxWEI=
 github.com/pulumi/pulumi/sdk v1.14.1 h1:FnUPMgO2AgqvKzSBOy3F2X4nJ8n/SaXCOP2eYSNkAxk=
 github.com/pulumi/pulumi/sdk/v2 v2.2.1/go.mod h1:QNbWpL4gvf3X0lUFT7TXA2Jo1ff/Ti2l97AyFGYwvW4=
+github.com/pulumi/pulumi/sdk/v2 v2.4.0/go.mod h1:llk6tmXss8kJrt3vEXAkwiwgZOuINEFmKIfMveVIwO8=
 github.com/pulumi/pulumi/sdk/v2 v2.15.6 h1:VR8WxsPgxfcd7re05zgpUw2zCNDJNgo4uPHABfZ7mhM=
 github.com/pulumi/pulumi/sdk/v2 v2.15.6/go.mod h1:fCFhRV6NmidWetmgDPA76efL+s0JqLlS54JJIwfOt+o=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
