@@ -8,11 +8,11 @@ PRIVATE_KEY_FILE?=./keys/wireguard.pem
 TMP_FOLDER?="./test/tmp"
 
 go-init:
-	go mod init main
+	go mod init github.com/fr123k/pulumi-wireguard-aws
 	go mod vendor
 
 pulumi-init: build
-	pulumi plugin install resource aws 3.19.3
+	pulumi plugin install resource aws 3.21.0
 	pulumi plugin ls
 	pulumi login --local
 	# pulumi login --cloud-url s3://s3-pulumi-state-d12f2f1
@@ -28,7 +28,7 @@ ssh-keygen:
 	echo "No"
 
 build: ssh-keygen
-	go build -o $(shell basename $(shell pwd))
+	go build -o build/wireguard cmd/wireguard/wireguard.go
 
 create: pulumi-init
 	pulumi up --yes
@@ -38,11 +38,6 @@ create: pulumi-init
 clean:
 	pulumi destroy --yes -s ${STACK_NAME} || true
 	pulumi stack rm -f --yes ${STACK_NAME} || true
-
-# local-cleanup:
-# 	echo "ADMIN_PASSWORD = ${ADMIN_PASSWORD}"
-# 	pulumi destroy --yes -s ${STACK_NAME} || true
-# 	pulumi stack rm -f --yes ${STACK_NAME} || true
 
 recreate: clean create output
 

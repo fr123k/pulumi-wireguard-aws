@@ -1,105 +1,19 @@
-package main
+package compute
 
 import (
-	"io/ioutil"
 	"os"
-	"strings"
+
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	// "github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
 )
 
 const size = "t2.large"
 
-func main() {
-	pulumi.Run(func(ctx *pulumi.Context) error {
-		// config := config.New(ctx, "")
-
-		// awsKeyID := config.Require("key")
-		// awsKeySecret := config.Require("secret")
-		vpc, subnet, err := createVPC(ctx)
-		if err != nil {
-			return err
-		}
-		return createWireguardVM(ctx, vpc, subnet)
-	})
-}
-
-func createVPC(ctx *pulumi.Context) (*ec2.Vpc, *ec2.Subnet, error) {
-	vpc, err := ec2.NewVpc(ctx, "wireguard", &ec2.VpcArgs{
-		CidrBlock:          pulumi.String("10.8.0.0/16"),
-		EnableDnsHostnames: pulumi.Bool(true),
-		EnableDnsSupport:   pulumi.Bool(true),
-		InstanceTenancy:    pulumi.String("default"),
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Export IDs of the created resources to the Pulumi stack
-	ctx.Export("VPC-ID", vpc.ID())
-
-	internetGW, err := ec2.NewInternetGateway(ctx, "wireguard", &ec2.InternetGatewayArgs{
-		VpcId: vpc.ID(),
-	})
-
-	ec2.NewRoute(ctx, "wireguard", &ec2.RouteArgs{
-		RouteTableId: vpc.MainRouteTableId,
-		DestinationCidrBlock:   pulumi.String("0.0.0.0/0"),
-		GatewayId: internetGW.ID(),
-	})
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	subnet, err := ec2.NewSubnet(ctx, "wireguard", &ec2.SubnetArgs{
-		VpcId:     vpc.ID(),
-		CidrBlock: pulumi.String("10.8.0.0/24"),
-	})
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Export IDs of the created resources to the Pulumi stack
-	ctx.Export("Subnet-ID", subnet.ID())
-	return vpc, subnet, nil
-}
-
-func readFile(fileName string) (*string, error) {
-	b, err := ioutil.ReadFile(fileName) // just pass the file name
-	if err != nil {
-		return nil, err
-	}
-	yaml := string(b)
-	return &yaml, nil
-}
-
-func getUserData(fileName string) (*string, error) {
-	data, err := readFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	yaml := parseUserData(*data)
-	return &yaml, nil
-}
-
-func parseUserData(content string) string {
-	clientPublicKey, ok := os.LookupEnv("CLIENT_PUBLICKEY")
-	var result string
-	if ok == true {
-		result = strings.ReplaceAll(content, "{{ CLIENT_PUBLICKEY }}", clientPublicKey)
-	} else {
-		result = strings.ReplaceAll(content, "{{ CLIENT_PUBLICKEY }}", "")
-	}
-	return result
-}
-
-func createWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) error {
-
+//CreateWireguardVM creates a wireguard ec2 aws instance
+func CreateWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) error {
 	sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", &ec2.SecurityGroupArgs{
 		Description: pulumi.String("Terraform Managed. Allow Wireguard client traffic from internet."),
 		Ingress: ec2.SecurityGroupIngressArray{
@@ -191,7 +105,7 @@ func createWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) er
 
 	//TODO cloud-init use only if jenkins ami doesn't exists.
 	// yaml, err := getCloudInitYaml("cloud-init/cloud-init.yaml", awsKeyID, awsKeySecret)
-	yaml, err := getUserData("cloud-init/user-data.txt")
+	yaml, err := utility.GetUserData("cloud-init/user-data.txt")
 
 	if err != nil {
 		return err
@@ -199,14 +113,14 @@ func createWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) er
 
 	ctx.Export("cloud-init", pulumi.String(*yaml))
 
-	publicKey, err := readFile("keys/wireguard.pem.pub")
+	publicKey, err := utility.ReadFile("keys/wireguard.pem.pub")
 
 	if err != nil {
 		return err
 	}
 
 	keyPair, err := ec2.NewKeyPair(ctx, "wireguard", &ec2.KeyPairArgs{
-		KeyName: pulumi.String("wireguard"),
+		KeyName:   pulumi.String("wireguard"),
 		PublicKey: pulumi.String(*publicKey),
 	})
 
@@ -217,7 +131,7 @@ func createWireguardVM(ctx *pulumi.Context, vpc *ec2.Vpc, subnet *ec2.Subnet) er
 	server, err := ec2.NewInstance(ctx, "wireguard", &ec2.InstanceArgs{
 		AssociatePublicIpAddress: pulumi.Bool(true),
 		Tags: pulumi.StringMap{
-			"Name": pulumi.String("wireguard"),
+			"Name":   pulumi.String("wireguard"),
 			"JobUrl": pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
 		},
 		InstanceType: pulumi.String(size),

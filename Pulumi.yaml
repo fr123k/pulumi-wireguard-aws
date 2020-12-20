@@ -1,5 +1,7 @@
 name: wireguard-aws-pulumi
-runtime: go
+runtime:
+  name: go
+  options:
+    binary: build/wireguard
 description: 
 template:
-  config:
