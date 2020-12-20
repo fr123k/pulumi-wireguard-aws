@@ -3,5 +3,5 @@
 .vscode/settings.json
 tmp/
 output/
-pulumi-wireguard-aws
+build/
 Pulumi.wireguard-ec2.yaml
