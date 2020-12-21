@@ -2,6 +2,8 @@ package model
 
 import (
 	// "github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
+	
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
@@ -33,6 +35,11 @@ type SubnetResult struct {
 //ID return resource id
 func (vpc VpcResult) ID() pulumi.IDOutput {
 	return vpc.Vpc.ID()
+}
+
+//IDtoInt return ID as int
+func (vpc VpcResult) IDtoInt() pulumi.IntOutput {
+	return utility.IDtoInt(vpc.Vpc)
 }
 
 //ID return resource id

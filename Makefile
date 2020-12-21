@@ -3,6 +3,7 @@ export PULUMI_CONFIG_PASSPHRASE ?= test
 STACK_NAME ?= wireguard-ec2${STACK_SUFFIX}
 AWS_REGION ?= eu-west-1
 WIREGUARD_SERVER_IP=$(shell pulumi stack output publicIp)
+SSH_USER ?= ubuntu
 
 PRIVATE_KEY_FILE?=./keys/wireguard.pem
 TMP_FOLDER?="./test/tmp"
@@ -53,7 +54,7 @@ local: local-cleanup deploy
 
 shell:
 	pulumi stack output publicDns
-	ssh -i "${PRIVATE_KEY_FILE}" -v ubuntu@${WIREGUARD_SERVER_IP}
+	ssh -i "${PRIVATE_KEY_FILE}" -v ${SSH_USER}@${WIREGUARD_SERVER_IP}
 
 browse:
 	pulumi stack output publicDns
@@ -73,8 +74,9 @@ wireguard-client-keys: prepare
 	wg genkey | tee ${TMP_FOLDER}/client_privatekey | wg pubkey > ${TMP_FOLDER}/client_publickey
 
 wireguard-public-key: prepare
-	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ubuntu@${WIREGUARD_SERVER_IP} 'sudo cat /var/log/cloud-init-output.log'
-	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ubuntu@${WIREGUARD_SERVER_IP} 'sudo cat /tmp/server_publickey' > ${TMP_FOLDER}/server_publickey
+	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ${SSH_USER}@${WIREGUARD_SERVER_IP} 'sudo cat /var/log/cloud-init-output.log'
+	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ${SSH_USER}@${WIREGUARD_SERVER_IP} 'sudo systemctl status wg-quick@wg0.service'
+	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ${SSH_USER}@${WIREGUARD_SERVER_IP} 'sudo cat /tmp/server_publickey' > ${TMP_FOLDER}/server_publickey
 
 validate: wireguard-public-key
 	$(MAKE) -C test -e WIREGUARD_SERVER_IP=${WIREGUARD_SERVER_IP} -e TMP_FOLDER=${TMP_FOLDER} wireguard-client

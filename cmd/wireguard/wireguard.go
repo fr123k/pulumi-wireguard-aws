@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/compute"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/compute"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/network"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"

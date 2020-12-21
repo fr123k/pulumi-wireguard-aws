@@ -8,7 +8,11 @@ umask 077
 #TODO make server public key available outside the vm instance
 wg genkey | tee /tmp/server_privatekey | wg pubkey > /tmp/server_publickey
 
-MYV4IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+#TODO pass the server public ip address from outside or the command to get it from the metadata 
+# AWS
+# MYV4IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
+# Hetzner
+MYV4IP=$(curl http://169.254.169.254/hetzner/v1/metadata/public-ipv4)
 
 cat > /etc/wireguard/wg0.conf <<- EOF
 [Interface]
