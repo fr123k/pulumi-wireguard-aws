@@ -1,6 +1,7 @@
 export PULUMI_CONFIG_PASSPHRASE ?= test
 #STACK_SUFFIX ?="-$(shell pwgen -s 8 1)"
-STACK_NAME ?= wireguard-ec2${STACK_SUFFIX}
+CLOUD ?= aws
+STACK_NAME ?= ${CLOUD}${STACK_SUFFIX}
 AWS_REGION ?= eu-west-1
 WIREGUARD_SERVER_IP=$(shell pulumi stack output publicIp)
 SSH_USER ?= ubuntu
@@ -29,7 +30,8 @@ ssh-keygen:
 	echo "No"
 
 build: ssh-keygen
-	go build -o build/wireguard cmd/wireguard/wireguard.go
+	go build -o build/wireguard-${CLOUD} cmd/wireguard/${CLOUD}/wireguard.go
+	ln -fs wireguard-${CLOUD} ./build/wireguard
 
 create: pulumi-init
 	pulumi up --yes

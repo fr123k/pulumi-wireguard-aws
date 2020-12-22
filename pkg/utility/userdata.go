@@ -34,5 +34,12 @@ func parseUserData(content string) string {
 	} else {
 		result = strings.ReplaceAll(content, "{{ CLIENT_PUBLICKEY }}", "")
 	}
+
+	metadataURL, ok2 := os.LookupEnv("METADATA_URL")
+	if ok2 == true {
+		result = strings.ReplaceAll(result, "{{ METADATA_URL }}", metadataURL)
+	} else {
+		result = strings.ReplaceAll(result, "{{ METADATA_URL }}", "")
+	}
 	return result
 }
