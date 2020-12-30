@@ -31,6 +31,7 @@ ssh-keygen:
 
 build: ssh-keygen
 	go build -o build/wireguard-${CLOUD} cmd/wireguard/${CLOUD}/wireguard.go
+	go test -v --cover ./...
 	ln -fs wireguard-${CLOUD} ./build/wireguard
 
 create: pulumi-init
