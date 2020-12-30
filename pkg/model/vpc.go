@@ -1,7 +1,6 @@
 package model
 
 import (
-	// "github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 	
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"

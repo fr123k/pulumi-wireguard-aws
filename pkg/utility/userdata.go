@@ -1,14 +1,45 @@
 package utility
 
 import (
+	"bytes"
 	"io/ioutil"
-	"os"
-	"strings"
 )
 
+// Util type define the Util struct
+//
+// OsReadFile defines a abstract function that is used for reading files. This makes it possible to overwrite the default used ioutil.ReadFile function with an other implementation that for example just returns static string without reading files or reading remote files for example.
+type Util struct {
+	OsReadFile func(filename string) ([]byte, error) 
+}
+
+// InMemoryFileReader define type for reading files from memory instead of the filesystem
+type InMemoryFileReader struct {
+	Str string
+}
+
+// ReadFile read the file content from a string in the memory instead of the filesystem
+func (inMemReader InMemoryFileReader) ReadFile(filename string) ([]byte, error) {
+	buf := bytes.NewBufferString(inMemReader.Str)
+	return ioutil.ReadAll(buf)
+}
+
+//NewUtil instantiate the default Util type. 
+func NewUtil() Util {
+	return Util {
+		OsReadFile : ioutil.ReadFile,
+	}
+}
+
+// NewInMemoryUtil instantiate the Util type to read from memory instead from the file system
+func NewInMemoryUtil(inMemReader InMemoryFileReader) Util {
+	return Util {
+		OsReadFile : inMemReader.ReadFile,
+	}
+}
+
 //ReadFile returns the file content of the passed fileName.
-func ReadFile(fileName string) (*string, error) {
-	b, err := ioutil.ReadFile(fileName) // just pass the file name
+func (util Util) ReadFile(fileName string) (*string, error) {
+	b, err := util.OsReadFile(fileName) // just pass the file name
 	if err != nil {
 		return nil, err
 	}
@@ -16,30 +47,7 @@ func ReadFile(fileName string) (*string, error) {
 	return &yaml, nil
 }
 
-//GetUserData returns the file content of the passed fileName and replace template variables.
-func GetUserData(fileName string) (*string, error) {
-	data, err := ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	yaml := parseUserData(*data)
-	return &yaml, nil
-}
-
-func parseUserData(content string) string {
-	clientPublicKey, ok := os.LookupEnv("CLIENT_PUBLICKEY")
-	var result string
-	if ok == true {
-		result = strings.ReplaceAll(content, "{{ CLIENT_PUBLICKEY }}", clientPublicKey)
-	} else {
-		result = strings.ReplaceAll(content, "{{ CLIENT_PUBLICKEY }}", "")
-	}
-
-	metadataURL, ok2 := os.LookupEnv("METADATA_URL")
-	if ok2 == true {
-		result = strings.ReplaceAll(result, "{{ METADATA_URL }}", metadataURL)
-	} else {
-		result = strings.ReplaceAll(result, "{{ METADATA_URL }}", "")
-	}
-	return result
+//ReadFile returns the file content of the passed fileName.
+func ReadFile(fileName string) (*string, error) {
+	return NewUtil().ReadFile(fileName) // just pass the file name
 }

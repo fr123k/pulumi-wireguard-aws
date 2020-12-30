@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/fr123k/pulumi-wireguard-aws.svg?branch=master)](https://travis-ci.com/fr123k/pulumi-wireguard-aws)
+[![Build Status](https://travis-ci.com/fr123k/pulumi-wireguard-aws.svg?branch=main)](https://travis-ci.com/fr123k/pulumi-wireguard-aws)
 
 # pulumi-wireguard-aws
 

@@ -42,13 +42,16 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 	UserData pulumi.StringPtrInput
 	*/
 
-	yaml, err := utility.GetUserData("cloud-init/user-data.txt")
-
+	userDataVariables := map[string]string{
+		"{{ CLIENT_PUBLICKEY }}": "CLIENT_PUBLICKEY",
+		"{{ METADATA_URL }}": "METADATA_URL",
+	}
+	userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
 	if err != nil {
 		return err
 	}
 
-	ctx.Export("cloud-init", pulumi.String(*yaml))
+	ctx.Export("cloud-init", pulumi.String(userData.Content))
 
 	publicKey, err := utility.ReadFile("keys/wireguard.pem.pub")
 	
@@ -73,7 +76,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 		SshKeys: pulumi.StringArray{
 			sshKey.ID(),
 		},
-		UserData: pulumi.String(*yaml),
+		UserData: pulumi.String(userData.Content),
 	})
 
 	if err != nil {

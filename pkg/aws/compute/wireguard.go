@@ -106,13 +106,16 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 
 	//TODO cloud-init use only if jenkins ami doesn't exists.
 	// yaml, err := getCloudInitYaml("cloud-init/cloud-init.yaml", awsKeyID, awsKeySecret)
-	yaml, err := utility.GetUserData("cloud-init/user-data.txt")
-
+	userDataVariables := map[string]string{
+		"{{ CLIENT_PUBLICKEY }}": "CLIENT_PUBLICKEY",
+		"{{ METADATA_URL }}": "METADATA_URL",
+	}
+	userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
 	if err != nil {
 		return err
 	}
 
-	ctx.Export("cloud-init", pulumi.String(*yaml))
+	ctx.Export("cloud-init", pulumi.String(userData.Content))
 
 	publicKey, err := utility.ReadFile("keys/wireguard.pem.pub")
 
@@ -138,7 +141,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 		InstanceType: pulumi.String(size),
 		KeyName:      keyPair.KeyName, //create the keypair with pulumi
 		Ami:          pulumi.String(ami.Id),
-		UserData:     pulumi.String(*yaml),
+		UserData:     pulumi.String(userData.Content),
 		SubnetId:     vpc.SubnetResults[0].ID(),
 
 		VpcSecurityGroupIds: pulumi.StringArray{
