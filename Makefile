@@ -6,8 +6,13 @@ AWS_REGION ?= eu-west-1
 WIREGUARD_SERVER_IP=$(shell pulumi stack output publicIp)
 SSH_USER ?= ubuntu
 
-PRIVATE_KEY_FILE?=./keys/wireguard.pem
-TMP_FOLDER?="./test/tmp"
+PRIVATE_KEY_FILE ?= ./keys/wireguard.pem
+TMP_FOLDER ?= ./test/tmp
+
+# Pulumi Configuration
+export VPN_ENABLED_SSH ?= true
+export CLIENT_IP_ADDRESS ?= 10.8.0.2
+export CLIENT_PUBLICKEY ?= "XSGknxaW7PwqiFD061TemUozeTxxafusIRr5dz2fUhw="
 
 go-init:
 	go mod init github.com/fr123k/pulumi-wireguard-aws
@@ -22,6 +27,7 @@ pulumi-init: build
 	# pulumi stack select ${STACK_NAME}
 	pulumi stack select -c ${STACK_NAME}
 	pulumi config set aws:region eu-west-1
+	pulumi config set vpn_enabled_ssh ${VPN_ENABLED_SSH}
 
 init: pulumi-init
 

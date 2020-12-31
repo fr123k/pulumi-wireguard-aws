@@ -3,6 +3,7 @@ package compute
 import (
 	"os"
 
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
@@ -11,10 +12,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
-const size = "t2.large"
+const size = "t2.micro"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
+func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *model.SecurityArgs) error {
+
 	sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", &ec2.SecurityGroupArgs{
 		Description: pulumi.String("Terraform Managed. Allow Wireguard client traffic from internet."),
 		Ingress: ec2.SecurityGroupIngressArray{
@@ -24,12 +26,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 				ToPort:     pulumi.Int(51820),
 				CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")},
 			},
-			ec2.SecurityGroupIngressArgs{
-				Protocol:   pulumi.String("tcp"),
-				FromPort:   pulumi.Int(22),
-				ToPort:     pulumi.Int(22),
-				CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")},
-			},
+			network.SSHIngressRule(security),
 		},
 		Egress: ec2.SecurityGroupEgressArray{
 			ec2.SecurityGroupEgressArgs{
@@ -108,6 +105,8 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 	// yaml, err := getCloudInitYaml("cloud-init/cloud-init.yaml", awsKeyID, awsKeySecret)
 	userDataVariables := map[string]string{
 		"{{ CLIENT_PUBLICKEY }}": "CLIENT_PUBLICKEY",
+		"{{ CLIENT_IP_ADDRESS }}": "CLIENT_IP_ADDRESS",
+		"{{ MAILJET_API_CREDENTIALS }}": "MAILJET_API_CREDENTIALS",
 		"{{ METADATA_URL }}": "METADATA_URL",
 	}
 	userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))

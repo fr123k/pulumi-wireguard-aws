@@ -92,6 +92,7 @@ github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror
 github.com/pulumi/pulumi/sdk/v2/go/common/version
 github.com/pulumi/pulumi/sdk/v2/go/common/workspace
 github.com/pulumi/pulumi/sdk/v2/go/pulumi
+github.com/pulumi/pulumi/sdk/v2/go/pulumi/config
 github.com/pulumi/pulumi/sdk/v2/nodejs/npm
 github.com/pulumi/pulumi/sdk/v2/proto/go
 github.com/pulumi/pulumi/sdk/v2/python
@@ -99,6 +100,8 @@ github.com/pulumi/pulumi/sdk/v2/python
 github.com/sabhiram/go-gitignore
 # github.com/sergi/go-diff v1.1.0
 github.com/sergi/go-diff/diffmatchpatch
+# github.com/spf13/cast v1.3.1
+github.com/spf13/cast
 # github.com/spf13/cobra v1.0.0
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3

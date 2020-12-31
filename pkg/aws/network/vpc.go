@@ -24,7 +24,7 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 	}
 
 	// Export IDs of the created resources to the Pulumi stack
-	ctx.Export("VPC-ID", vpc.ID())
+	ctx.Export("vpcId", vpc.ID())
 
 	internetGW, err := ec2.NewInternetGateway(ctx, vpcArgs.Name, &ec2.InternetGatewayArgs{
 		VpcId: vpc.ID(),
@@ -51,7 +51,7 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 			return nil, err
 		}
 	
-		ctx.Export("Subnet-ID", subnet.ID())
+		ctx.Export("subnetId", subnet.ID())
 		subnets[i] = model.SubnetResult{
 			Subnet: subnet.CustomResourceState,
 		}
