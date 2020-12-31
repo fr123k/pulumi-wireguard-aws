@@ -17,9 +17,9 @@ Installation for MacOs
 
 ### Access/Secret Keys
 
-To setup the access keys for terraform either use the aws cli and run the following command
+To setup the access keys for pulumi either use the aws cli and run the following command
 it will ask for the access key and secret key id and store them in a file `~/.aws/credentials`.
-Those one then also picked up by the terraform aws provider.
+Those one then also picked up by the pulumi aws provider.
 
 ```
   aws configure
@@ -27,7 +27,7 @@ Those one then also picked up by the terraform aws provider.
 
 ## Environment Variables
 
-The values of the following defined environment variables will work for the awscli and the terraform
+The values of the following defined environment variables will work for the awscli and the pulumi
 aws provider and if you put leave a space before the command then they also not appear in the bash
 history.
 
@@ -69,32 +69,15 @@ Backend: local
 
 - Install the WireGuard tools for your OS: https://www.wireguard.com/install/
 - Generate a key pair for the clients
-  - `wg genkey | tee client1-privatekey | wg pubkey > client1-publickey`
+  - `wg genkey | tee client-privatekey | wg pubkey > client-publickey`
+- Specify the client public key and the desired client ip address as environment variables
 - Add the desired client ip address and client public key to the variable `wg_client_public_keys` in the 
   `main.tf` file.
   ```
-    module "wireguard" {
-        source = "./modules/wireguard/"
-
-        ssh_key_id            = aws_key_pair.wireguard.id
-        vpc_id                = aws_vpc.wireguard.id
-        subnet                = aws_subnet.wireguard
-        wg_client_public_keys = [
-            {"${cidrhost(aws_subnet.wireguard.cidr_block, 2)/32" = "XSGknxa................................fUhw="},
-        ]
-    }
+    export CLIENT_ID_ADDRESS=10.8.0.2
+    export  CLIENT_PUBLICKEY="XSGknxa................................fUhw="
   ```
-  The `cidrhost` function calculate the client ip address based on the subnet cidr in this example the cidr is `10.8.0.0/24` that results then in the following ip address `10.8.0.2/32` for the client and the value `XSGknxa................................fUhw=`
-  is the generated client public key from above
-
-### VPC
-
-- Adjust the `network.tf` file to your needs for example change the subnet cidr.
-  ```
-    locals {
-      network_cidr = "10.61.0.0"
-    }
-  ```
+  The CLIENT_PUBLICKEY value `XSGknxa................................fUhw=` is the generated client public key from above
 
 ### SSH (vpn\_enabled\_ssh)
 
@@ -105,10 +88,10 @@ For troubleshooting or debugging purpose it is helpful to access the wireguard v
 need to have an wireguard VPN connection in place. If the wireguard server failed to start or if you can't get the
 wireguard server public key without ssh.
 
-To open the ssh port for public access set the value of the `vpn_enabled_ssh` terraform variable to `false`.
+To open the ssh port for public access set the value of the `vpn_enabled_ssh` pulumi variable to `false`.
 
 ```
- export TF_VAR_vpn_enabled_ssh=false
+ export VPN_ENABLED_SSH=false
  make create
 ```
 
@@ -132,7 +115,7 @@ to the client with an third party communication channel.
 This connection credentials are not static and change always when the wireguard infrastructure is recreated.
 
 ```
- export TF_VAR_mailjet_api_credentials=<API_KEY:SECRET_KEY>
+ export MAILJET_API_CREDENTIALS=<API_KEY:SECRET_KEY>
  make create
 ```
 
@@ -140,119 +123,61 @@ This connection credentials are not static and change always when the wireguard 
 
 ### Output Variables
 
-| Name | Description |
-|------|-------------|
-| wireguard\_eips | The list of elastic ip addresses assigned to the wireguard virtual machines. |
+| Name | Description | Cloud Provider |
+|------|-------------|----------------|
+| publicIp | The elastic ip address assigned to the wireguard virtual machine. | AWS, Hetzner
+| publicDns | The public FQDN of the wireguard virtual machine. | AWS, Hetzner
+| cloud-init | The rendered cloud-init template provided as userdata to wireguard virtual machine. | AWS, Hetzner
+| vpcId | The id of the generated VPC resource. | AWS
+| subnetId | The id of the generated subnet resource. | AWS, Hetzner
+
 
 ### Build
 
-The following command will run terraform validate and terraform plan. The plan is saved in the file
-`terraform.plan` so it can applied directly with the command `terraform apply terraform.plan` then
-this `terraform apply` command is without the step of creating a extra plan and asking of confirmation
-of those as well. The same can be achieved with the `make create` target check the chapter Create.
+The following command will build the pulumi wireguard binary and run the unit tests.
+The result of this build step is the standalone pulumi binary in the `./build/` folder. 
+
+The same can be achieved with the `make create` target check the chapter Create.
 ```
 make build
 ```
 
 Example Output:
 ```
-  terraform validate
-  Success! The configuration is valid.
+  echo -e 'n\n' | ssh-keygen -t rsa -b 4096 -q -N "" -f ./keys/wireguard.pem || true
+  ./keys/wireguard.pem already exists.
+  Overwrite (y/n)? echo "No"
+  No
+  go build -o build/wireguard-aws cmd/wireguard/aws/wireguard.go
+  go test -v --cover ./...
+  ?   	github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/aws	[no test files]
+  === RUN   TestVpcArg
+  --- PASS: TestVpcArg (0.00s)
+  PASS
+  coverage: 100.0% of statements
+  ok  	github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/config	(cached)
+  ...
+  === RUN   TestTemplateVariablesString
+  Key: {{ TEST_CLIENT_PUBLICKEY }} Value: TEST_CLIENT_PUBLICKEY
+  Key: {{ TEST_METADATA_URL }} Value: TEST_METADATA_URL
+  --- PASS: TestTemplateVariablesString (0.00s)
+  ...
+  ok  	github.com/fr123k/pulumi-wireguard-aws/pkg/model	(cached)	coverage: 86.5% of statements
+  === RUN   TestReadFileWithNonExistingFile
+  --- PASS: TestReadFileWithNonExistingFile (0.00s)
+  === RUN   TestReadFileFromMemory
+  --- PASS: TestReadFileFromMemory (0.00s)
+  PASS
+  coverage: 66.7% of statements
+  ok  	github.com/fr123k/pulumi-wireguard-aws/pkg/utility	(cached)	coverage: 66.7% of statements
+  ln -fs wireguard-aws ./build/wireguard
 
-  terraform plan
-
-  An execution plan has been generated and is shown below.
-  Resource actions are indicated with the following symbols:
-    + create
-  <= read (data resources)
-
-  Terraform will perform the following actions:
-
-    # data.aws_route_table.wireguard will be read during apply
-    # (config refers to values not yet known)
-  <= data "aws_route_table" "wireguard"  {
-        + associations   = (known after apply)
-        ...
-      }
-
-    # aws_internet_gateway.wireguard will be created
-    + resource "aws_internet_gateway" "wireguard" {
-        + arn      = (known after apply)
-        ...
-      }
-
-    # aws_key_pair.wireguard will be created
-    + resource "aws_key_pair" "wireguard" {
-        + arn         = (known after apply)
-        ...
-      }
-
-    # aws_route.wireguard will be created
-    + resource "aws_route" "wireguard" {
-        + destination_cidr_block     = "0.0.0.0/0"
-        ...
-      }
-
-    # aws_subnet.wireguard will be created
-    + resource "aws_subnet" "wireguard" {
-        + arn                             = (known after apply)
-        ...
-      }
-
-    # aws_vpc.wireguard will be created
-    + resource "aws_vpc" "wireguard" {
-        + arn                              = (known after apply)
-        ...
-      }
-
-    # module.wireguard.data.aws_instances.wireguards will be read during apply
-    # (config refers to values not yet known)
-  <= data "aws_instances" "wireguards"  {
-        + id            = (known after apply)
-        ...
-      }
-
-    # module.wireguard.aws_autoscaling_group.wireguard_asg will be created
-    + resource "aws_autoscaling_group" "wireguard_asg" {
-        + arn                       = (known after apply)
-        ...
-      }
-
-    # module.wireguard.aws_launch_configuration.wireguard_launch_config will be created
-    + resource "aws_launch_configuration" "wireguard_launch_config" {
-        + arn                         = (known after apply)
-        ...
-      }
-
-    # module.wireguard.aws_security_group.sg_wireguard_admin will be created
-    + resource "aws_security_group" "sg_wireguard_admin" {
-        + arn                    = (known after apply)
-        ...
-      }
-
-    # module.wireguard.aws_security_group.sg_wireguard_external will be created
-    + resource "aws_security_group" "sg_wireguard_external" {
-        + arn                    = (known after apply)
-        ...
-      }
-
-  Plan: 9 to add, 0 to change, 0 to destroy.
-
-  Changes to Outputs:
-    + wireguard_eips = (known after apply)
-
-  ------------------------------------------------------------------------
-
-  This plan was saved to: terraform.plan
-
-  To perform exactly these actions, run the following command to apply:
-      terraform apply "terraform.plan"
 ```
 
 ### Create
 
 The following command will run the make target `build` see the chapter above and then the
-`terraform apply terraform.plan` command non-interactive.
+`pulumi up` command non-interactive.
 
 **Be aware if the build make target succeed then the infrastructure is created in the next step without asking for confirmation.**
 ```
@@ -261,154 +186,153 @@ The following command will run the make target `build` see the chapter above and
 
 Example Output:
 ```
-  terraform apply terraform.plan
-  aws_key_pair.wireguard: Creating...
-  aws_vpc.wireguard: Creating...
-  aws_key_pair.wireguard: Creation complete after 1s [id=wireguard-key]
-  aws_vpc.wireguard: Creation complete after 4s [id=vpc-060a4af0251126d20]
-  data.aws_route_table.wireguard: Reading...
-  aws_internet_gateway.wireguard: Creating...
-  aws_subnet.wireguard: Creating...
-  module.wireguard.aws_security_group.sg_wireguard_external: Creating...
-  data.aws_route_table.wireguard: Read complete after 0s [id=rtb-0f412214655109d05]
-  aws_subnet.wireguard: Creation complete after 1s [id=subnet-07251021997cc49b5]
-  aws_internet_gateway.wireguard: Creation complete after 2s [id=igw-09d85a0930bb67fe1]
-  aws_route.wireguard: Creating...
-  aws_route.wireguard: Creation complete after 1s [id=r-rtb-0f412214655109d051080289494]
-  module.wireguard.aws_security_group.sg_wireguard_external: Creation complete after 3s [id=sg-01c85ed4aee5f7a60]
-  module.wireguard.aws_launch_configuration.wireguard_launch_config: Creating...
-  module.wireguard.aws_security_group.sg_wireguard_admin: Creating...
-  module.wireguard.aws_launch_configuration.wireguard_launch_config: Creation complete after 1s [id=wireguard-prod-20201206125455575700000001]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Creating...
-  module.wireguard.aws_security_group.sg_wireguard_admin: Creation complete after 5s [id=sg-0a7e02598b2e5a11b]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still creating... [10s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still creating... [20s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still creating... [30s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still creating... [40s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Creation complete after 40s [id=wireguard-prod-20201206125455575700000001]
-  module.wireguard.data.aws_instances.wireguards: Reading...
-  module.wireguard.data.aws_instances.wireguards: Read complete after 1s [id=terraform-20201206125537118500000002]
+  echo -e 'n\n' | ssh-keygen -t rsa -b 4096 -q -N "" -f ./keys/wireguard.pem || true
+  ./keys/wireguard.pem already exists.
+  Overwrite (y/n)? echo "No"
+  No
+  go build -o build/wireguard-aws cmd/wireguard/aws/wireguard.go
+  go test -v --cover ./...
+  ...
+  coverage: 66.7% of statements
+  ok  	github.com/fr123k/pulumi-wireguard-aws/pkg/utility	(cached)	coverage: 66.7% of statements
+  ln -fs wireguard-aws ./build/wireguard
+  pulumi plugin install resource aws 3.21.0
+  pulumi plugin ls
+  NAME    KIND      VERSION  SIZE    INSTALLED    LAST USED
+  aws     resource  3.21.0   253 MB  1 week ago   1 week ago
+  aws     resource  3.19.3   253 MB  2 weeks ago  2 weeks ago
+  hcloud  resource  0.4.0    44 MB   1 week ago   1 week ago
+
+  TOTAL plugin cache size: 550 MB
+  pulumi login --local
+  Logged in to local as (file://~)
+  # pulumi login --cloud-url s3://s3-pulumi-state-d12f2f1
+  # pulumi stack rm -f aws
+  # pulumi stack select aws
+  pulumi stack select -c aws
+  pulumi config set aws:region eu-west-1
+  pulumi config set vpn_enabled_ssh true
+  pulumi up --yes
+  Previewing update (aws):
+      Type                        Name                      Plan       Info
+  +   pulumi:pulumi:Stack         wireguard-aws-pulumi-aws  create     9 messages
+  +   ├─ aws:ec2:Vpc              wireguard                 create
+  +   ├─ aws:ec2:InternetGateway  wireguard                 create
+  +   ├─ aws:ec2:Subnet           wireguard                 create
+  +   ├─ aws:ec2:SecurityGroup    wireguard-external        create
+  +   ├─ aws:ec2:Route            wireguard                 create
+  +   ├─ aws:ec2:SecurityGroup    wireguard-admin           create
+  +   ├─ aws:ec2:KeyPair          wireguard                 create
+  +   └─ aws:ec2:Instance         wireguard                 create
+  
+  Diagnostics:
+    pulumi:pulumi:Stack (wireguard-aws-pulumi-aws):
+      {"VPNEnabledSSH":true,"VPNCidr":"10.8.0.0/24"}
+      Key: {{ CLIENT_IP_ADDRESS }} Value: CLIENT_IP_ADDRESS
+      Key: {{ MAILJET_API_CREDENTIALS }} Value: MAILJET_API_CREDENTIALS
+      Key: {{ METADATA_URL }} Value: METADATA_URL
+      Key: {{ CLIENT_PUBLICKEY }} Value: CLIENT_PUBLICKEY
+      Key: {{ CLIENT_IP_ADDRESS }} Value: CLIENT_IP_ADDRESS
+      Key: {{ MAILJET_API_CREDENTIALS }} Value: MAILJET_API_CREDENTIALS
+      Key: {{ METADATA_URL }} Value: METADATA_URL
+      Key: {{ CLIENT_PUBLICKEY }} Value: CLIENT_PUBLICKEY
+  
+
+  Permalink: file:///Users/franki/.pulumi/stacks/aws.json
+  Updating (aws):
+      Type                        Name                      Status      Info
+  +   pulumi:pulumi:Stack         wireguard-aws-pulumi-aws  created     9 messages
+  +   ├─ aws:ec2:Vpc              wireguard                 created
+  +   ├─ aws:ec2:KeyPair          wireguard                 created
+  +   ├─ aws:ec2:InternetGateway  wireguard                 created
+  +   ├─ aws:ec2:Subnet           wireguard                 created
+  +   ├─ aws:ec2:SecurityGroup    wireguard-external        created
+  +   ├─ aws:ec2:Route            wireguard                 created
+  +   ├─ aws:ec2:SecurityGroup    wireguard-admin           created
+  +   └─ aws:ec2:Instance         wireguard                 created
+  
+  Diagnostics:
+    pulumi:pulumi:Stack (wireguard-aws-pulumi-aws):
+      {"VPNEnabledSSH":true,"VPNCidr":"10.8.0.0/24"}
+      Key: {{ CLIENT_PUBLICKEY }} Value: CLIENT_PUBLICKEY
+      Key: {{ CLIENT_IP_ADDRESS }} Value: CLIENT_IP_ADDRESS
+      Key: {{ MAILJET_API_CREDENTIALS }} Value: MAILJET_API_CREDENTIALS
+      Key: {{ METADATA_URL }} Value: METADATA_URL
+      Key: {{ CLIENT_PUBLICKEY }} Value: CLIENT_PUBLICKEY
+      Key: {{ CLIENT_IP_ADDRESS }} Value: CLIENT_IP_ADDRESS
+      Key: {{ MAILJET_API_CREDENTIALS }} Value: MAILJET_API_CREDENTIALS
+      Key: {{ METADATA_URL }} Value: METADATA_URL
+  
+  Outputs:
+      cloud-init: "#!/bin/bash -v\n\napt-get update -y\napt-get upgrade -y\napt-get install -y wireguard-dkms wireguard-tools \n\numask 077\n#TODO make server public key available outside the vm instance\nwg genkey | tee /tmp/server_privatekey | wg pubkey > /tmp/server_publickey\n\nMYV4IP=$(curl )\n\ncat > /etc/wireguard/wg0.conf <<- EOF\n[Interface]\nAddress = $MYV4IP/24\nPrivateKey = $(cat /tmp/server_privatekey)\nListenPort = 51820\nPostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\nPostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE\n\n[Peer]\nPublicKey = \"XSG................................Uhw=\"\nAllowedIPs = 10.8.0.2/32\nPersistentKeepalive = 25\nEOF\n\nchown -R root:root /etc/wireguard/\nchmod -R og-rwx /etc/wireguard/*\nsed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf\nsysctl -p\nufw allow ssh\nufw allow 51820/udp\nufw --force enable\nsystemctl enable wg-quick@wg0.service\nsystemctl start wg-quick@wg0.service\n\nMAILJET_AUTH=\"\"\n\nif [ \"$MAILJET_AUTH\" != \"\" ]; then\n\n    # TODO make the list of emails configurable per client ip\n    cat > /tmp/wireguard.email <<- EOF\n    {\n    \"Messages\":[\n        {\n        \"From\": {\n            \"Email\": \"wireguard@fr123k.uk\",\n            \"Name\": \"Wireguard $MYV4IP\"\n        },\n        \"To\": [\n            {\n            \"Email\": \"fr12_k@yahoo.com\",\n            \"Name\": \"Frank\"\n            }\n        ],\n        \"Subject\": \"Wireguard publickey\",\n        \"TextPart\": \"The wireguard public key is $(cat /tmp/server_publickey) and the ip address $MYV4IP\",\n        \"CustomID\": \"Wireguard Publickey\"\n        }\n    ]\n    }\nEOF\n\n    curl -s -X POST \\\n    --user \"${mailjet_api_credentials}\" \\\n    https://api.mailjet.com/v3.1/send \\\n    -H 'Content-Type: application/json' \\\n    --data \"@/tmp/wireguard.email\"\nfi\n"
+      publicDns : "ec2-3-249-99-113.eu-west-1.compute.amazonaws.com"
+      publicIp  : "3.249.99.113"
+      subnetId  : "subnet-0957988f3c093db5b"
+      vpcId     : "vpc-0be1174cd9bafc205"
+
+  Resources:
+      + 9 created
+
+  Duration: 1m37s
 ```
 
 ### Clean
 
-The following make target will execute `terraform destroy` and list all the resource it will destroy
-and it stops and waits for confirmation by of the user. If the user confirm then it starts to destroy
-all the listed resources.
-
+The following make target will execute `pulumi destroy` and list all the resource it will destroy and start immediately to destroy them. 
+**No confirmation needed**
 ```
   make clean
 ```
 
 Example Output:
 ```
-  terraform destroy
+  pulumi destroy --yes -s aws || true
+  Previewing destroy (aws):
+      Type                        Name                      Plan
+  -   pulumi:pulumi:Stack         wireguard-aws-pulumi-aws  delete
+  -   ├─ aws:ec2:Instance         wireguard                 delete
+  -   ├─ aws:ec2:Route            wireguard                 delete
+  -   ├─ aws:ec2:SecurityGroup    wireguard-admin           delete
+  -   ├─ aws:ec2:Subnet           wireguard                 delete
+  -   ├─ aws:ec2:InternetGateway  wireguard                 delete
+  -   ├─ aws:ec2:SecurityGroup    wireguard-external        delete
+  -   ├─ aws:ec2:KeyPair          wireguard                 delete
+  -   └─ aws:ec2:Vpc              wireguard                 delete
+  
+  Outputs:
+    - cloud-init: "#!/bin/bash -v\n\napt-get update -y\napt-get upgrade -y\napt-get install -y wireguard-dkms wireguard-tools \n\numask 077\n#TODO make server public key available outside the vm instance\nwg genkey | tee /tmp/server_privatekey | wg pubkey > /tmp/server_publickey\n\nMYV4IP=$(curl )\n\ncat > /etc/wireguard/wg0.conf <<- EOF\n[Interface]\nAddress = $MYV4IP/24\nPrivateKey = $(cat /tmp/server_privatekey)\nListenPort = 51820\nPostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\nPostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE\n\n[Peer]\nPublicKey = \"XS................................hw=\"\nAllowedIPs = 10.8.0.2/32\nPersistentKeepalive = 25\nEOF\n\nchown -R root:root /etc/wireguard/\nchmod -R og-rwx /etc/wireguard/*\nsed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf\nsysctl -p\nufw allow ssh\nufw allow 51820/udp\nufw --force enable\nsystemctl enable wg-quick@wg0.service\nsystemctl start wg-quick@wg0.service\n\nMAILJET_AUTH=\"\"\n\nif [ \"$MAILJET_AUTH\" != \"\" ]; then\n\n    # TODO make the list of emails configurable per client ip\n    cat > /tmp/wireguard.email <<- EOF\n    {\n    \"Messages\":[\n        {\n        \"From\": {\n            \"Email\": \"wireguard@fr123k.uk\",\n            \"Name\": \"Wireguard $MYV4IP\"\n        },\n        \"To\": [\n            {\n            \"Email\": \"fr12_k@yahoo.com\",\n            \"Name\": \"Frank\"\n            }\n        ],\n        \"Subject\": \"Wireguard publickey\",\n        \"TextPart\": \"The wireguard public key is $(cat /tmp/server_publickey) and the ip address $MYV4IP\",\n        \"CustomID\": \"Wireguard Publickey\"\n        }\n    ]\n    }\nEOF\n\n    curl -s -X POST \\\n    --user \"${mailjet_api_credentials}\" \\\n    https://api.mailjet.com/v3.1/send \\\n    -H 'Content-Type: application/json' \\\n    --data \"@/tmp/wireguard.email\"\nfi\n"
+    - publicDns : "ec2-3-248-222-248.eu-west-1.compute.amazonaws.com"
+    - publicIp  : "3.248.222.248"
+    - subnetId  : "subnet-04c22ab4638cab72c"
+    - vpcId     : "vpc-0f3c1a362758cb265"
 
-  An execution plan has been generated and is shown below.
-  Resource actions are indicated with the following symbols:
-    - destroy
+  Resources:
+      - 9 to delete
 
-  Terraform will perform the following actions:
+  Permalink: file:///Users/franki/.pulumi/stacks/aws.json
+  Destroying (aws):
+      Type                        Name                      Status
+  -   pulumi:pulumi:Stack         wireguard-aws-pulumi-aws  deleted
+  -   ├─ aws:ec2:Instance         wireguard                 deleted
+  -   ├─ aws:ec2:Route            wireguard                 deleted
+  -   ├─ aws:ec2:SecurityGroup    wireguard-admin           deleted
+  -   ├─ aws:ec2:InternetGateway  wireguard                 deleted
+  -   ├─ aws:ec2:Subnet           wireguard                 deleted
+  -   ├─ aws:ec2:SecurityGroup    wireguard-external        deleted
+  -   ├─ aws:ec2:KeyPair          wireguard                 deleted
+  -   └─ aws:ec2:Vpc              wireguard                 deleted
+  
+  Outputs:
+    - cloud-init: "#!/bin/bash -v\n\napt-get update -y\napt-get upgrade -y\napt-get install -y wireguard-dkms wireguard-tools \n\numask 077\n#TODO make server public key available outside the vm instance\nwg genkey | tee /tmp/server_privatekey | wg pubkey > /tmp/server_publickey\n\nMYV4IP=$(curl )\n\ncat > /etc/wireguard/wg0.conf <<- EOF\n[Interface]\nAddress = $MYV4IP/24\nPrivateKey = $(cat /tmp/server_privatekey)\nListenPort = 51820\nPostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\nPostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE\n\n[Peer]\nPublicKey = \"XSGknxaW7PwqiFD061TemUozeTxxafusIRr5dz2fUhw=\"\nAllowedIPs = {{ CLIENT_IP_ADDRESS }}/32\nPersistentKeepalive = 25\nEOF\n\nchown -R root:root /etc/wireguard/\nchmod -R og-rwx /etc/wireguard/*\nsed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf\nsysctl -p\nufw allow ssh\nufw allow 51820/udp\nufw --force enable\nsystemctl enable wg-quick@wg0.service\nsystemctl start wg-quick@wg0.service\n\nMAILJET_AUTH=\"\"\n\nif [ \"$MAILJET_AUTH\" != \"\" ]; then\n\n    # TODO make the list of emails configurable per client ip\n    cat > /tmp/wireguard.email <<- EOF\n    {\n    \"Messages\":[\n        {\n        \"From\": {\n            \"Email\": \"wireguard@fr123k.uk\",\n            \"Name\": \"Wireguard $MYV4IP\"\n        },\n        \"To\": [\n            {\n            \"Email\": \"fr12_k@yahoo.com\",\n            \"Name\": \"Frank\"\n            }\n        ],\n        \"Subject\": \"Wireguard publickey\",\n        \"TextPart\": \"The wireguard public key is $(cat /tmp/server_publickey) and the ip address $MYV4IP\",\n        \"CustomID\": \"Wireguard Publickey\"\n        }\n    ]\n    }\nEOF\n\n    curl -s -X POST \\\n    --user \"${mailjet_api_credentials}\" \\\n    https://api.mailjet.com/v3.1/send \\\n    -H 'Content-Type: application/json' \\\n    --data \"@/tmp/wireguard.email\"\nfi\n"
+    - publicDns : "ec2-3-248-222-248.eu-west-1.compute.amazonaws.com"
+    - publicIp  : "3.248.222.248"
+    - subnetId  : "subnet-04c22ab4638cab72c"
+    - vpcId     : "vpc-0f3c1a362758cb265"
 
-    # aws_internet_gateway.wireguard will be destroyed
-    - resource "aws_internet_gateway" "wireguard" {
-        - arn      = "arn:aws:ec2:eu-west-1:200849096175:internet-gateway/igw-09d85a0930bb67fe1" -> null
-        ...
-      }
+  Resources:
+      - 9 deleted
 
-    # aws_key_pair.wireguard will be destroyed
-    - resource "aws_key_pair" "wireguard" {
-        - arn         = "arn:aws:ec2:eu-west-1:200849096175:key-pair/wireguard-key" -> null
-        ...
-      }
-
-    # aws_route.wireguard will be destroyed
-    - resource "aws_route" "wireguard" {
-        - destination_cidr_block = "0.0.0.0/0" -> null
-        ...
-      }
-
-    # aws_subnet.wireguard will be destroyed
-    - resource "aws_subnet" "wireguard" {
-        - arn                             = "arn:aws:ec2:eu-west-1:200849096175:subnet/subnet-07251021997cc49b5" -> null
-        ...
-      }
-
-    # aws_vpc.wireguard will be destroyed
-    - resource "aws_vpc" "wireguard" {
-        - arn                              = "arn:aws:ec2:eu-west-1:200849096175:vpc/vpc-060a4af0251126d20" -> null
-        ...
-      }
-
-    # module.wireguard.aws_autoscaling_group.wireguard_asg will be destroyed
-    - resource "aws_autoscaling_group" "wireguard_asg" {
-        - arn                       = "arn:aws:autoscaling:eu-west-1:200849096175:autoScalingGroup:49375236-e563-4e98-93f3-3fdebd338985:autoScalingGroupName/wireguard-prod-20201206125455575700000001" -> null
-        ...
-      }
-
-    # module.wireguard.aws_launch_configuration.wireguard_launch_config will be destroyed
-    - resource "aws_launch_configuration" "wireguard_launch_config" {
-        - arn                         = "arn:aws:autoscaling:eu-west-1:200849096175:launchConfiguration:0f1100bd-f3b0-4f92-b51a-c1fbf37513e4:launchConfigurationName/wireguard-prod-20201206125455575700000001" -> null
-        ...
-      }
-
-    # module.wireguard.aws_security_group.sg_wireguard_admin will be destroyed
-    - resource "aws_security_group" "sg_wireguard_admin" {
-        - arn                    = "arn:aws:ec2:eu-west-1:200849096175:security-group/sg-0a7e02598b2e5a11b" -> null
-        ...
-      }
-
-    # module.wireguard.aws_security_group.sg_wireguard_external will be destroyed
-    - resource "aws_security_group" "sg_wireguard_external" {
-        - arn                    = "arn:aws:ec2:eu-west-1:200849096175:security-group/sg-01c85ed4aee5f7a60" -> null
-        ...
-      }
-
-  Plan: 0 to add, 0 to change, 9 to destroy.
-
-  Changes to Outputs:
-    - wireguard_eips = [
-        - "34.245.64.222",
-      ] -> null
-
-  Do you really want to destroy all resources?
-    Terraform will destroy all your managed infrastructure, as shown above.
-    There is no undo. Only 'yes' will be accepted to confirm.
-
-    Enter a value: yes
-
-  aws_route.wireguard: Destroying... [id=r-rtb-0f412214655109d051080289494]
-  module.wireguard.aws_security_group.sg_wireguard_admin: Destroying... [id=sg-0a7e02598b2e5a11b]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Destroying... [id=wireguard-prod-20201206125455575700000001]
-  aws_route.wireguard: Destruction complete after 0s
-  aws_internet_gateway.wireguard: Destroying... [id=igw-09d85a0930bb67fe1]
-  module.wireguard.aws_security_group.sg_wireguard_admin: Destruction complete after 0s
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still destroying... [id=wireguard-prod-20201206125455575700000001, 10s elapsed]
-  aws_internet_gateway.wireguard: Still destroying... [id=igw-09d85a0930bb67fe1, 10s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still destroying... [id=wireguard-prod-20201206125455575700000001, 20s elapsed]
-  aws_internet_gateway.wireguard: Still destroying... [id=igw-09d85a0930bb67fe1, 20s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still destroying... [id=wireguard-prod-20201206125455575700000001, 30s elapsed]
-  aws_internet_gateway.wireguard: Still destroying... [id=igw-09d85a0930bb67fe1, 30s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still destroying... [id=wireguard-prod-20201206125455575700000001, 40s elapsed]
-  aws_internet_gateway.wireguard: Still destroying... [id=igw-09d85a0930bb67fe1, 40s elapsed]
-  aws_internet_gateway.wireguard: Destruction complete after 48s
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still destroying... [id=wireguard-prod-20201206125455575700000001, 50s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still destroying... [id=wireguard-prod-20201206125455575700000001, 1m0s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still destroying... [id=wireguard-prod-20201206125455575700000001, 1m10s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Still destroying... [id=wireguard-prod-20201206125455575700000001, 1m20s elapsed]
-  module.wireguard.aws_autoscaling_group.wireguard_asg: Destruction complete after 1m21s
-  aws_subnet.wireguard: Destroying... [id=subnet-07251021997cc49b5]
-  module.wireguard.aws_launch_configuration.wireguard_launch_config: Destroying... [id=wireguard-prod-20201206125455575700000001]
-  module.wireguard.aws_launch_configuration.wireguard_launch_config: Destruction complete after 1s
-  aws_key_pair.wireguard: Destroying... [id=wireguard-key]
-  module.wireguard.aws_security_group.sg_wireguard_external: Destroying... [id=sg-01c85ed4aee5f7a60]
-  aws_subnet.wireguard: Destruction complete after 1s
-  aws_key_pair.wireguard: Destruction complete after 0s
-  module.wireguard.aws_security_group.sg_wireguard_external: Destruction complete after 0s
-  aws_vpc.wireguard: Destroying... [id=vpc-060a4af0251126d20]
-  aws_vpc.wireguard: Destruction complete after 1s
-
-  Destroy complete! Resources: 9 destroyed.
+  Duration: 1m5s
 ```
 
 ### Recreate
@@ -426,34 +350,20 @@ It's just combine the `clean` and `create` make target and the full form looks l
 
 ### Shell
 
-#### Single Wireguard Server
-If you have one wireguard virtual machine created as part of the auto scaling group then just run
-the following command to establish an ssh connection.
+To open a SSH shell just run the following command.
 ```
   make shell
 ```
-The previous `make shell` is a shortcut make target and the full make target looks like this. 
-```
-  SERVER_INDEX=0 make shell
-```
 
-#### Multiple Wireguard Server's
-
-If you have two wireguard virtual machine created as part of the auto scaling group then by specifying
-the `SERVER_INDEX=1` you able to access the second virtual machine with ssh.
-```
-  SERVER_INDEX=1 make shell
-```
 # Changes
 
 * setup travis build
 * send the wireguard elastic ip address and its public key via email with mailjet (optional)
-* securing the ssh port with wireguard VPN (optional)
+* securing the ssh port with wireguard VPN (optional default is true)
+* make the email sending via Mailjet optional and pass it from outside the wireguard module
 
 # Todos
 
-* support terraform workspaces to isolate travis build from local builds
-* build and AWS AMI image for wireguard (use packer for this maybe as part of this repo?)
-* make the email sending via Mailjet optional and pass it from outside the wireguard module
-* configure the client ip addresses and public keys outside of terraform so that a change doesn't need a full recreation of the wireguard VM
+* build and AWS AMI image for wireguard (use packer for this maybe as part of this repo? or use pulumi to build an AMI)
+* configure the client ip addresses and public keys outside of pulumi so that a change doesn't need a full recreation of the wireguard VM
   only a restart of the wireguard systemd service would be needed.
