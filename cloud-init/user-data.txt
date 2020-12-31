@@ -20,7 +20,7 @@ PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACC
 
 [Peer]
 PublicKey = {{ CLIENT_PUBLICKEY }}
-AllowedIPs = 10.8.0.2/32
+AllowedIPs = {{ CLIENT_IP_ADDRESS }}/32
 PersistentKeepalive = 25
 EOF
 
@@ -34,7 +34,7 @@ ufw --force enable
 systemctl enable wg-quick@wg0.service
 systemctl start wg-quick@wg0.service
 
-MAILJET_AUTH="${mailjet_api_credentials}"
+MAILJET_AUTH="{{ MAILJET_API_CREDENTIALS }}"
 
 if [ "$MAILJET_AUTH" != "" ]; then
 

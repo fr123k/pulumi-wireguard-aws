@@ -9,10 +9,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
-const size = "t2.large"
+const size = "cx11"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
+func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *model.SecurityArgs) error {
 
 
 	/*
@@ -44,6 +44,8 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 
 	userDataVariables := map[string]string{
 		"{{ CLIENT_PUBLICKEY }}": "CLIENT_PUBLICKEY",
+		"{{ CLIENT_IP_ADDRESS }}": "CLIENT_IP_ADDRESS",
+		"{{ MAILJET_API_CREDENTIALS }}": "MAILJET_API_CREDENTIALS",
 		"{{ METADATA_URL }}": "METADATA_URL",
 	}
 	userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
@@ -72,7 +74,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 		Image: pulumi.String("ubuntu-20.04"),
 		Location: pulumi.String("nbg1"),
 		Name: pulumi.String("wireguard"),
-		ServerType: pulumi.String("cx11"),
+		ServerType: pulumi.String(size),
 		SshKeys: pulumi.StringArray{
 			sshKey.ID(),
 		},
@@ -94,6 +96,9 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult) error {
 
 	ctx.Export("publicIp", server.Ipv4Address)
 	ctx.Export("publicDns", server.Ipv4Address)
+
+	//TODO hetzner cloud doesn't support security rules but the same can be achieved with local firewalls with in the VM
+	//     Implement firewall provisioning based on userdata script or cloud-init.
 
 	return nil	
 

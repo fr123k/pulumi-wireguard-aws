@@ -39,7 +39,7 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 		if err != nil {
 			return nil, err
 		}
-		ctx.Export("Subnet-ID", subnet.ID())
+		ctx.Export("subnetId", subnet.ID())
 		subnets[i] = model.SubnetResult{
 			Subnet: subnet.CustomResourceState,
 		}
