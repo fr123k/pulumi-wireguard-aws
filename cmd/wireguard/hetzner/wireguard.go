@@ -23,6 +23,7 @@ func main() {
 			return err
 		}
 
-		return compute.CreateWireguardVM(ctx, vpc, security)
+		_, err = compute.CreateWireguardVM(ctx, vpc, security)
+		return err
 	})
 }

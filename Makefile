@@ -12,7 +12,8 @@ TMP_FOLDER ?= ./test/tmp
 # Pulumi Configuration
 export VPN_ENABLED_SSH ?= true
 export CLIENT_IP_ADDRESS ?= 10.8.0.2
-export CLIENT_PUBLICKEY ?= "XSGknxaW7PwqiFD061TemUozeTxxafusIRr5dz2fUhw="
+export CLIENT_PUBLICKEY ?= 872SDXKUNDyF7iE9qrfvi96rXgkPVN0b+MOHMAqcNFg=
+export METADATA_URL ?= http://169.254.169.254/latest/meta-data/public-ipv4
 
 go-init:
 	go mod init github.com/fr123k/pulumi-wireguard-aws
@@ -43,10 +44,10 @@ build: ssh-keygen
 create: pulumi-init
 	pulumi up --yes
 	#verbose logging
-	#pulumi up --yes --verbose 9 --logtostderr
+	# pulumi up --yes --logtostderr -v=9 2> out.txt
 
 clean:
-	pulumi destroy --yes -s ${STACK_NAME} || true
+	pulumi destroy --yes -s ${STACK_NAME}
 	pulumi stack rm -f --yes ${STACK_NAME} || true
 
 recreate: clean create output

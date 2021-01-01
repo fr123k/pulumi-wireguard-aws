@@ -136,6 +136,7 @@ github.com/xanzy/ssh-agent
 # go.uber.org/atomic v1.6.0
 go.uber.org/atomic
 # golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6
+## explicit
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
 golang.org/x/crypto/chacha20

@@ -361,9 +361,11 @@ To open a SSH shell just run the following command.
 * send the wireguard elastic ip address and its public key via email with mailjet (optional)
 * securing the ssh port with wireguard VPN (optional default is true)
 * make the email sending via Mailjet optional and pass it from outside the wireguard module
+* first draft implementation to build an aws AMI image with pulumi
 
 # Todos
 
-* build and AWS AMI image for wireguard (use packer for this maybe as part of this repo? or use pulumi to build an AMI)
+* pulumi AMI image creation keep the latest AMI image (destroying the pulumi state destroy also the AMi image created in this state)
+* build and AWS AMI image for wireguard (use packer)
 * configure the client ip addresses and public keys outside of pulumi so that a change doesn't need a full recreation of the wireguard VM
   only a restart of the wireguard systemd service would be needed.
