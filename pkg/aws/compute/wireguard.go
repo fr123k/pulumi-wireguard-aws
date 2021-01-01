@@ -1,10 +1,14 @@
 package compute
 
 import (
+	"fmt"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws"
@@ -15,10 +19,9 @@ import (
 const size = "t2.micro"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *model.SecurityArgs) error {
-
-	sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", &ec2.SecurityGroupArgs{
-		Description: pulumi.String("Terraform Managed. Allow Wireguard client traffic from internet."),
+func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *model.SecurityArgs) (*model.ComputeResult,error) {
+	wireguardExtSecGroupArgs := &ec2.SecurityGroupArgs{
+		Description: pulumi.String("Pulumi Managed. Allow Wireguard client traffic from internet."),
 		Ingress: ec2.SecurityGroupIngressArray{
 			ec2.SecurityGroupIngressArgs{
 				Protocol:   pulumi.String("udp"),
@@ -41,13 +44,17 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 			"Project":        pulumi.String("wireguard"),
 			"pulumi-managed": pulumi.String("True"),
 		},
-		VpcId: vpc.ID(),
-	})
-	if err != nil {
-		return err
+	}
+	if vpc != nil {
+		wireguardExtSecGroupArgs.VpcId = vpc.ID()
 	}
 
-	sgAdmin, err := ec2.NewSecurityGroup(ctx, "wireguard-admin", &ec2.SecurityGroupArgs{
+	sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", wireguardExtSecGroupArgs)
+	if err != nil {
+		return nil, err
+	}
+
+	wireguardAdminSecGroupArgs := &ec2.SecurityGroupArgs{
 		Description: pulumi.String("Terraform Managed. Allow admin traffic internal resources from VPN"),
 		Ingress: ec2.SecurityGroupIngressArray{
 			ec2.SecurityGroupIngressArgs{
@@ -76,10 +83,15 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 			"Project":        pulumi.String("wireguard"),
 			"pulumi-managed": pulumi.String("True"),
 		},
-		VpcId: vpc.ID(),
-	})
+	}
+
+	if vpc != nil {
+		wireguardAdminSecGroupArgs.VpcId = vpc.ID()
+	}
+
+	sgAdmin, err := ec2.NewSecurityGroup(ctx, "wireguard-admin", wireguardAdminSecGroupArgs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	mostRecent := true
@@ -98,7 +110,39 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 	})
 
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	ami2, err := aws.GetAmiIds(ctx, &aws.GetAmiIdsArgs{
+		Filters: []aws.GetAmiIdsFilter{
+			{
+				Name: "name",
+				Values: []string{
+					"wireguard-ami",
+				},
+			},
+			{
+				Name: "state",
+				Values: []string{
+					"available",
+				},
+			},
+		},
+		// MostRecent: &mostRecent,
+		Owners: []string{
+			"self",
+		},
+	}, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var amiID string
+	if (ami2.Ids != nil && len(ami2.Ids) > 0) {
+		amiID = ami2.Ids[0]
+	} else {
+		amiID = ami.Id
 	}
 
 	//TODO cloud-init use only if jenkins ami doesn't exists.
@@ -111,7 +155,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 	}
 	userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx.Export("cloud-init", pulumi.String(userData.Content))
@@ -119,37 +163,95 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 	publicKey, err := utility.ReadFile("keys/wireguard.pem.pub")
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	keyPair, err := ec2.NewKeyPair(ctx, "wireguard", &ec2.KeyPairArgs{
-		KeyName:   pulumi.String("wireguard"),
+	s1 := rand.NewSource(time.Now().UnixNano())
+
+	keyPairName := fmt.Sprintf("wireguard-%d", rand.New(s1).Intn(100000))
+	keyPair, err := ec2.NewKeyPair(ctx, keyPairName, &ec2.KeyPairArgs{
+		KeyName:   pulumi.String(keyPairName),
 		PublicKey: pulumi.String(*publicKey),
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	server, err := ec2.NewInstance(ctx, "wireguard", &ec2.InstanceArgs{
+	wireguardEc2Args := &ec2.InstanceArgs{
 		AssociatePublicIpAddress: pulumi.Bool(true),
 		Tags: pulumi.StringMap{
 			"Name":   pulumi.String("wireguard"),
 			"JobUrl": pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
 		},
 		InstanceType: pulumi.String(size),
-		KeyName:      keyPair.KeyName, //create the keypair with pulumi
-		Ami:          pulumi.String(ami.Id),
+		KeyName:      keyPair.KeyName,
+		Ami:          pulumi.String(amiID),
 		UserData:     pulumi.String(userData.Content),
-		SubnetId:     vpc.SubnetResults[0].ID(),
-
+		
 		VpcSecurityGroupIds: pulumi.StringArray{
 			sgExternal.ID(), sgAdmin.ID(),
 		},
-	})
+	}
+
+	if vpc != nil {
+		wireguardEc2Args.SubnetId = vpc.SubnetResults[0].ID()
+	}
+
+	server, err := ec2.NewInstance(ctx, "wireguard", wireguardEc2Args)
 
 	ctx.Export("publicIp", server.PublicIp)
 	ctx.Export("publicDns", server.PublicDns)
 
-	return err
+	return &model.ComputeResult{
+		Compute: server.CustomResourceState,
+	}, err
+}
+
+
+
+// CreateImage creates an virtual machine image from an running VM.
+func CreateImage(ctx *pulumi.Context, imageArgs model.ImageArgs) (error) {
+
+	server, err := ec2.GetInstance(ctx, "wireguard2", imageArgs.SourceCompute.ID(), &ec2.InstanceState{
+		InstanceState: pulumi.String("running"),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	provision := server.PublicIp.ApplyString(func(hostip string) string {
+		sshClient := ssh.SSHClientConfig{
+			Hostname: hostip,
+			Port: 22,
+			Username: "ubuntu",
+			PrivateKeyFileName: "/Users/franki/private/github/pulumi-wireguard-aws/keys/wireguard.pem",
+			Timeout: 2 * time.Minute,
+		}
+
+		fmt.Printf("Open SSH connection to %s", hostip)
+
+		result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
+		if err != nil {
+			panic(fmt.Errorf("Failed to create session: %s", err))
+		}
+		fmt.Printf("Result: %s", *result)
+
+		_, err = ec2.NewAmiFromInstance(ctx, imageArgs.Name, &ec2.AmiFromInstanceArgs{
+			SourceInstanceId: imageArgs.SourceCompute.ID(),
+			Name: pulumi.String(imageArgs.Name),
+			SnapshotWithoutReboot: pulumi.Bool(false),
+		}, pulumi.IgnoreChanges([]string{"sourceInstanceId"}))
+
+		if err != nil {
+			panic(fmt.Errorf("Failed to create Ami Image: %s", err))
+		}
+
+		return *result
+	})
+
+	ctx.Export("Provisioning", provision)
+
+	return nil
 }

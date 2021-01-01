@@ -12,7 +12,7 @@ import (
 const size = "cx11"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *model.SecurityArgs) error {
+func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *model.SecurityArgs) (*model.ComputeResult, error) {
 
 
 	/*
@@ -50,7 +50,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 	}
 	userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx.Export("cloud-init", pulumi.String(userData.Content))
@@ -58,7 +58,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 	publicKey, err := utility.ReadFile("keys/wireguard.pem.pub")
 	
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sshKey, err := hcloud.NewSshKey(ctx, "wireguard", &hcloud.SshKeyArgs{
@@ -67,7 +67,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	server, err := hcloud.NewServer(ctx, "wireguard", &hcloud.ServerArgs{
@@ -82,7 +82,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = hcloud.NewServerNetwork(ctx, "srvnetwork", &hcloud.ServerNetworkArgs{
@@ -91,7 +91,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 		Ip: pulumi.String("10.8.0.145"),
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx.Export("publicIp", server.Ipv4Address)
@@ -100,7 +100,9 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 	//TODO hetzner cloud doesn't support security rules but the same can be achieved with local firewalls with in the VM
 	//     Implement firewall provisioning based on userdata script or cloud-init.
 
-	return nil	
+	return &model.ComputeResult{
+		Compute: server.CustomResourceState,
+	}, err
 
 	// sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", &ec2.SecurityGroupArgs{
 	// 	Description: pulumi.String("Terraform Managed. Allow Wireguard client traffic from internet."),
