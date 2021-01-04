@@ -74,7 +74,7 @@ Backend: local
 - Add the desired client ip address and client public key to the variable `wg_client_public_keys` in the 
   `main.tf` file.
   ```
-    export CLIENT_ID_ADDRESS=10.8.0.2
+    export CLIENT_ID_ADDRESS=10.8.0.3
     export  CLIENT_PUBLICKEY="XSGknxa................................fUhw="
   ```
   The CLIENT_PUBLICKEY value `XSGknxa................................fUhw=` is the generated client public key from above
