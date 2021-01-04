@@ -90,3 +90,4 @@ wireguard-public-key: prepare
 
 validate: wireguard-public-key
 	$(MAKE) -C test -e WIREGUARD_SERVER_IP=${WIREGUARD_SERVER_IP} -e TMP_FOLDER=${TMP_FOLDER} wireguard-client
+	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ${SSH_USER}@${WIREGUARD_SERVER_IP} 'sudo dmesg'
