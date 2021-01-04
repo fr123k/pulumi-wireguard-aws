@@ -11,7 +11,7 @@ TMP_FOLDER ?= ./test/tmp
 
 # Pulumi Configuration
 export VPN_ENABLED_SSH ?= true
-export CLIENT_IP_ADDRESS ?= 10.8.0.2
+export CLIENT_IP_ADDRESS ?= 10.8.0.3
 export CLIENT_PUBLICKEY ?= 872SDXKUNDyF7iE9qrfvi96rXgkPVN0b+MOHMAqcNFg=
 export METADATA_URL ?= http://169.254.169.254/latest/meta-data/public-ipv4
 
