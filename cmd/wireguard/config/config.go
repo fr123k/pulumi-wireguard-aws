@@ -7,7 +7,8 @@ import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 )
 
-var VPCArgs = vpcArg("wireguard", "10.8.0.0")
+// VPCArgsDefault deffine default arguments for the VPC
+var VPCArgsDefault = vpcArg("wireguard", "10.8.0.0")
 
 func vpcArg(name string, cidr string) (*model.VpcArgs) {
 	vpcArgs := &model.VpcArgs{
@@ -21,3 +22,5 @@ func vpcArg(name string, cidr string) (*model.VpcArgs) {
 	defaults.MustSet(vpcArgs)
 	return vpcArgs
 }
+
+//Todo precalculate subnet cidrs look at https://play.golang.org/p/m8TNTtygK0
