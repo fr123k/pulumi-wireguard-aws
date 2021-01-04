@@ -31,6 +31,10 @@ sysctl -p
 ufw allow ssh
 ufw allow 51820/udp
 ufw --force enable
+
+# enable debug logging of wireguard
+echo module wireguard +p > /sys/kernel/debug/dynamic_debug/control
+
 systemctl enable wg-quick@wg0.service
 systemctl start wg-quick@wg0.service
 
