@@ -13,7 +13,30 @@ type ImageArgs struct {
 	SourceCompute *ComputeResult
 }
 
-//ID return resource id
+// ID return resource id
 func (compute ComputeResult) ID() pulumi.IDOutput {
 	return compute.Compute.ID()
+}
+
+// ComputeArgs defines the input parameter for the compute resource functions.
+type ComputeArgs struct {
+	Vpc *VpcResult
+	Security *SecurityArgs
+	KeyPair *KeyPairArgs
+}
+
+func NewComputeArgs(vpc *VpcResult, security *SecurityArgs) *ComputeArgs {
+	return NewComputeArgsWithKeyPair(vpc, security, nil)
+}
+
+func NewComputeArgsWithSecurityAndKeyPair(security *SecurityArgs, keyPair *KeyPairArgs) *ComputeArgs {
+	return NewComputeArgsWithKeyPair(nil, security, keyPair)
+}
+
+func NewComputeArgsWithKeyPair(vpc *VpcResult, security *SecurityArgs, keyPair *KeyPairArgs) *ComputeArgs {
+	return &ComputeArgs {
+		Vpc: vpc,
+		Security: security,
+		KeyPair: keyPair,
+	}
 }

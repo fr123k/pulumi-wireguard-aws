@@ -17,7 +17,8 @@ func main() {
 		security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), wireguardCfg.VPCArgs)
 		security.Println()
 		
-		vm, err := compute.CreateWireguardVM(ctx, nil, security)
+		keyPairName := "wireguard-"
+		vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithSecurityAndKeyPair(security, model.NewKeyPairArgsWithRandomName(&keyPairName)))
 
 		if err != nil {
 			return err

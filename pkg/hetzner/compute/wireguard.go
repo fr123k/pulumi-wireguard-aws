@@ -12,7 +12,7 @@ import (
 const size = "cx11"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *model.SecurityArgs) (*model.ComputeResult, error) {
+func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
 
 
 	/*
@@ -87,7 +87,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 
 	_, err = hcloud.NewServerNetwork(ctx, "srvnetwork", &hcloud.ServerNetworkArgs{
 		ServerId:  utility.IDtoInt(server.CustomResourceState),
-		NetworkId: vpc.IDtoInt(),
+		NetworkId: computeArgs.Vpc.IDtoInt(),
 		Ip: pulumi.String("10.8.0.145"),
 	})
 	if err != nil {
