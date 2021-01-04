@@ -2,7 +2,6 @@ package compute
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"time"
 
@@ -19,7 +18,7 @@ import (
 const size = "t2.micro"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *model.SecurityArgs) (*model.ComputeResult,error) {
+func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult,error) {
 	wireguardExtSecGroupArgs := &ec2.SecurityGroupArgs{
 		Description: pulumi.String("Pulumi Managed. Allow Wireguard client traffic from internet."),
 		Ingress: ec2.SecurityGroupIngressArray{
@@ -29,7 +28,7 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 				ToPort:     pulumi.Int(51820),
 				CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")},
 			},
-			network.SSHIngressRule(security),
+			network.SSHIngressRule(computeArgs.Security),
 		},
 		Egress: ec2.SecurityGroupEgressArray{
 			ec2.SecurityGroupEgressArgs{
@@ -45,8 +44,8 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 			"pulumi-managed": pulumi.String("True"),
 		},
 	}
-	if vpc != nil {
-		wireguardExtSecGroupArgs.VpcId = vpc.ID()
+	if computeArgs.Vpc != nil {
+		wireguardExtSecGroupArgs.VpcId = computeArgs.Vpc.ID()
 	}
 
 	sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", wireguardExtSecGroupArgs)
@@ -85,8 +84,8 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 		},
 	}
 
-	if vpc != nil {
-		wireguardAdminSecGroupArgs.VpcId = vpc.ID()
+	if computeArgs.Vpc != nil {
+		wireguardAdminSecGroupArgs.VpcId = computeArgs.Vpc.ID()
 	}
 
 	sgAdmin, err := ec2.NewSecurityGroup(ctx, "wireguard-admin", wireguardAdminSecGroupArgs)
@@ -166,9 +165,9 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 		return nil, err
 	}
 
-	s1 := rand.NewSource(time.Now().UnixNano())
-
-	keyPairName := fmt.Sprintf("wireguard-%d", rand.New(s1).Intn(100000))
+	// randSrc := rand.NewSource(time.Now().UnixNano())
+	// keyPairName := fmt.Sprintf("wireguard-%d", randSrc.New(s1).Intn(100000))
+	keyPairName := "wireguard"
 	keyPair, err := ec2.NewKeyPair(ctx, keyPairName, &ec2.KeyPairArgs{
 		KeyName:   pulumi.String(keyPairName),
 		PublicKey: pulumi.String(*publicKey),
@@ -194,8 +193,8 @@ func CreateWireguardVM(ctx *pulumi.Context, vpc *model.VpcResult, security *mode
 		},
 	}
 
-	if vpc != nil {
-		wireguardEc2Args.SubnetId = vpc.SubnetResults[0].ID()
+	if computeArgs.Vpc != nil {
+		wireguardEc2Args.SubnetId = computeArgs.Vpc.SubnetResults[0].ID()
 	}
 
 	server, err := ec2.NewInstance(ctx, "wireguard", wireguardEc2Args)

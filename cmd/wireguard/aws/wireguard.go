@@ -23,8 +23,8 @@ func main() {
 		if err != nil {
 			return err
 		}
-
-		_, err = compute.CreateWireguardVM(ctx, vpc, security)
+		keyPairName := "wireguard-"
+		_, err = compute.CreateWireguardVM(ctx, model.NewComputeArgsWithKeyPair(vpc, security, model.NewKeyPairArgsWithRandomName(&keyPairName)))
 
 		if err != nil {
 			return err
