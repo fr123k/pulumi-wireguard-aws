@@ -43,7 +43,7 @@ build: ssh-keygen
 
 create: pulumi-init
 	pulumi up --yes
-	#verbose logging
+	# verbose logging
 	# pulumi up --yes --logtostderr -v=9 2> out.txt
 
 clean:

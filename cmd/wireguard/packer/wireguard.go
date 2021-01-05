@@ -1,7 +1,10 @@
 package main
 
 import (
+	"time"
+
 	wireguardCfg "github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/config"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/compute"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
@@ -24,10 +27,19 @@ func main() {
 			return err
 		}
 
+		sshConnector := actors.NewSSHConnector(
+			actors.SSHConnectorArgs{
+				Port: 22,
+				Username: "ubuntu",
+				Timeout: 2 * time.Minute,
+				PrivateKeyFileName: "/Users/franki/private/github/pulumi-wireguard-aws/keys/wireguard.pem",
+			},
+		)
+
 		err = compute.CreateImage(ctx, model.ImageArgs{
-			Name: "wireguard-ami",
+			Name: "wireguard-ami-new",
 			SourceCompute: vm,
-		})
+		},	&sshConnector)
 		return err
 	})
 }

@@ -94,6 +94,7 @@ func (sshClientConfig SSHClientConfig) SSHCommand(command string) (*string, erro
 	if err != nil {
 		return nil, fmt.Errorf("Failed to run ssh command: %s", err)
 	}
+	defer session.Close()
 
 	result, err := session.Output(command)
 	if err != nil {
@@ -101,7 +102,6 @@ func (sshClientConfig SSHClientConfig) SSHCommand(command string) (*string, erro
 	}
     fmt.Printf("Result: %s", result)
     
-	session.Close()
 	str := string(result)
 	return &str, nil
 }
