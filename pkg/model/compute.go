@@ -1,6 +1,8 @@
 package model
 
-import "github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+import (
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+)
 
 // ComputeResult define the generated properties from compute package
 type ComputeResult struct {
@@ -23,6 +25,7 @@ type ComputeArgs struct {
 	Vpc *VpcResult
 	Security *SecurityArgs
 	KeyPair *KeyPairArgs
+	Image *ImageArgs
 }
 
 func NewComputeArgs(vpc *VpcResult, security *SecurityArgs) *ComputeArgs {

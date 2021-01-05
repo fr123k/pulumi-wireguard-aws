@@ -3,11 +3,10 @@ package compute
 import (
 	"fmt"
 	"os"
-	"time"
 
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws"
@@ -207,10 +206,8 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 	}, err
 }
 
-
-
 // CreateImage creates an virtual machine image from an running VM.
-func CreateImage(ctx *pulumi.Context, imageArgs model.ImageArgs) (error) {
+func CreateImage(ctx *pulumi.Context, imageArgs model.ImageArgs, actor actors.Connector) (error) {
 
 	server, err := ec2.GetInstance(ctx, "wireguard2", imageArgs.SourceCompute.ID(), &ec2.InstanceState{
 		InstanceState: pulumi.String("running"),
@@ -221,21 +218,13 @@ func CreateImage(ctx *pulumi.Context, imageArgs model.ImageArgs) (error) {
 	}
 
 	provision := server.PublicIp.ApplyString(func(hostip string) string {
-		sshClient := ssh.SSHClientConfig{
-			Hostname: hostip,
-			Port: 22,
-			Username: "ubuntu",
-			PrivateKeyFileName: "/Users/franki/private/github/pulumi-wireguard-aws/keys/wireguard.pem",
-			Timeout: 2 * time.Minute,
+		var result string
+		if actor != nil {
+			result = actor.Connect(hostip)
+			defer actor.Stop()
 		}
 
-		fmt.Printf("Open SSH connection to %s", hostip)
-
-		result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
-		if err != nil {
-			panic(fmt.Errorf("Failed to create session: %s", err))
-		}
-		fmt.Printf("Result: %s", *result)
+		//TODO implement the NewAmiFromInstance logic as an actor as well
 
 		_, err = ec2.NewAmiFromInstance(ctx, imageArgs.Name, &ec2.AmiFromInstanceArgs{
 			SourceInstanceId: imageArgs.SourceCompute.ID(),
@@ -247,7 +236,7 @@ func CreateImage(ctx *pulumi.Context, imageArgs model.ImageArgs) (error) {
 			panic(fmt.Errorf("Failed to create Ami Image: %s", err))
 		}
 
-		return *result
+		return result
 	})
 
 	ctx.Export("Provisioning", provision)
