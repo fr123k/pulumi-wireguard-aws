@@ -36,7 +36,7 @@ ufw --force enable
 echo module wireguard +p > /sys/kernel/debug/dynamic_debug/control
 
 systemctl enable wg-quick@wg0.service
-systemctl start wg-quick@wg0.service
+systemctl restart wg-quick@wg0.service
 
 MAILJET_AUTH="{{ MAILJET_API_CREDENTIALS }}"
 
