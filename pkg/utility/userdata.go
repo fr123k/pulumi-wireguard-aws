@@ -9,7 +9,7 @@ import (
 //
 // OsReadFile defines a abstract function that is used for reading files. This makes it possible to overwrite the default used ioutil.ReadFile function with an other implementation that for example just returns static string without reading files or reading remote files for example.
 type Util struct {
-	OsReadFile func(filename string) ([]byte, error) 
+	OsReadFile func(filename string) ([]byte, error)
 }
 
 // InMemoryFileReader define type for reading files from memory instead of the filesystem
@@ -23,17 +23,17 @@ func (inMemReader InMemoryFileReader) ReadFile(filename string) ([]byte, error) 
 	return ioutil.ReadAll(buf)
 }
 
-//NewUtil instantiate the default Util type. 
+//NewUtil instantiate the default Util type.
 func NewUtil() Util {
-	return Util {
-		OsReadFile : ioutil.ReadFile,
+	return Util{
+		OsReadFile: ioutil.ReadFile,
 	}
 }
 
 // NewInMemoryUtil instantiate the Util type to read from memory instead from the file system
 func NewInMemoryUtil(inMemReader InMemoryFileReader) Util {
-	return Util {
-		OsReadFile : inMemReader.ReadFile,
+	return Util{
+		OsReadFile: inMemReader.ReadFile,
 	}
 }
 

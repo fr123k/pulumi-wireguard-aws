@@ -38,7 +38,7 @@ func (c *connector) loop(actions <-chan func()) {
 
 // register the result of a mesh.Router.NewGossip.
 func (c *connector) Connect(address string) string {
-	resultChan := make (chan string, 0)
+	resultChan := make(chan string, 0)
 	c.actions <- func() {
 		fmt.Printf("dummy connection established to %s", address)
 		resultChan <- address

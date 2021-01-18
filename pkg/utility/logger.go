@@ -9,7 +9,7 @@ import (
 func Println(object interface{}) {
 	out, err := json.Marshal(object)
 	if err != nil {
-		panic (err)
+		panic(err)
 	}
 
 	fmt.Println(string(out))

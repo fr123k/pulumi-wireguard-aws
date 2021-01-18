@@ -25,7 +25,7 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 	subnets := make([]model.SubnetResult, len(vpcArgs.Subnets))
 	for i, subnetArg := range vpcArgs.Subnets {
 		subnet, err := hcloud.NewNetworkSubnet(ctx, vpcArgs.Name, &hcloud.NetworkSubnetArgs{
-			NetworkId:   network.ID().ApplyInt(func(id pulumi.ID) int {
+			NetworkId: network.ID().ApplyInt(func(id pulumi.ID) int {
 				number, err := strconv.Atoi(string(id))
 				if err != nil {
 					panic(err)
@@ -46,7 +46,7 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 	}
 
 	return &model.VpcResult{
-		Vpc: network.CustomResourceState,
+		Vpc:           network.CustomResourceState,
 		SubnetResults: subnets,
 	}, nil
 
@@ -83,11 +83,11 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 	// 		VpcId:     vpc.ID(),
 	// 		CidrBlock: pulumi.String(subnetArg.Cidr),
 	// 	})
-	
+
 	// 	if err != nil {
 	// 		return nil, err
 	// 	}
-	
+
 	// 	ctx.Export("Subnet-ID", subnet.ID())
 	// 	subnets[i] = model.SubnetResult{
 	// 		Subnet: subnet.CustomResourceState,
@@ -98,6 +98,6 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 	// 	Vpc: vpc.CustomResourceState,
 	// 	SubnetResults: subnets,
 	// }
-	
+
 	// return vpcResult, nil
 }
