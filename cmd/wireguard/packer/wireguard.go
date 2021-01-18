@@ -19,9 +19,10 @@ func main() {
 		cfg := config.New(ctx, "")
 		security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), wireguardCfg.VPCArgsDefault)
 		security.Println()
-		
-		keyPairName := "wireguard-"
-		vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithSecurityAndKeyPair(security, model.NewKeyPairArgsWithRandomName(&keyPairName)))
+
+		keyPairName := "wireguard-packer"
+		keyPair := model.NewKeyPairArgsWithKey(&keyPairName)
+		vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithSecurityAndKeyPair(security, keyPair))
 
 		if err != nil {
 			return err
@@ -29,17 +30,17 @@ func main() {
 
 		sshConnector := actors.NewSSHConnector(
 			actors.SSHConnectorArgs{
-				Port: 22,
-				Username: "ubuntu",
-				Timeout: 2 * time.Minute,
-				PrivateKeyFileName: "/Users/franki/private/github/pulumi-wireguard-aws/keys/wireguard.pem",
+				Port:       22,
+				Username:   "ubuntu",
+				Timeout:    2 * time.Minute,
+				SSHKeyPair: *keyPair.SSHKeyPair,
 			},
 		)
 
 		err = compute.CreateImage(ctx, model.ImageArgs{
-			Name: "wireguard-ami-new",
+			Name:          "wireguard-ami-new",
 			SourceCompute: vm,
-		},	&sshConnector)
+		}, &sshConnector)
 		return err
 	})
 }

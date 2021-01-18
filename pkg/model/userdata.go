@@ -14,16 +14,16 @@ var Util = utility.NewUtil()
 //UserData define userdata input for virtual machine resources
 type UserData struct {
 	OriginalContent string
-	Content string
-	FileName string
-	Variables []TemplateVariable
+	Content         string
+	FileName        string
+	Variables       []TemplateVariable
 }
 
 //TemplateVariable define a variable and its type
 type TemplateVariable struct {
-	Type TemplateVariableType
-	Key string
-	Value string 
+	Type  TemplateVariableType
+	Key   string
+	Value string
 }
 
 //TemplateVariableType define the type of an variable. Possible values are STRING and ENVIRONMENT
@@ -33,18 +33,18 @@ const (
 	//STRING the variable is just a string and its key and value are used without modification.
 	STRING TemplateVariableType = 0
 	//ENVIRONMENT the variable value reference a environment variable value.
-    ENVIRONMENT TemplateVariableType = 1
+	ENVIRONMENT TemplateVariableType = 1
 )
 
 //TemplateVariables converts a list map of variables to a TemplateVariable array with the passed variablesType
-func TemplateVariables (variables map[string]string, variablesType TemplateVariableType) ([]TemplateVariable) {
+func TemplateVariables(variables map[string]string, variablesType TemplateVariableType) []TemplateVariable {
 	templateVariablesIdx := 0
 	templateVariables := make([]TemplateVariable, len(variables))
 	for key, value := range variables {
 		fmt.Println("Key:", key, "Value:", value)
 		templateVariables[templateVariablesIdx] = TemplateVariable{
-			Type: variablesType,
-			Key: key,
+			Type:  variablesType,
+			Key:   key,
 			Value: value,
 		}
 		templateVariablesIdx++
@@ -53,12 +53,12 @@ func TemplateVariables (variables map[string]string, variablesType TemplateVaria
 }
 
 //TemplateVariablesString converts a list map of variables to a TemplateVariable array with the variablesType STRING
-func TemplateVariablesString (variables map[string]string) ([]TemplateVariable) {
+func TemplateVariablesString(variables map[string]string) []TemplateVariable {
 	return TemplateVariables(variables, STRING)
 }
 
 //TemplateVariablesEnvironment converts a list map of variables to a TemplateVariable array with the variablesType ENVIRONMENT
-func TemplateVariablesEnvironment (variables map[string]string) ([]TemplateVariable) {
+func TemplateVariablesEnvironment(variables map[string]string) []TemplateVariable {
 	return TemplateVariables(variables, ENVIRONMENT)
 }
 
@@ -74,8 +74,8 @@ func NewUserDataWithContent(origContent string, variables []TemplateVariable) (*
 
 	return &UserData{
 		OriginalContent: origContent,
-		Content: content,
-		Variables: variables,
+		Content:         content,
+		Variables:       variables,
 	}, nil
 }
 
@@ -100,11 +100,11 @@ func NewUserData(fileName string, variables []TemplateVariable) (*UserData, erro
 func renderTemplate(template string, variables []TemplateVariable) string {
 	result := template
 	for _, variable := range variables {
-		fmt.Println("Key:",variable.Key, "Value:", variable.Value)
-		if (variable.Type == STRING) {
+		fmt.Println("Key:", variable.Key, "Value:", variable.Value)
+		if variable.Type == STRING {
 
 			result = strings.ReplaceAll(result, variable.Key, variable.Value)
-		} else if (variable.Type == ENVIRONMENT) {
+		} else if variable.Type == ENVIRONMENT {
 
 			envVariable, ok2 := os.LookupEnv(variable.Value)
 			if ok2 == true {

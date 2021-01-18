@@ -14,39 +14,38 @@ const size = "cx11"
 //CreateWireguardVM creates a wireguard ec2 aws instance
 func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
 
-
 	/*
-		// Enable or disable backups.
-	Backups pulumi.BoolPtrInput
-	// The datacenter name to create the server in.
-	Datacenter pulumi.StringPtrInput
-	// Name or ID of the image the server is created from.
-	Image pulumi.StringInput
-	// ID or Name of an ISO image to mount.
-	Iso pulumi.StringPtrInput
-	// If true, do not upgrade the disk. This allows downgrading the server type later.
-	KeepDisk pulumi.BoolPtrInput
-	// User-defined labels (key-value pairs) should be created with.
-	Labels pulumi.MapInput
-	// The location name to create the server in. `nbg1`, `fsn1` or `hel1`
-	Location pulumi.StringPtrInput
-	// Name of the server to create (must be unique per project and a valid hostname as per RFC 1123).
-	Name pulumi.StringPtrInput
-	// Enable and boot in to the specified rescue system. This enables simple installation of custom operating systems. `linux64` `linux32` or `freebsd64`
-	Rescue pulumi.StringPtrInput
-	// Name of the server type this server should be created with.
-	ServerType pulumi.StringInput
-	// SSH key IDs or names which should be injected into the server at creation time
-	SshKeys pulumi.StringArrayInput
-	// Cloud-Init user data to use during server creation
-	UserData pulumi.StringPtrInput
+			// Enable or disable backups.
+		Backups pulumi.BoolPtrInput
+		// The datacenter name to create the server in.
+		Datacenter pulumi.StringPtrInput
+		// Name or ID of the image the server is created from.
+		Image pulumi.StringInput
+		// ID or Name of an ISO image to mount.
+		Iso pulumi.StringPtrInput
+		// If true, do not upgrade the disk. This allows downgrading the server type later.
+		KeepDisk pulumi.BoolPtrInput
+		// User-defined labels (key-value pairs) should be created with.
+		Labels pulumi.MapInput
+		// The location name to create the server in. `nbg1`, `fsn1` or `hel1`
+		Location pulumi.StringPtrInput
+		// Name of the server to create (must be unique per project and a valid hostname as per RFC 1123).
+		Name pulumi.StringPtrInput
+		// Enable and boot in to the specified rescue system. This enables simple installation of custom operating systems. `linux64` `linux32` or `freebsd64`
+		Rescue pulumi.StringPtrInput
+		// Name of the server type this server should be created with.
+		ServerType pulumi.StringInput
+		// SSH key IDs or names which should be injected into the server at creation time
+		SshKeys pulumi.StringArrayInput
+		// Cloud-Init user data to use during server creation
+		UserData pulumi.StringPtrInput
 	*/
 
 	userDataVariables := map[string]string{
-		"{{ CLIENT_PUBLICKEY }}": "CLIENT_PUBLICKEY",
-		"{{ CLIENT_IP_ADDRESS }}": "CLIENT_IP_ADDRESS",
+		"{{ CLIENT_PUBLICKEY }}":        "CLIENT_PUBLICKEY",
+		"{{ CLIENT_IP_ADDRESS }}":       "CLIENT_IP_ADDRESS",
 		"{{ MAILJET_API_CREDENTIALS }}": "MAILJET_API_CREDENTIALS",
-		"{{ METADATA_URL }}": "METADATA_URL",
+		"{{ METADATA_URL }}":            "METADATA_URL",
 	}
 	userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
 	if err != nil {
@@ -55,15 +54,9 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 
 	ctx.Export("cloud-init", pulumi.String(userData.Content))
 
-	publicKey, err := utility.ReadFile("keys/wireguard.pem.pub")
-	
-	if err != nil {
-		return nil, err
-	}
-
-	sshKey, err := hcloud.NewSshKey(ctx, "wireguard", &hcloud.SshKeyArgs{
-		Name: pulumi.String("wireguard"),
-		PublicKey: pulumi.String(*publicKey),
+	sshKey, err := hcloud.NewSshKey(ctx, *computeArgs.KeyPair.Name, &hcloud.SshKeyArgs{
+		Name:      pulumi.String(*computeArgs.KeyPair.Name),
+		PublicKey: pulumi.String(*computeArgs.KeyPair.SSHKeyPair.PublicKeyStr),
 	})
 
 	if err != nil {
@@ -71,9 +64,9 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 	}
 
 	server, err := hcloud.NewServer(ctx, "wireguard", &hcloud.ServerArgs{
-		Image: pulumi.String("ubuntu-20.04"),
-		Location: pulumi.String("nbg1"),
-		Name: pulumi.String("wireguard"),
+		Image:      pulumi.String("ubuntu-20.04"),
+		Location:   pulumi.String("nbg1"),
+		Name:       pulumi.String("wireguard"),
 		ServerType: pulumi.String(size),
 		SshKeys: pulumi.StringArray{
 			sshKey.ID(),
@@ -88,7 +81,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 	_, err = hcloud.NewServerNetwork(ctx, "srvnetwork", &hcloud.ServerNetworkArgs{
 		ServerId:  utility.IDtoInt(server.CustomResourceState),
 		NetworkId: computeArgs.Vpc.IDtoInt(),
-		Ip: pulumi.String("10.8.0.145"),
+		Ip:        pulumi.String("10.8.0.145"),
 	})
 	if err != nil {
 		return nil, err

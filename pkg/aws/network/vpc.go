@@ -31,9 +31,9 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 	})
 
 	ec2.NewRoute(ctx, vpcArgs.Name, &ec2.RouteArgs{
-		RouteTableId: vpc.MainRouteTableId,
-		DestinationCidrBlock:   pulumi.String("0.0.0.0/0"),
-		GatewayId: internetGW.ID(),
+		RouteTableId:         vpc.MainRouteTableId,
+		DestinationCidrBlock: pulumi.String("0.0.0.0/0"),
+		GatewayId:            internetGW.ID(),
 	})
 
 	if err != nil {
@@ -46,11 +46,11 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 			VpcId:     vpc.ID(),
 			CidrBlock: pulumi.String(subnetArg.Cidr),
 		})
-	
+
 		if err != nil {
 			return nil, err
 		}
-	
+
 		ctx.Export("subnetId", subnet.ID())
 		subnets[i] = model.SubnetResult{
 			Subnet: subnet.CustomResourceState,
@@ -58,9 +58,9 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 	}
 
 	vpcResult := &model.VpcResult{
-		Vpc: vpc.CustomResourceState,
+		Vpc:           vpc.CustomResourceState,
 		SubnetResults: subnets,
 	}
-	
+
 	return vpcResult, nil
 }

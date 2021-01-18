@@ -6,12 +6,14 @@ import (
 
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
 )
+
 // SSHConnectorArgs this defines the ssh connection related arguments.
 type SSHConnectorArgs struct {
-	Port int
-	Username string
+	Port               int
+	Username           string
 	PrivateKeyFileName string
-	Timeout time.Duration 
+	SSHKeyPair         ssh.SSHKey
+	Timeout            time.Duration
 }
 
 // SSHConnector the ssh implementation of the Connector actor
@@ -32,14 +34,15 @@ func NewSSHConnector(args SSHConnectorArgs) SSHConnector {
 // Connect this function is called when the virtual instance is created and can recevie connection.
 // TODO implements retries ssh attemps because after an virtual machine is ready doesn't
 func (c *SSHConnector) Connect(address string) string {
-	resultChan := make (chan string, 0)
+	resultChan := make(chan string, 0)
 	c.actions <- func() {
 		sshClient := ssh.SSHClientConfig{
-			Hostname: address,
-			Port: c.args.Port,
-			Username: c.args.Username,
+			Hostname:           address,
+			Port:               c.args.Port,
+			Username:           c.args.Username,
+			SSHKeyPair:         c.args.SSHKeyPair,
 			PrivateKeyFileName: c.args.PrivateKeyFileName,
-			Timeout: c.args.Timeout,
+			Timeout:            c.args.Timeout,
 		}
 
 		fmt.Printf("Open SSH connection to %s", address)
@@ -50,7 +53,7 @@ func (c *SSHConnector) Connect(address string) string {
 		}
 		fmt.Printf("Result: %s", *result)
 
-		resultChan <-*result
+		resultChan <- *result
 	}
 	return <-resultChan
 }

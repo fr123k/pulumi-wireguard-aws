@@ -7,19 +7,19 @@ import (
 // SecurityArgs type that define security attributes
 type SecurityArgs struct {
 	VPNEnabledSSH bool
-	VPNCidr string
+	VPNCidr       string
 }
 
 // NewSecurityArgs initialize a SecurityArgs type
-func NewSecurityArgs(vpnEnabledSSH bool, vpnCidr string) (*SecurityArgs){
+func NewSecurityArgs(vpnEnabledSSH bool, vpnCidr string) *SecurityArgs {
 	return &SecurityArgs{
 		VPNEnabledSSH: vpnEnabledSSH,
-		VPNCidr: vpnCidr,
+		VPNCidr:       vpnCidr,
 	}
 }
 
 // NewSecurityArgsForVPC initialize a SecurityArgs type
-func NewSecurityArgsForVPC(vpnEnabledSSH bool, vpc *VpcArgs) (*SecurityArgs){
+func NewSecurityArgsForVPC(vpnEnabledSSH bool, vpc *VpcArgs) *SecurityArgs {
 	//TODO fix the hard coded Subned Index support multiple subnets or even an subset of subnets.
 	return NewSecurityArgs(vpnEnabledSSH, vpc.Subnets[0].Cidr)
 }

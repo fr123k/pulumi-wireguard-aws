@@ -8,8 +8,8 @@ import (
 
 // SSHIngressRule return a ingress security group rule for the ssh port that based on the passed SecurityArgs
 //                restrict the access to the VPN cidr or is publicly open.
-func SSHIngressRule (security *model.SecurityArgs) (*ec2.SecurityGroupIngressArgs) {
-	if (security.VPNEnabledSSH) {
+func SSHIngressRule(security *model.SecurityArgs) *ec2.SecurityGroupIngressArgs {
+	if security.VPNEnabledSSH {
 		return &ec2.SecurityGroupIngressArgs{
 			Protocol:   pulumi.String("tcp"),
 			FromPort:   pulumi.Int(22),
