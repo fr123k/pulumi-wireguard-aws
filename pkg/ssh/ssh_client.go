@@ -166,6 +166,18 @@ func parsePrivateKeyFile(file string) (*rsa.PrivateKey, error) {
 	return rsaKey, nil
 }
 
+func ReadPrivateKey(privateKeyFile string) *SSHKey {
+	privateKey, err := parsePrivateKeyFile(privateKeyFile)
+	checkError(err)
+
+	publicKey := exportRsaPublicKeyAsPemStr(&privateKey.PublicKey)
+
+	return &SSHKey{
+		PrivateKey:   privateKey,
+		PublicKeyStr: &publicKey,
+	}
+}
+
 func ReadKeyPair(privateKeyFile string, publicKeyFile string) *SSHKey {
 	publicKeyStr, err := utility.ReadFile(publicKeyFile)
 	checkError(err)

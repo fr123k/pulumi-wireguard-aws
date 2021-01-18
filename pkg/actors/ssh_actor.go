@@ -11,7 +11,6 @@ import (
 type SSHConnectorArgs struct {
 	Port               int
 	Username           string
-	PrivateKeyFileName string
 	SSHKeyPair         ssh.SSHKey
 	Timeout            time.Duration
 }
@@ -41,7 +40,6 @@ func (c *SSHConnector) Connect(address string) string {
 			Port:               c.args.Port,
 			Username:           c.args.Username,
 			SSHKeyPair:         c.args.SSHKeyPair,
-			PrivateKeyFileName: c.args.PrivateKeyFileName,
 			Timeout:            c.args.Timeout,
 		}
 

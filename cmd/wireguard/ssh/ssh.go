@@ -18,7 +18,7 @@ func main() {
         Hostname: "ec2-34-242-223-163.eu-west-1.compute.amazonaws.com",
         Port: 22,
         Username: "ubuntu",
-        PrivateKeyFileName: "/Users/franki/private/github/pulumi-wireguard-aws/keys/wireguard.pem",
+        SSHKeyPair: *ssh.ReadPrivateKey("/Users/franki/private/github/pulumi-wireguard-aws/keys/wireguard.pem"),
     }
 
     result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
