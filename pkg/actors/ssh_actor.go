@@ -47,10 +47,14 @@ func (c *SSHConnector) Connect(address string) string {
 
 		result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
 		if err != nil {
-			panic(fmt.Errorf("Failed to create session: %s", err))
+			panic(fmt.Errorf("Failed to run cmd : %s", err))
 		}
 		fmt.Printf("Result: %s", *result)
 
+		result, err = sshClient.SSHCommand("sudo cat /tmp/server_publickey")
+		if err != nil {
+			panic(fmt.Errorf("Failed to run cmd : %s", err))
+		}
 		resultChan <- *result
 	}
 	return <-resultChan

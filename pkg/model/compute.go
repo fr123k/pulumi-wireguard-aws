@@ -10,6 +10,11 @@ type ComputeResult struct {
 	Compute pulumi.CustomResourceState
 }
 
+type ProvisionArgs struct {
+	ExportName string
+	SourceCompute *ComputeResult
+}
+
 type ImageArgs struct {
 	Name          string
 	SourceCompute *ComputeResult

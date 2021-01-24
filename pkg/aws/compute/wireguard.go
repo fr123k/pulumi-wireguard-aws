@@ -3,6 +3,7 @@ package compute
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
@@ -11,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	// _ "github.com/aws/aws-sdk-go/service/ec2"
 )
 
 const size = "t2.micro"
@@ -194,6 +196,30 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 	return &model.ComputeResult{
 		Compute: server.CustomResourceState,
 	}, err
+}
+
+func ProvisionVM(ctx *pulumi.Context, provisionArgs *model.ProvisionArgs, actor actors.Connector) error {
+
+	server, err := ec2.GetInstance(ctx, "wireguard2", provisionArgs.SourceCompute.ID(), &ec2.InstanceState{
+		InstanceState: pulumi.String("running"),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	provision := server.PublicIp.ApplyString(func(hostip string) string {
+		var result string
+		if actor != nil {
+			result = actor.Connect(hostip)
+			defer actor.Stop()
+		}
+		return strings.TrimSuffix(result, "\r\n")
+	})
+
+	ctx.Export(provisionArgs.ExportName, provision)
+
+	return nil
 }
 
 // CreateImage creates an virtual machine image from an running VM.

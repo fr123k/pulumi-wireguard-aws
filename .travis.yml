@@ -35,7 +35,7 @@ before_install:
 script:
   - make wireguard-client-keys
   - export CLIENT_PUBLICKEY=$(cat ./test/tmp/client_publickey)
-  - make travis
+  - make deploy
   - make validate
 
 after_script:
