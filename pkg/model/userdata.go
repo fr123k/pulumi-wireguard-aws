@@ -41,7 +41,7 @@ func TemplateVariables(variables map[string]string, variablesType TemplateVariab
 	templateVariablesIdx := 0
 	templateVariables := make([]TemplateVariable, len(variables))
 	for key, value := range variables {
-		fmt.Println("Key:", key, "Value:", value)
+		// fmt.Println("Key:", key, "Value:", value)
 		templateVariables[templateVariablesIdx] = TemplateVariable{
 			Type:  variablesType,
 			Key:   key,

@@ -144,10 +144,6 @@ make build
 
 Example Output:
 ```
-  echo -e 'n\n' | ssh-keygen -t rsa -b 4096 -q -N "" -f ./keys/wireguard.pem || true
-  ./keys/wireguard.pem already exists.
-  Overwrite (y/n)? echo "No"
-  No
   go build -o build/wireguard-aws cmd/wireguard/aws/wireguard.go
   go test -v --cover ./...
   ?   	github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/aws	[no test files]
@@ -186,10 +182,6 @@ The following command will run the make target `build` see the chapter above and
 
 Example Output:
 ```
-  echo -e 'n\n' | ssh-keygen -t rsa -b 4096 -q -N "" -f ./keys/wireguard.pem || true
-  ./keys/wireguard.pem already exists.
-  Overwrite (y/n)? echo "No"
-  No
   go build -o build/wireguard-aws cmd/wireguard/aws/wireguard.go
   go test -v --cover ./...
   ...
@@ -362,6 +354,7 @@ To open a SSH shell just run the following command.
 * securing the ssh port with wireguard VPN (optional default is true)
 * make the email sending via Mailjet optional and pass it from outside the wireguard module
 * first draft implementation to build an aws AMI image with pulumi
+* the ssh keys are generated in memory and not written to disk
 
 # Todos
 
@@ -369,3 +362,4 @@ To open a SSH shell just run the following command.
 * build and AWS AMI image for wireguard (use packer)
 * configure the client ip addresses and public keys outside of pulumi so that a change doesn't need a full recreation of the wireguard VM
   only a restart of the wireguard systemd service would be needed.
+* use the pulumi log to print message on the terminal

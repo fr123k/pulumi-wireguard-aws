@@ -1,9 +1,11 @@
+.PHONY: build
 export PULUMI_CONFIG_PASSPHRASE ?= test
 #STACK_SUFFIX ?="-$(shell pwgen -s 8 1)"
 CLOUD ?= aws
 STACK_NAME ?= ${CLOUD}${STACK_SUFFIX}
 AWS_REGION ?= eu-west-1
 WIREGUARD_SERVER_IP=$(shell pulumi stack output publicIp)
+WIREGUARD_SERVER_PUBLIC_KEY=$(shell pulumi stack output wireguard.publicKey)
 SSH_USER ?= ubuntu
 
 PRIVATE_KEY_FILE ?= ./keys/wireguard.pem
@@ -32,11 +34,7 @@ pulumi-init: build
 
 init: pulumi-init
 
-ssh-keygen:
-	echo -e 'n\n' | ssh-keygen -t rsa -b 4096 -q -N "" -f ${PRIVATE_KEY_FILE} || true
-	echo "No"
-
-build: ssh-keygen
+build:
 	go build -o build/wireguard-${CLOUD} cmd/wireguard/${CLOUD}/wireguard.go
 	go test -v --cover ./...
 	ln -fs wireguard-${CLOUD} ./build/wireguard
@@ -54,13 +52,7 @@ recreate: clean create output
 
 deploy: init create output
 
-travis: deploy
-	sleep 120
-
 local: local-cleanup deploy
-
-# pre-shell: #check if the wireguard virtual machine exists
-# 	terraform state show -state=terraform.tfstate module.wireguard.data.aws_instances.wireguards
 
 shell:
 	pulumi stack output publicDns
@@ -84,9 +76,7 @@ wireguard-client-keys: prepare
 	wg genkey | tee ${TMP_FOLDER}/client_privatekey | wg pubkey > ${TMP_FOLDER}/client_publickey
 
 wireguard-public-key: prepare
-	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ${SSH_USER}@${WIREGUARD_SERVER_IP} 'sudo cat /var/log/cloud-init-output.log'
-	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ${SSH_USER}@${WIREGUARD_SERVER_IP} 'sudo systemctl status wg-quick@wg0.service'
-	@ssh -i "${PRIVATE_KEY_FILE}" -o "StrictHostKeyChecking no" ${SSH_USER}@${WIREGUARD_SERVER_IP} 'sudo cat /tmp/server_publickey' > ${TMP_FOLDER}/server_publickey
+	echo "${WIREGUARD_SERVER_PUBLIC_KEY}" > ${TMP_FOLDER}/server_publickey
 
 validate: wireguard-public-key
 	$(MAKE) -C test -e WIREGUARD_SERVER_IP=${WIREGUARD_SERVER_IP} -e TMP_FOLDER=${TMP_FOLDER} wireguard-client

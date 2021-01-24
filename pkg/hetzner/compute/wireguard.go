@@ -1,6 +1,9 @@
 package compute
 
 import (
+	"strings"
+
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
@@ -232,4 +235,28 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 	// ctx.Export("publicDns", server.PublicDns)
 
 	// return err
+}
+
+func ProvisionVM(ctx *pulumi.Context, provisionArgs *model.ProvisionArgs, actor actors.Connector) error {
+
+	server, err := hcloud.GetServer(ctx, "wireguard2", provisionArgs.SourceCompute.ID(), &hcloud.ServerState{
+		Status: pulumi.String("running"),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	provision := server.Ipv4Address.ApplyString(func(hostip string) string {
+		var result string
+		if actor != nil {
+			result = actor.Connect(hostip)
+			defer actor.Stop()
+		}
+		return strings.TrimSuffix(result, "\r\n")
+	})
+
+	ctx.Export(provisionArgs.ExportName, provision)
+
+	return nil
 }
