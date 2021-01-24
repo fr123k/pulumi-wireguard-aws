@@ -36,7 +36,7 @@ func main() {
         sshConnector := actors.NewSSHConnector(
             actors.SSHConnectorArgs{
                 Port:       22,
-                Username:   "ubuntu",
+                Username:   "root",
                 Timeout:    2 * time.Minute,
                 SSHKeyPair: *keyPair.SSHKeyPair,
             },
