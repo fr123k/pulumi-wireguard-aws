@@ -10,6 +10,7 @@ SSH_USER ?= ubuntu
 
 PRIVATE_KEY_FILE ?= ./keys/wireguard.pem
 TMP_FOLDER ?= ./test/tmp
+BUILD_FOLDER ?= $(PWD)
 
 # Pulumi Configuration
 export VPN_ENABLED_SSH ?= true
@@ -35,9 +36,9 @@ pulumi-init: build
 init: pulumi-init
 
 build:
-	go build -o build/wireguard-${CLOUD} cmd/wireguard/${CLOUD}/wireguard.go
+	go build -o ${BUILD_FOLDER}/build/wireguard-${CLOUD} cmd/wireguard/${CLOUD}/wireguard.go
 	go test -v --cover ./...
-	ln -fs wireguard-${CLOUD} ./build/wireguard
+	ln -fs ${BUILD_FOLDER}/build/wireguard-${CLOUD} ${BUILD_FOLDER}/build/wireguard
 
 create: pulumi-init
 	pulumi up --yes
@@ -65,7 +66,6 @@ browse:
 output:
 	mkdir -p ./output
 	pulumi stack output --json > ./output/wireguard-ec2.json
-
 
 ## wireguard
 
