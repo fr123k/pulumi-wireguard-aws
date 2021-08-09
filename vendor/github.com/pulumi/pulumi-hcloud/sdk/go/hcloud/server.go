@@ -4,12 +4,20 @@
 package hcloud
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// ## Import
+//
+// Servers can be imported using the server `id`
+//
+// ```sh
+//  $ pulumi import hcloud:index/server:Server myserver <id>
+// ```
 type Server struct {
 	pulumi.CustomResourceState
 
@@ -21,6 +29,8 @@ type Server struct {
 	Backups pulumi.BoolPtrOutput `pulumi:"backups"`
 	// The datacenter name to create the server in.
 	Datacenter pulumi.StringOutput `pulumi:"datacenter"`
+	// Firewall IDs the server should be attached to on creation.
+	FirewallIds pulumi.IntArrayOutput `pulumi:"firewallIds"`
 	// Name or ID of the image the server is created from.
 	Image pulumi.StringOutput `pulumi:"image"`
 	// (string) The IPv4 address.
@@ -39,6 +49,8 @@ type Server struct {
 	Location pulumi.StringOutput `pulumi:"location"`
 	// Name of the server to create (must be unique per project and a valid hostname as per RFC 1123).
 	Name pulumi.StringOutput `pulumi:"name"`
+	// Network the server should be attached to on creation. (Can be specified multiple times)
+	Networks ServerNetworkTypeArrayOutput `pulumi:"networks"`
 	// Enable and boot in to the specified rescue system. This enables simple installation of custom operating systems. `linux64` `linux32` or `freebsd64`
 	Rescue pulumi.StringPtrOutput `pulumi:"rescue"`
 	// Name of the server type this server should be created with.
@@ -54,14 +66,15 @@ type Server struct {
 // NewServer registers a new resource with the given unique name, arguments, and options.
 func NewServer(ctx *pulumi.Context,
 	name string, args *ServerArgs, opts ...pulumi.ResourceOption) (*Server, error) {
-	if args == nil || args.Image == nil {
-		return nil, errors.New("missing required argument 'Image'")
-	}
-	if args == nil || args.ServerType == nil {
-		return nil, errors.New("missing required argument 'ServerType'")
-	}
 	if args == nil {
-		args = &ServerArgs{}
+		return nil, errors.New("missing one or more required arguments")
+	}
+
+	if args.Image == nil {
+		return nil, errors.New("invalid value for required argument 'Image'")
+	}
+	if args.ServerType == nil {
+		return nil, errors.New("invalid value for required argument 'ServerType'")
 	}
 	var resource Server
 	err := ctx.RegisterResource("hcloud:index/server:Server", name, args, &resource, opts...)
@@ -93,6 +106,8 @@ type serverState struct {
 	Backups *bool `pulumi:"backups"`
 	// The datacenter name to create the server in.
 	Datacenter *string `pulumi:"datacenter"`
+	// Firewall IDs the server should be attached to on creation.
+	FirewallIds []int `pulumi:"firewallIds"`
 	// Name or ID of the image the server is created from.
 	Image *string `pulumi:"image"`
 	// (string) The IPv4 address.
@@ -111,6 +126,8 @@ type serverState struct {
 	Location *string `pulumi:"location"`
 	// Name of the server to create (must be unique per project and a valid hostname as per RFC 1123).
 	Name *string `pulumi:"name"`
+	// Network the server should be attached to on creation. (Can be specified multiple times)
+	Networks []ServerNetworkType `pulumi:"networks"`
 	// Enable and boot in to the specified rescue system. This enables simple installation of custom operating systems. `linux64` `linux32` or `freebsd64`
 	Rescue *string `pulumi:"rescue"`
 	// Name of the server type this server should be created with.
@@ -132,6 +149,8 @@ type ServerState struct {
 	Backups pulumi.BoolPtrInput
 	// The datacenter name to create the server in.
 	Datacenter pulumi.StringPtrInput
+	// Firewall IDs the server should be attached to on creation.
+	FirewallIds pulumi.IntArrayInput
 	// Name or ID of the image the server is created from.
 	Image pulumi.StringPtrInput
 	// (string) The IPv4 address.
@@ -150,6 +169,8 @@ type ServerState struct {
 	Location pulumi.StringPtrInput
 	// Name of the server to create (must be unique per project and a valid hostname as per RFC 1123).
 	Name pulumi.StringPtrInput
+	// Network the server should be attached to on creation. (Can be specified multiple times)
+	Networks ServerNetworkTypeArrayInput
 	// Enable and boot in to the specified rescue system. This enables simple installation of custom operating systems. `linux64` `linux32` or `freebsd64`
 	Rescue pulumi.StringPtrInput
 	// Name of the server type this server should be created with.
@@ -171,6 +192,8 @@ type serverArgs struct {
 	Backups *bool `pulumi:"backups"`
 	// The datacenter name to create the server in.
 	Datacenter *string `pulumi:"datacenter"`
+	// Firewall IDs the server should be attached to on creation.
+	FirewallIds []int `pulumi:"firewallIds"`
 	// Name or ID of the image the server is created from.
 	Image string `pulumi:"image"`
 	// ID or Name of an ISO image to mount.
@@ -183,6 +206,8 @@ type serverArgs struct {
 	Location *string `pulumi:"location"`
 	// Name of the server to create (must be unique per project and a valid hostname as per RFC 1123).
 	Name *string `pulumi:"name"`
+	// Network the server should be attached to on creation. (Can be specified multiple times)
+	Networks []ServerNetworkType `pulumi:"networks"`
 	// Enable and boot in to the specified rescue system. This enables simple installation of custom operating systems. `linux64` `linux32` or `freebsd64`
 	Rescue *string `pulumi:"rescue"`
 	// Name of the server type this server should be created with.
@@ -199,6 +224,8 @@ type ServerArgs struct {
 	Backups pulumi.BoolPtrInput
 	// The datacenter name to create the server in.
 	Datacenter pulumi.StringPtrInput
+	// Firewall IDs the server should be attached to on creation.
+	FirewallIds pulumi.IntArrayInput
 	// Name or ID of the image the server is created from.
 	Image pulumi.StringInput
 	// ID or Name of an ISO image to mount.
@@ -211,6 +238,8 @@ type ServerArgs struct {
 	Location pulumi.StringPtrInput
 	// Name of the server to create (must be unique per project and a valid hostname as per RFC 1123).
 	Name pulumi.StringPtrInput
+	// Network the server should be attached to on creation. (Can be specified multiple times)
+	Networks ServerNetworkTypeArrayInput
 	// Enable and boot in to the specified rescue system. This enables simple installation of custom operating systems. `linux64` `linux32` or `freebsd64`
 	Rescue pulumi.StringPtrInput
 	// Name of the server type this server should be created with.
@@ -223,4 +252,191 @@ type ServerArgs struct {
 
 func (ServerArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*serverArgs)(nil)).Elem()
+}
+
+type ServerInput interface {
+	pulumi.Input
+
+	ToServerOutput() ServerOutput
+	ToServerOutputWithContext(ctx context.Context) ServerOutput
+}
+
+func (*Server) ElementType() reflect.Type {
+	return reflect.TypeOf((*Server)(nil))
+}
+
+func (i *Server) ToServerOutput() ServerOutput {
+	return i.ToServerOutputWithContext(context.Background())
+}
+
+func (i *Server) ToServerOutputWithContext(ctx context.Context) ServerOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ServerOutput)
+}
+
+func (i *Server) ToServerPtrOutput() ServerPtrOutput {
+	return i.ToServerPtrOutputWithContext(context.Background())
+}
+
+func (i *Server) ToServerPtrOutputWithContext(ctx context.Context) ServerPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ServerPtrOutput)
+}
+
+type ServerPtrInput interface {
+	pulumi.Input
+
+	ToServerPtrOutput() ServerPtrOutput
+	ToServerPtrOutputWithContext(ctx context.Context) ServerPtrOutput
+}
+
+type serverPtrType ServerArgs
+
+func (*serverPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Server)(nil))
+}
+
+func (i *serverPtrType) ToServerPtrOutput() ServerPtrOutput {
+	return i.ToServerPtrOutputWithContext(context.Background())
+}
+
+func (i *serverPtrType) ToServerPtrOutputWithContext(ctx context.Context) ServerPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ServerPtrOutput)
+}
+
+// ServerArrayInput is an input type that accepts ServerArray and ServerArrayOutput values.
+// You can construct a concrete instance of `ServerArrayInput` via:
+//
+//          ServerArray{ ServerArgs{...} }
+type ServerArrayInput interface {
+	pulumi.Input
+
+	ToServerArrayOutput() ServerArrayOutput
+	ToServerArrayOutputWithContext(context.Context) ServerArrayOutput
+}
+
+type ServerArray []ServerInput
+
+func (ServerArray) ElementType() reflect.Type {
+	return reflect.TypeOf(([]*Server)(nil))
+}
+
+func (i ServerArray) ToServerArrayOutput() ServerArrayOutput {
+	return i.ToServerArrayOutputWithContext(context.Background())
+}
+
+func (i ServerArray) ToServerArrayOutputWithContext(ctx context.Context) ServerArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ServerArrayOutput)
+}
+
+// ServerMapInput is an input type that accepts ServerMap and ServerMapOutput values.
+// You can construct a concrete instance of `ServerMapInput` via:
+//
+//          ServerMap{ "key": ServerArgs{...} }
+type ServerMapInput interface {
+	pulumi.Input
+
+	ToServerMapOutput() ServerMapOutput
+	ToServerMapOutputWithContext(context.Context) ServerMapOutput
+}
+
+type ServerMap map[string]ServerInput
+
+func (ServerMap) ElementType() reflect.Type {
+	return reflect.TypeOf((map[string]*Server)(nil))
+}
+
+func (i ServerMap) ToServerMapOutput() ServerMapOutput {
+	return i.ToServerMapOutputWithContext(context.Background())
+}
+
+func (i ServerMap) ToServerMapOutputWithContext(ctx context.Context) ServerMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ServerMapOutput)
+}
+
+type ServerOutput struct {
+	*pulumi.OutputState
+}
+
+func (ServerOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Server)(nil))
+}
+
+func (o ServerOutput) ToServerOutput() ServerOutput {
+	return o
+}
+
+func (o ServerOutput) ToServerOutputWithContext(ctx context.Context) ServerOutput {
+	return o
+}
+
+func (o ServerOutput) ToServerPtrOutput() ServerPtrOutput {
+	return o.ToServerPtrOutputWithContext(context.Background())
+}
+
+func (o ServerOutput) ToServerPtrOutputWithContext(ctx context.Context) ServerPtrOutput {
+	return o.ApplyT(func(v Server) *Server {
+		return &v
+	}).(ServerPtrOutput)
+}
+
+type ServerPtrOutput struct {
+	*pulumi.OutputState
+}
+
+func (ServerPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Server)(nil))
+}
+
+func (o ServerPtrOutput) ToServerPtrOutput() ServerPtrOutput {
+	return o
+}
+
+func (o ServerPtrOutput) ToServerPtrOutputWithContext(ctx context.Context) ServerPtrOutput {
+	return o
+}
+
+type ServerArrayOutput struct{ *pulumi.OutputState }
+
+func (ServerArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Server)(nil))
+}
+
+func (o ServerArrayOutput) ToServerArrayOutput() ServerArrayOutput {
+	return o
+}
+
+func (o ServerArrayOutput) ToServerArrayOutputWithContext(ctx context.Context) ServerArrayOutput {
+	return o
+}
+
+func (o ServerArrayOutput) Index(i pulumi.IntInput) ServerOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Server {
+		return vs[0].([]Server)[vs[1].(int)]
+	}).(ServerOutput)
+}
+
+type ServerMapOutput struct{ *pulumi.OutputState }
+
+func (ServerMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]Server)(nil))
+}
+
+func (o ServerMapOutput) ToServerMapOutput() ServerMapOutput {
+	return o
+}
+
+func (o ServerMapOutput) ToServerMapOutputWithContext(ctx context.Context) ServerMapOutput {
+	return o
+}
+
+func (o ServerMapOutput) MapIndex(k pulumi.StringInput) ServerOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Server {
+		return vs[0].(map[string]Server)[vs[1].(string)]
+	}).(ServerOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(ServerOutput{})
+	pulumi.RegisterOutputType(ServerPtrOutput{})
+	pulumi.RegisterOutputType(ServerArrayOutput{})
+	pulumi.RegisterOutputType(ServerMapOutput{})
 }

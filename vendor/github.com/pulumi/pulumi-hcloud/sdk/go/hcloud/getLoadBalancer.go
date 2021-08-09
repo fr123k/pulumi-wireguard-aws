@@ -4,7 +4,7 @@
 package hcloud
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Provides details about a specific Hetzner Cloud Server.
@@ -16,7 +16,7 @@ import (
 //
 // import (
 // 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
-// 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 // )
 //
 // func main() {
@@ -68,9 +68,9 @@ type LookupLoadBalancerArgs struct {
 // A collection of values returned by getLoadBalancer.
 type LookupLoadBalancerResult struct {
 	// (Optional) Configuration of the algorithm the Load Balancer use.
-	Algorithm GetLoadBalancerAlgorithm `pulumi:"algorithm"`
+	Algorithms []GetLoadBalancerAlgorithm `pulumi:"algorithms"`
 	// (int) Unique ID of the Load Balancer.
-	Id *int `pulumi:"id"`
+	Id int `pulumi:"id"`
 	// (string) IPv4 Address of the Load Balancer.
 	Ipv4 string `pulumi:"ipv4"`
 	// (string) IPv4 Address of the Load Balancer.

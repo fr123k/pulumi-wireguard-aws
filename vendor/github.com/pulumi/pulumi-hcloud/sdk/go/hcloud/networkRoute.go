@@ -4,10 +4,11 @@
 package hcloud
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Provides a Hetzner Cloud Network Route to represent a Network route in the Hetzner Cloud.
@@ -19,7 +20,7 @@ import (
 //
 // import (
 // 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
-// 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 // )
 //
 // func main() {
@@ -42,6 +43,14 @@ import (
 // 	})
 // }
 // ```
+//
+// ## Import
+//
+// Network Route entries can be imported using a compound ID with the following format`<network-id>-<destination>`
+//
+// ```sh
+//  $ pulumi import hcloud:index/networkRoute:NetworkRoute myroute 123-10.0.0.0/16
+// ```
 type NetworkRoute struct {
 	pulumi.CustomResourceState
 
@@ -56,17 +65,18 @@ type NetworkRoute struct {
 // NewNetworkRoute registers a new resource with the given unique name, arguments, and options.
 func NewNetworkRoute(ctx *pulumi.Context,
 	name string, args *NetworkRouteArgs, opts ...pulumi.ResourceOption) (*NetworkRoute, error) {
-	if args == nil || args.Destination == nil {
-		return nil, errors.New("missing required argument 'Destination'")
-	}
-	if args == nil || args.Gateway == nil {
-		return nil, errors.New("missing required argument 'Gateway'")
-	}
-	if args == nil || args.NetworkId == nil {
-		return nil, errors.New("missing required argument 'NetworkId'")
-	}
 	if args == nil {
-		args = &NetworkRouteArgs{}
+		return nil, errors.New("missing one or more required arguments")
+	}
+
+	if args.Destination == nil {
+		return nil, errors.New("invalid value for required argument 'Destination'")
+	}
+	if args.Gateway == nil {
+		return nil, errors.New("invalid value for required argument 'Gateway'")
+	}
+	if args.NetworkId == nil {
+		return nil, errors.New("invalid value for required argument 'NetworkId'")
 	}
 	var resource NetworkRoute
 	err := ctx.RegisterResource("hcloud:index/networkRoute:NetworkRoute", name, args, &resource, opts...)
@@ -132,4 +142,191 @@ type NetworkRouteArgs struct {
 
 func (NetworkRouteArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*networkRouteArgs)(nil)).Elem()
+}
+
+type NetworkRouteInput interface {
+	pulumi.Input
+
+	ToNetworkRouteOutput() NetworkRouteOutput
+	ToNetworkRouteOutputWithContext(ctx context.Context) NetworkRouteOutput
+}
+
+func (*NetworkRoute) ElementType() reflect.Type {
+	return reflect.TypeOf((*NetworkRoute)(nil))
+}
+
+func (i *NetworkRoute) ToNetworkRouteOutput() NetworkRouteOutput {
+	return i.ToNetworkRouteOutputWithContext(context.Background())
+}
+
+func (i *NetworkRoute) ToNetworkRouteOutputWithContext(ctx context.Context) NetworkRouteOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(NetworkRouteOutput)
+}
+
+func (i *NetworkRoute) ToNetworkRoutePtrOutput() NetworkRoutePtrOutput {
+	return i.ToNetworkRoutePtrOutputWithContext(context.Background())
+}
+
+func (i *NetworkRoute) ToNetworkRoutePtrOutputWithContext(ctx context.Context) NetworkRoutePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(NetworkRoutePtrOutput)
+}
+
+type NetworkRoutePtrInput interface {
+	pulumi.Input
+
+	ToNetworkRoutePtrOutput() NetworkRoutePtrOutput
+	ToNetworkRoutePtrOutputWithContext(ctx context.Context) NetworkRoutePtrOutput
+}
+
+type networkRoutePtrType NetworkRouteArgs
+
+func (*networkRoutePtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**NetworkRoute)(nil))
+}
+
+func (i *networkRoutePtrType) ToNetworkRoutePtrOutput() NetworkRoutePtrOutput {
+	return i.ToNetworkRoutePtrOutputWithContext(context.Background())
+}
+
+func (i *networkRoutePtrType) ToNetworkRoutePtrOutputWithContext(ctx context.Context) NetworkRoutePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(NetworkRoutePtrOutput)
+}
+
+// NetworkRouteArrayInput is an input type that accepts NetworkRouteArray and NetworkRouteArrayOutput values.
+// You can construct a concrete instance of `NetworkRouteArrayInput` via:
+//
+//          NetworkRouteArray{ NetworkRouteArgs{...} }
+type NetworkRouteArrayInput interface {
+	pulumi.Input
+
+	ToNetworkRouteArrayOutput() NetworkRouteArrayOutput
+	ToNetworkRouteArrayOutputWithContext(context.Context) NetworkRouteArrayOutput
+}
+
+type NetworkRouteArray []NetworkRouteInput
+
+func (NetworkRouteArray) ElementType() reflect.Type {
+	return reflect.TypeOf(([]*NetworkRoute)(nil))
+}
+
+func (i NetworkRouteArray) ToNetworkRouteArrayOutput() NetworkRouteArrayOutput {
+	return i.ToNetworkRouteArrayOutputWithContext(context.Background())
+}
+
+func (i NetworkRouteArray) ToNetworkRouteArrayOutputWithContext(ctx context.Context) NetworkRouteArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(NetworkRouteArrayOutput)
+}
+
+// NetworkRouteMapInput is an input type that accepts NetworkRouteMap and NetworkRouteMapOutput values.
+// You can construct a concrete instance of `NetworkRouteMapInput` via:
+//
+//          NetworkRouteMap{ "key": NetworkRouteArgs{...} }
+type NetworkRouteMapInput interface {
+	pulumi.Input
+
+	ToNetworkRouteMapOutput() NetworkRouteMapOutput
+	ToNetworkRouteMapOutputWithContext(context.Context) NetworkRouteMapOutput
+}
+
+type NetworkRouteMap map[string]NetworkRouteInput
+
+func (NetworkRouteMap) ElementType() reflect.Type {
+	return reflect.TypeOf((map[string]*NetworkRoute)(nil))
+}
+
+func (i NetworkRouteMap) ToNetworkRouteMapOutput() NetworkRouteMapOutput {
+	return i.ToNetworkRouteMapOutputWithContext(context.Background())
+}
+
+func (i NetworkRouteMap) ToNetworkRouteMapOutputWithContext(ctx context.Context) NetworkRouteMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(NetworkRouteMapOutput)
+}
+
+type NetworkRouteOutput struct {
+	*pulumi.OutputState
+}
+
+func (NetworkRouteOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*NetworkRoute)(nil))
+}
+
+func (o NetworkRouteOutput) ToNetworkRouteOutput() NetworkRouteOutput {
+	return o
+}
+
+func (o NetworkRouteOutput) ToNetworkRouteOutputWithContext(ctx context.Context) NetworkRouteOutput {
+	return o
+}
+
+func (o NetworkRouteOutput) ToNetworkRoutePtrOutput() NetworkRoutePtrOutput {
+	return o.ToNetworkRoutePtrOutputWithContext(context.Background())
+}
+
+func (o NetworkRouteOutput) ToNetworkRoutePtrOutputWithContext(ctx context.Context) NetworkRoutePtrOutput {
+	return o.ApplyT(func(v NetworkRoute) *NetworkRoute {
+		return &v
+	}).(NetworkRoutePtrOutput)
+}
+
+type NetworkRoutePtrOutput struct {
+	*pulumi.OutputState
+}
+
+func (NetworkRoutePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**NetworkRoute)(nil))
+}
+
+func (o NetworkRoutePtrOutput) ToNetworkRoutePtrOutput() NetworkRoutePtrOutput {
+	return o
+}
+
+func (o NetworkRoutePtrOutput) ToNetworkRoutePtrOutputWithContext(ctx context.Context) NetworkRoutePtrOutput {
+	return o
+}
+
+type NetworkRouteArrayOutput struct{ *pulumi.OutputState }
+
+func (NetworkRouteArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]NetworkRoute)(nil))
+}
+
+func (o NetworkRouteArrayOutput) ToNetworkRouteArrayOutput() NetworkRouteArrayOutput {
+	return o
+}
+
+func (o NetworkRouteArrayOutput) ToNetworkRouteArrayOutputWithContext(ctx context.Context) NetworkRouteArrayOutput {
+	return o
+}
+
+func (o NetworkRouteArrayOutput) Index(i pulumi.IntInput) NetworkRouteOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) NetworkRoute {
+		return vs[0].([]NetworkRoute)[vs[1].(int)]
+	}).(NetworkRouteOutput)
+}
+
+type NetworkRouteMapOutput struct{ *pulumi.OutputState }
+
+func (NetworkRouteMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]NetworkRoute)(nil))
+}
+
+func (o NetworkRouteMapOutput) ToNetworkRouteMapOutput() NetworkRouteMapOutput {
+	return o
+}
+
+func (o NetworkRouteMapOutput) ToNetworkRouteMapOutputWithContext(ctx context.Context) NetworkRouteMapOutput {
+	return o
+}
+
+func (o NetworkRouteMapOutput) MapIndex(k pulumi.StringInput) NetworkRouteOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) NetworkRoute {
+		return vs[0].(map[string]NetworkRoute)[vs[1].(string)]
+	}).(NetworkRouteOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(NetworkRouteOutput{})
+	pulumi.RegisterOutputType(NetworkRoutePtrOutput{})
+	pulumi.RegisterOutputType(NetworkRouteArrayOutput{})
+	pulumi.RegisterOutputType(NetworkRouteMapOutput{})
 }
