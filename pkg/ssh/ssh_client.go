@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"golang.org/x/crypto/ssh"
 )
 

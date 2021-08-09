@@ -2,8 +2,8 @@ package network
 
 import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
-	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // SSHIngressRule return a ingress security group rule for the ssh port that based on the passed SecurityArgs
