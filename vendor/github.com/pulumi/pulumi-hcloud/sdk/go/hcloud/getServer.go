@@ -4,7 +4,7 @@
 package hcloud
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func LookupServer(ctx *pulumi.Context, args *LookupServerArgs, opts ...pulumi.InvokeOption) (*LookupServerResult, error) {
@@ -38,6 +38,8 @@ type LookupServerResult struct {
 	Backups bool `pulumi:"backups"`
 	// (string) The datacenter name.
 	Datacenter string `pulumi:"datacenter"`
+	// (Optional, list) Firewall IDs the server is attached to.
+	FirewallIds []int `pulumi:"firewallIds"`
 	// (int) Unique ID of the server.
 	Id int `pulumi:"id"`
 	// (string) Name or ID of the image the server was created from.

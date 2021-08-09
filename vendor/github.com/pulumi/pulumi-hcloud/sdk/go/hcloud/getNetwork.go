@@ -4,7 +4,7 @@
 package hcloud
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func LookupNetwork(ctx *pulumi.Context, args *LookupNetworkArgs, opts ...pulumi.InvokeOption) (*LookupNetworkResult, error) {
@@ -32,7 +32,7 @@ type LookupNetworkArgs struct {
 // A collection of values returned by getNetwork.
 type LookupNetworkResult struct {
 	// Unique ID of the Network.
-	Id *int `pulumi:"id"`
+	Id int `pulumi:"id"`
 	// IPv4 prefix of the Network.
 	IpRange *string                `pulumi:"ipRange"`
 	Labels  map[string]interface{} `pulumi:"labels"`

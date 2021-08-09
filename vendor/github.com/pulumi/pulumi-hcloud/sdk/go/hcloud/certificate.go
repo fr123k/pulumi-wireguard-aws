@@ -4,48 +4,42 @@
 package hcloud
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Provides a Hetzner Cloud Certificate to represent a TLS certificate in the Hetzner Cloud.
+// Alias for `UploadedCertificate` to remain backwards compatible.
+// Deprecated.
 type Certificate struct {
 	pulumi.CustomResourceState
 
-	// PEM encoded TLS certificate.
-	Certificate pulumi.StringOutput `pulumi:"certificate"`
-	// (string) Point in time when the Certificate was created at Hetzner Cloud (in ISO-8601 format).
-	Created pulumi.StringOutput `pulumi:"created"`
-	// (list) Domains and subdomains covered by the certificate.
-	DomainNames pulumi.StringArrayOutput `pulumi:"domainNames"`
-	// (string) Fingerprint of the certificate.
-	Fingerprint pulumi.StringOutput `pulumi:"fingerprint"`
-	// User-defined labels (key-value pairs) the
-	// certificate should be created with.
-	Labels pulumi.MapOutput `pulumi:"labels"`
-	// Name of the Certificate.
-	Name pulumi.StringOutput `pulumi:"name"`
-	// (string) Point in time when the Certificate stops being valid (in ISO-8601 format).
-	NotValidAfter pulumi.StringOutput `pulumi:"notValidAfter"`
-	// (string) Point in time when the Certificate becomes valid (in ISO-8601 format).
-	NotValidBefore pulumi.StringOutput `pulumi:"notValidBefore"`
-	// PEM encoded private key belonging to the certificate.
-	PrivateKey pulumi.StringOutput `pulumi:"privateKey"`
+	Certificate    pulumi.StringOutput      `pulumi:"certificate"`
+	Created        pulumi.StringOutput      `pulumi:"created"`
+	DomainNames    pulumi.StringArrayOutput `pulumi:"domainNames"`
+	Fingerprint    pulumi.StringOutput      `pulumi:"fingerprint"`
+	Labels         pulumi.MapOutput         `pulumi:"labels"`
+	Name           pulumi.StringOutput      `pulumi:"name"`
+	NotValidAfter  pulumi.StringOutput      `pulumi:"notValidAfter"`
+	NotValidBefore pulumi.StringOutput      `pulumi:"notValidBefore"`
+	PrivateKey     pulumi.StringOutput      `pulumi:"privateKey"`
+	Type           pulumi.StringOutput      `pulumi:"type"`
 }
 
 // NewCertificate registers a new resource with the given unique name, arguments, and options.
 func NewCertificate(ctx *pulumi.Context,
 	name string, args *CertificateArgs, opts ...pulumi.ResourceOption) (*Certificate, error) {
-	if args == nil || args.Certificate == nil {
-		return nil, errors.New("missing required argument 'Certificate'")
-	}
-	if args == nil || args.PrivateKey == nil {
-		return nil, errors.New("missing required argument 'PrivateKey'")
-	}
 	if args == nil {
-		args = &CertificateArgs{}
+		return nil, errors.New("missing one or more required arguments")
+	}
+
+	if args.Certificate == nil {
+		return nil, errors.New("invalid value for required argument 'Certificate'")
+	}
+	if args.PrivateKey == nil {
+		return nil, errors.New("invalid value for required argument 'PrivateKey'")
 	}
 	var resource Certificate
 	err := ctx.RegisterResource("hcloud:index/certificate:Certificate", name, args, &resource, opts...)
@@ -69,47 +63,29 @@ func GetCertificate(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Certificate resources.
 type certificateState struct {
-	// PEM encoded TLS certificate.
-	Certificate *string `pulumi:"certificate"`
-	// (string) Point in time when the Certificate was created at Hetzner Cloud (in ISO-8601 format).
-	Created *string `pulumi:"created"`
-	// (list) Domains and subdomains covered by the certificate.
-	DomainNames []string `pulumi:"domainNames"`
-	// (string) Fingerprint of the certificate.
-	Fingerprint *string `pulumi:"fingerprint"`
-	// User-defined labels (key-value pairs) the
-	// certificate should be created with.
-	Labels map[string]interface{} `pulumi:"labels"`
-	// Name of the Certificate.
-	Name *string `pulumi:"name"`
-	// (string) Point in time when the Certificate stops being valid (in ISO-8601 format).
-	NotValidAfter *string `pulumi:"notValidAfter"`
-	// (string) Point in time when the Certificate becomes valid (in ISO-8601 format).
-	NotValidBefore *string `pulumi:"notValidBefore"`
-	// PEM encoded private key belonging to the certificate.
-	PrivateKey *string `pulumi:"privateKey"`
+	Certificate    *string                `pulumi:"certificate"`
+	Created        *string                `pulumi:"created"`
+	DomainNames    []string               `pulumi:"domainNames"`
+	Fingerprint    *string                `pulumi:"fingerprint"`
+	Labels         map[string]interface{} `pulumi:"labels"`
+	Name           *string                `pulumi:"name"`
+	NotValidAfter  *string                `pulumi:"notValidAfter"`
+	NotValidBefore *string                `pulumi:"notValidBefore"`
+	PrivateKey     *string                `pulumi:"privateKey"`
+	Type           *string                `pulumi:"type"`
 }
 
 type CertificateState struct {
-	// PEM encoded TLS certificate.
-	Certificate pulumi.StringPtrInput
-	// (string) Point in time when the Certificate was created at Hetzner Cloud (in ISO-8601 format).
-	Created pulumi.StringPtrInput
-	// (list) Domains and subdomains covered by the certificate.
-	DomainNames pulumi.StringArrayInput
-	// (string) Fingerprint of the certificate.
-	Fingerprint pulumi.StringPtrInput
-	// User-defined labels (key-value pairs) the
-	// certificate should be created with.
-	Labels pulumi.MapInput
-	// Name of the Certificate.
-	Name pulumi.StringPtrInput
-	// (string) Point in time when the Certificate stops being valid (in ISO-8601 format).
-	NotValidAfter pulumi.StringPtrInput
-	// (string) Point in time when the Certificate becomes valid (in ISO-8601 format).
+	Certificate    pulumi.StringPtrInput
+	Created        pulumi.StringPtrInput
+	DomainNames    pulumi.StringArrayInput
+	Fingerprint    pulumi.StringPtrInput
+	Labels         pulumi.MapInput
+	Name           pulumi.StringPtrInput
+	NotValidAfter  pulumi.StringPtrInput
 	NotValidBefore pulumi.StringPtrInput
-	// PEM encoded private key belonging to the certificate.
-	PrivateKey pulumi.StringPtrInput
+	PrivateKey     pulumi.StringPtrInput
+	Type           pulumi.StringPtrInput
 }
 
 func (CertificateState) ElementType() reflect.Type {
@@ -117,30 +93,207 @@ func (CertificateState) ElementType() reflect.Type {
 }
 
 type certificateArgs struct {
-	// PEM encoded TLS certificate.
-	Certificate string `pulumi:"certificate"`
-	// User-defined labels (key-value pairs) the
-	// certificate should be created with.
-	Labels map[string]interface{} `pulumi:"labels"`
-	// Name of the Certificate.
-	Name *string `pulumi:"name"`
-	// PEM encoded private key belonging to the certificate.
-	PrivateKey string `pulumi:"privateKey"`
+	Certificate string                 `pulumi:"certificate"`
+	Labels      map[string]interface{} `pulumi:"labels"`
+	Name        *string                `pulumi:"name"`
+	PrivateKey  string                 `pulumi:"privateKey"`
 }
 
 // The set of arguments for constructing a Certificate resource.
 type CertificateArgs struct {
-	// PEM encoded TLS certificate.
 	Certificate pulumi.StringInput
-	// User-defined labels (key-value pairs) the
-	// certificate should be created with.
-	Labels pulumi.MapInput
-	// Name of the Certificate.
-	Name pulumi.StringPtrInput
-	// PEM encoded private key belonging to the certificate.
-	PrivateKey pulumi.StringInput
+	Labels      pulumi.MapInput
+	Name        pulumi.StringPtrInput
+	PrivateKey  pulumi.StringInput
 }
 
 func (CertificateArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*certificateArgs)(nil)).Elem()
+}
+
+type CertificateInput interface {
+	pulumi.Input
+
+	ToCertificateOutput() CertificateOutput
+	ToCertificateOutputWithContext(ctx context.Context) CertificateOutput
+}
+
+func (*Certificate) ElementType() reflect.Type {
+	return reflect.TypeOf((*Certificate)(nil))
+}
+
+func (i *Certificate) ToCertificateOutput() CertificateOutput {
+	return i.ToCertificateOutputWithContext(context.Background())
+}
+
+func (i *Certificate) ToCertificateOutputWithContext(ctx context.Context) CertificateOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(CertificateOutput)
+}
+
+func (i *Certificate) ToCertificatePtrOutput() CertificatePtrOutput {
+	return i.ToCertificatePtrOutputWithContext(context.Background())
+}
+
+func (i *Certificate) ToCertificatePtrOutputWithContext(ctx context.Context) CertificatePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(CertificatePtrOutput)
+}
+
+type CertificatePtrInput interface {
+	pulumi.Input
+
+	ToCertificatePtrOutput() CertificatePtrOutput
+	ToCertificatePtrOutputWithContext(ctx context.Context) CertificatePtrOutput
+}
+
+type certificatePtrType CertificateArgs
+
+func (*certificatePtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Certificate)(nil))
+}
+
+func (i *certificatePtrType) ToCertificatePtrOutput() CertificatePtrOutput {
+	return i.ToCertificatePtrOutputWithContext(context.Background())
+}
+
+func (i *certificatePtrType) ToCertificatePtrOutputWithContext(ctx context.Context) CertificatePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(CertificatePtrOutput)
+}
+
+// CertificateArrayInput is an input type that accepts CertificateArray and CertificateArrayOutput values.
+// You can construct a concrete instance of `CertificateArrayInput` via:
+//
+//          CertificateArray{ CertificateArgs{...} }
+type CertificateArrayInput interface {
+	pulumi.Input
+
+	ToCertificateArrayOutput() CertificateArrayOutput
+	ToCertificateArrayOutputWithContext(context.Context) CertificateArrayOutput
+}
+
+type CertificateArray []CertificateInput
+
+func (CertificateArray) ElementType() reflect.Type {
+	return reflect.TypeOf(([]*Certificate)(nil))
+}
+
+func (i CertificateArray) ToCertificateArrayOutput() CertificateArrayOutput {
+	return i.ToCertificateArrayOutputWithContext(context.Background())
+}
+
+func (i CertificateArray) ToCertificateArrayOutputWithContext(ctx context.Context) CertificateArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(CertificateArrayOutput)
+}
+
+// CertificateMapInput is an input type that accepts CertificateMap and CertificateMapOutput values.
+// You can construct a concrete instance of `CertificateMapInput` via:
+//
+//          CertificateMap{ "key": CertificateArgs{...} }
+type CertificateMapInput interface {
+	pulumi.Input
+
+	ToCertificateMapOutput() CertificateMapOutput
+	ToCertificateMapOutputWithContext(context.Context) CertificateMapOutput
+}
+
+type CertificateMap map[string]CertificateInput
+
+func (CertificateMap) ElementType() reflect.Type {
+	return reflect.TypeOf((map[string]*Certificate)(nil))
+}
+
+func (i CertificateMap) ToCertificateMapOutput() CertificateMapOutput {
+	return i.ToCertificateMapOutputWithContext(context.Background())
+}
+
+func (i CertificateMap) ToCertificateMapOutputWithContext(ctx context.Context) CertificateMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(CertificateMapOutput)
+}
+
+type CertificateOutput struct {
+	*pulumi.OutputState
+}
+
+func (CertificateOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Certificate)(nil))
+}
+
+func (o CertificateOutput) ToCertificateOutput() CertificateOutput {
+	return o
+}
+
+func (o CertificateOutput) ToCertificateOutputWithContext(ctx context.Context) CertificateOutput {
+	return o
+}
+
+func (o CertificateOutput) ToCertificatePtrOutput() CertificatePtrOutput {
+	return o.ToCertificatePtrOutputWithContext(context.Background())
+}
+
+func (o CertificateOutput) ToCertificatePtrOutputWithContext(ctx context.Context) CertificatePtrOutput {
+	return o.ApplyT(func(v Certificate) *Certificate {
+		return &v
+	}).(CertificatePtrOutput)
+}
+
+type CertificatePtrOutput struct {
+	*pulumi.OutputState
+}
+
+func (CertificatePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Certificate)(nil))
+}
+
+func (o CertificatePtrOutput) ToCertificatePtrOutput() CertificatePtrOutput {
+	return o
+}
+
+func (o CertificatePtrOutput) ToCertificatePtrOutputWithContext(ctx context.Context) CertificatePtrOutput {
+	return o
+}
+
+type CertificateArrayOutput struct{ *pulumi.OutputState }
+
+func (CertificateArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Certificate)(nil))
+}
+
+func (o CertificateArrayOutput) ToCertificateArrayOutput() CertificateArrayOutput {
+	return o
+}
+
+func (o CertificateArrayOutput) ToCertificateArrayOutputWithContext(ctx context.Context) CertificateArrayOutput {
+	return o
+}
+
+func (o CertificateArrayOutput) Index(i pulumi.IntInput) CertificateOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Certificate {
+		return vs[0].([]Certificate)[vs[1].(int)]
+	}).(CertificateOutput)
+}
+
+type CertificateMapOutput struct{ *pulumi.OutputState }
+
+func (CertificateMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]Certificate)(nil))
+}
+
+func (o CertificateMapOutput) ToCertificateMapOutput() CertificateMapOutput {
+	return o
+}
+
+func (o CertificateMapOutput) ToCertificateMapOutputWithContext(ctx context.Context) CertificateMapOutput {
+	return o
+}
+
+func (o CertificateMapOutput) MapIndex(k pulumi.StringInput) CertificateOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Certificate {
+		return vs[0].(map[string]Certificate)[vs[1].(string)]
+	}).(CertificateOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(CertificateOutput{})
+	pulumi.RegisterOutputType(CertificatePtrOutput{})
+	pulumi.RegisterOutputType(CertificateArrayOutput{})
+	pulumi.RegisterOutputType(CertificateMapOutput{})
 }

@@ -7,8 +7,141 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+type FirewallRule struct {
+	// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `out`)
+	DestinationIps []string `pulumi:"destinationIps"`
+	// Direction of the Firewall Rule. `in`
+	Direction string `pulumi:"direction"`
+	// Port of the Firewall Rule. Required when `protocol` is `tcp` or `udp`. You can use `any` to allow all ports for the specific protocol. Port ranges are also possible: `80:85` allows all ports between 80 and 85.
+	Port *string `pulumi:"port"`
+	// Protocol of the Firewall Rule. `tcp`, `icmp`, `udp`, `gre`, `esp`
+	Protocol string `pulumi:"protocol"`
+	// List of CIDRs that are allowed within this Firewall Rule
+	SourceIps []string `pulumi:"sourceIps"`
+}
+
+// FirewallRuleInput is an input type that accepts FirewallRuleArgs and FirewallRuleOutput values.
+// You can construct a concrete instance of `FirewallRuleInput` via:
+//
+//          FirewallRuleArgs{...}
+type FirewallRuleInput interface {
+	pulumi.Input
+
+	ToFirewallRuleOutput() FirewallRuleOutput
+	ToFirewallRuleOutputWithContext(context.Context) FirewallRuleOutput
+}
+
+type FirewallRuleArgs struct {
+	// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `out`)
+	DestinationIps pulumi.StringArrayInput `pulumi:"destinationIps"`
+	// Direction of the Firewall Rule. `in`
+	Direction pulumi.StringInput `pulumi:"direction"`
+	// Port of the Firewall Rule. Required when `protocol` is `tcp` or `udp`. You can use `any` to allow all ports for the specific protocol. Port ranges are also possible: `80:85` allows all ports between 80 and 85.
+	Port pulumi.StringPtrInput `pulumi:"port"`
+	// Protocol of the Firewall Rule. `tcp`, `icmp`, `udp`, `gre`, `esp`
+	Protocol pulumi.StringInput `pulumi:"protocol"`
+	// List of CIDRs that are allowed within this Firewall Rule
+	SourceIps pulumi.StringArrayInput `pulumi:"sourceIps"`
+}
+
+func (FirewallRuleArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*FirewallRule)(nil)).Elem()
+}
+
+func (i FirewallRuleArgs) ToFirewallRuleOutput() FirewallRuleOutput {
+	return i.ToFirewallRuleOutputWithContext(context.Background())
+}
+
+func (i FirewallRuleArgs) ToFirewallRuleOutputWithContext(ctx context.Context) FirewallRuleOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(FirewallRuleOutput)
+}
+
+// FirewallRuleArrayInput is an input type that accepts FirewallRuleArray and FirewallRuleArrayOutput values.
+// You can construct a concrete instance of `FirewallRuleArrayInput` via:
+//
+//          FirewallRuleArray{ FirewallRuleArgs{...} }
+type FirewallRuleArrayInput interface {
+	pulumi.Input
+
+	ToFirewallRuleArrayOutput() FirewallRuleArrayOutput
+	ToFirewallRuleArrayOutputWithContext(context.Context) FirewallRuleArrayOutput
+}
+
+type FirewallRuleArray []FirewallRuleInput
+
+func (FirewallRuleArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]FirewallRule)(nil)).Elem()
+}
+
+func (i FirewallRuleArray) ToFirewallRuleArrayOutput() FirewallRuleArrayOutput {
+	return i.ToFirewallRuleArrayOutputWithContext(context.Background())
+}
+
+func (i FirewallRuleArray) ToFirewallRuleArrayOutputWithContext(ctx context.Context) FirewallRuleArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(FirewallRuleArrayOutput)
+}
+
+type FirewallRuleOutput struct{ *pulumi.OutputState }
+
+func (FirewallRuleOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*FirewallRule)(nil)).Elem()
+}
+
+func (o FirewallRuleOutput) ToFirewallRuleOutput() FirewallRuleOutput {
+	return o
+}
+
+func (o FirewallRuleOutput) ToFirewallRuleOutputWithContext(ctx context.Context) FirewallRuleOutput {
+	return o
+}
+
+// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `out`)
+func (o FirewallRuleOutput) DestinationIps() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v FirewallRule) []string { return v.DestinationIps }).(pulumi.StringArrayOutput)
+}
+
+// Direction of the Firewall Rule. `in`
+func (o FirewallRuleOutput) Direction() pulumi.StringOutput {
+	return o.ApplyT(func(v FirewallRule) string { return v.Direction }).(pulumi.StringOutput)
+}
+
+// Port of the Firewall Rule. Required when `protocol` is `tcp` or `udp`. You can use `any` to allow all ports for the specific protocol. Port ranges are also possible: `80:85` allows all ports between 80 and 85.
+func (o FirewallRuleOutput) Port() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v FirewallRule) *string { return v.Port }).(pulumi.StringPtrOutput)
+}
+
+// Protocol of the Firewall Rule. `tcp`, `icmp`, `udp`, `gre`, `esp`
+func (o FirewallRuleOutput) Protocol() pulumi.StringOutput {
+	return o.ApplyT(func(v FirewallRule) string { return v.Protocol }).(pulumi.StringOutput)
+}
+
+// List of CIDRs that are allowed within this Firewall Rule
+func (o FirewallRuleOutput) SourceIps() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v FirewallRule) []string { return v.SourceIps }).(pulumi.StringArrayOutput)
+}
+
+type FirewallRuleArrayOutput struct{ *pulumi.OutputState }
+
+func (FirewallRuleArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]FirewallRule)(nil)).Elem()
+}
+
+func (o FirewallRuleArrayOutput) ToFirewallRuleArrayOutput() FirewallRuleArrayOutput {
+	return o
+}
+
+func (o FirewallRuleArrayOutput) ToFirewallRuleArrayOutputWithContext(ctx context.Context) FirewallRuleArrayOutput {
+	return o
+}
+
+func (o FirewallRuleArrayOutput) Index(i pulumi.IntInput) FirewallRuleOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) FirewallRule {
+		return vs[0].([]FirewallRule)[vs[1].(int)]
+	}).(FirewallRuleOutput)
+}
 
 type LoadBalancerAlgorithm struct {
 	// Type of the Load Balancer Algorithm. `roundRobin` or `leastConnections`
@@ -896,6 +1029,263 @@ func (o LoadBalancerTargetTypeArrayOutput) Index(i pulumi.IntInput) LoadBalancer
 	}).(LoadBalancerTargetTypeOutput)
 }
 
+type ServerNetworkType struct {
+	// Alias IPs the server should have in the Network.
+	AliasIps []string `pulumi:"aliasIps"`
+	// Specify the IP the server should get in the network
+	Ip *string `pulumi:"ip"`
+	// (Optional, string) The MAC address the private interface of the server has
+	MacAddress *string `pulumi:"macAddress"`
+	// ID of the network
+	NetworkId int `pulumi:"networkId"`
+}
+
+// ServerNetworkTypeInput is an input type that accepts ServerNetworkTypeArgs and ServerNetworkTypeOutput values.
+// You can construct a concrete instance of `ServerNetworkTypeInput` via:
+//
+//          ServerNetworkTypeArgs{...}
+type ServerNetworkTypeInput interface {
+	pulumi.Input
+
+	ToServerNetworkTypeOutput() ServerNetworkTypeOutput
+	ToServerNetworkTypeOutputWithContext(context.Context) ServerNetworkTypeOutput
+}
+
+type ServerNetworkTypeArgs struct {
+	// Alias IPs the server should have in the Network.
+	AliasIps pulumi.StringArrayInput `pulumi:"aliasIps"`
+	// Specify the IP the server should get in the network
+	Ip pulumi.StringPtrInput `pulumi:"ip"`
+	// (Optional, string) The MAC address the private interface of the server has
+	MacAddress pulumi.StringPtrInput `pulumi:"macAddress"`
+	// ID of the network
+	NetworkId pulumi.IntInput `pulumi:"networkId"`
+}
+
+func (ServerNetworkTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*ServerNetworkType)(nil)).Elem()
+}
+
+func (i ServerNetworkTypeArgs) ToServerNetworkTypeOutput() ServerNetworkTypeOutput {
+	return i.ToServerNetworkTypeOutputWithContext(context.Background())
+}
+
+func (i ServerNetworkTypeArgs) ToServerNetworkTypeOutputWithContext(ctx context.Context) ServerNetworkTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ServerNetworkTypeOutput)
+}
+
+// ServerNetworkTypeArrayInput is an input type that accepts ServerNetworkTypeArray and ServerNetworkTypeArrayOutput values.
+// You can construct a concrete instance of `ServerNetworkTypeArrayInput` via:
+//
+//          ServerNetworkTypeArray{ ServerNetworkTypeArgs{...} }
+type ServerNetworkTypeArrayInput interface {
+	pulumi.Input
+
+	ToServerNetworkTypeArrayOutput() ServerNetworkTypeArrayOutput
+	ToServerNetworkTypeArrayOutputWithContext(context.Context) ServerNetworkTypeArrayOutput
+}
+
+type ServerNetworkTypeArray []ServerNetworkTypeInput
+
+func (ServerNetworkTypeArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]ServerNetworkType)(nil)).Elem()
+}
+
+func (i ServerNetworkTypeArray) ToServerNetworkTypeArrayOutput() ServerNetworkTypeArrayOutput {
+	return i.ToServerNetworkTypeArrayOutputWithContext(context.Background())
+}
+
+func (i ServerNetworkTypeArray) ToServerNetworkTypeArrayOutputWithContext(ctx context.Context) ServerNetworkTypeArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ServerNetworkTypeArrayOutput)
+}
+
+type ServerNetworkTypeOutput struct{ *pulumi.OutputState }
+
+func (ServerNetworkTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ServerNetworkType)(nil)).Elem()
+}
+
+func (o ServerNetworkTypeOutput) ToServerNetworkTypeOutput() ServerNetworkTypeOutput {
+	return o
+}
+
+func (o ServerNetworkTypeOutput) ToServerNetworkTypeOutputWithContext(ctx context.Context) ServerNetworkTypeOutput {
+	return o
+}
+
+// Alias IPs the server should have in the Network.
+func (o ServerNetworkTypeOutput) AliasIps() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v ServerNetworkType) []string { return v.AliasIps }).(pulumi.StringArrayOutput)
+}
+
+// Specify the IP the server should get in the network
+func (o ServerNetworkTypeOutput) Ip() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v ServerNetworkType) *string { return v.Ip }).(pulumi.StringPtrOutput)
+}
+
+// (Optional, string) The MAC address the private interface of the server has
+func (o ServerNetworkTypeOutput) MacAddress() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v ServerNetworkType) *string { return v.MacAddress }).(pulumi.StringPtrOutput)
+}
+
+// ID of the network
+func (o ServerNetworkTypeOutput) NetworkId() pulumi.IntOutput {
+	return o.ApplyT(func(v ServerNetworkType) int { return v.NetworkId }).(pulumi.IntOutput)
+}
+
+type ServerNetworkTypeArrayOutput struct{ *pulumi.OutputState }
+
+func (ServerNetworkTypeArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]ServerNetworkType)(nil)).Elem()
+}
+
+func (o ServerNetworkTypeArrayOutput) ToServerNetworkTypeArrayOutput() ServerNetworkTypeArrayOutput {
+	return o
+}
+
+func (o ServerNetworkTypeArrayOutput) ToServerNetworkTypeArrayOutputWithContext(ctx context.Context) ServerNetworkTypeArrayOutput {
+	return o
+}
+
+func (o ServerNetworkTypeArrayOutput) Index(i pulumi.IntInput) ServerNetworkTypeOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) ServerNetworkType {
+		return vs[0].([]ServerNetworkType)[vs[1].(int)]
+	}).(ServerNetworkTypeOutput)
+}
+
+type GetFirewallRule struct {
+	// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `out`)
+	DestinationIps []string `pulumi:"destinationIps"`
+	// (Required, string) Direction of the Firewall Rule. `in`, `out`
+	Direction string `pulumi:"direction"`
+	// (Required, string) Port of the Firewall Rule. Required when `protocol` is `tcp` or `udp`
+	Port *string `pulumi:"port"`
+	// (Required, string) Protocol of the Firewall Rule. `tcp`, `icmp`, `udp`, `gre`, `esp`
+	Protocol *string `pulumi:"protocol"`
+	// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `in`)
+	SourceIps []string `pulumi:"sourceIps"`
+}
+
+// GetFirewallRuleInput is an input type that accepts GetFirewallRuleArgs and GetFirewallRuleOutput values.
+// You can construct a concrete instance of `GetFirewallRuleInput` via:
+//
+//          GetFirewallRuleArgs{...}
+type GetFirewallRuleInput interface {
+	pulumi.Input
+
+	ToGetFirewallRuleOutput() GetFirewallRuleOutput
+	ToGetFirewallRuleOutputWithContext(context.Context) GetFirewallRuleOutput
+}
+
+type GetFirewallRuleArgs struct {
+	// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `out`)
+	DestinationIps pulumi.StringArrayInput `pulumi:"destinationIps"`
+	// (Required, string) Direction of the Firewall Rule. `in`, `out`
+	Direction pulumi.StringInput `pulumi:"direction"`
+	// (Required, string) Port of the Firewall Rule. Required when `protocol` is `tcp` or `udp`
+	Port pulumi.StringPtrInput `pulumi:"port"`
+	// (Required, string) Protocol of the Firewall Rule. `tcp`, `icmp`, `udp`, `gre`, `esp`
+	Protocol pulumi.StringPtrInput `pulumi:"protocol"`
+	// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `in`)
+	SourceIps pulumi.StringArrayInput `pulumi:"sourceIps"`
+}
+
+func (GetFirewallRuleArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetFirewallRule)(nil)).Elem()
+}
+
+func (i GetFirewallRuleArgs) ToGetFirewallRuleOutput() GetFirewallRuleOutput {
+	return i.ToGetFirewallRuleOutputWithContext(context.Background())
+}
+
+func (i GetFirewallRuleArgs) ToGetFirewallRuleOutputWithContext(ctx context.Context) GetFirewallRuleOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetFirewallRuleOutput)
+}
+
+// GetFirewallRuleArrayInput is an input type that accepts GetFirewallRuleArray and GetFirewallRuleArrayOutput values.
+// You can construct a concrete instance of `GetFirewallRuleArrayInput` via:
+//
+//          GetFirewallRuleArray{ GetFirewallRuleArgs{...} }
+type GetFirewallRuleArrayInput interface {
+	pulumi.Input
+
+	ToGetFirewallRuleArrayOutput() GetFirewallRuleArrayOutput
+	ToGetFirewallRuleArrayOutputWithContext(context.Context) GetFirewallRuleArrayOutput
+}
+
+type GetFirewallRuleArray []GetFirewallRuleInput
+
+func (GetFirewallRuleArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetFirewallRule)(nil)).Elem()
+}
+
+func (i GetFirewallRuleArray) ToGetFirewallRuleArrayOutput() GetFirewallRuleArrayOutput {
+	return i.ToGetFirewallRuleArrayOutputWithContext(context.Background())
+}
+
+func (i GetFirewallRuleArray) ToGetFirewallRuleArrayOutputWithContext(ctx context.Context) GetFirewallRuleArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetFirewallRuleArrayOutput)
+}
+
+type GetFirewallRuleOutput struct{ *pulumi.OutputState }
+
+func (GetFirewallRuleOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetFirewallRule)(nil)).Elem()
+}
+
+func (o GetFirewallRuleOutput) ToGetFirewallRuleOutput() GetFirewallRuleOutput {
+	return o
+}
+
+func (o GetFirewallRuleOutput) ToGetFirewallRuleOutputWithContext(ctx context.Context) GetFirewallRuleOutput {
+	return o
+}
+
+// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `out`)
+func (o GetFirewallRuleOutput) DestinationIps() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v GetFirewallRule) []string { return v.DestinationIps }).(pulumi.StringArrayOutput)
+}
+
+// (Required, string) Direction of the Firewall Rule. `in`, `out`
+func (o GetFirewallRuleOutput) Direction() pulumi.StringOutput {
+	return o.ApplyT(func(v GetFirewallRule) string { return v.Direction }).(pulumi.StringOutput)
+}
+
+// (Required, string) Port of the Firewall Rule. Required when `protocol` is `tcp` or `udp`
+func (o GetFirewallRuleOutput) Port() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v GetFirewallRule) *string { return v.Port }).(pulumi.StringPtrOutput)
+}
+
+// (Required, string) Protocol of the Firewall Rule. `tcp`, `icmp`, `udp`, `gre`, `esp`
+func (o GetFirewallRuleOutput) Protocol() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v GetFirewallRule) *string { return v.Protocol }).(pulumi.StringPtrOutput)
+}
+
+// (Required, List) List of CIDRs that are allowed within this Firewall Rule (when `direction` is `in`)
+func (o GetFirewallRuleOutput) SourceIps() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v GetFirewallRule) []string { return v.SourceIps }).(pulumi.StringArrayOutput)
+}
+
+type GetFirewallRuleArrayOutput struct{ *pulumi.OutputState }
+
+func (GetFirewallRuleArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetFirewallRule)(nil)).Elem()
+}
+
+func (o GetFirewallRuleArrayOutput) ToGetFirewallRuleArrayOutput() GetFirewallRuleArrayOutput {
+	return o
+}
+
+func (o GetFirewallRuleArrayOutput) ToGetFirewallRuleArrayOutputWithContext(ctx context.Context) GetFirewallRuleArrayOutput {
+	return o
+}
+
+func (o GetFirewallRuleArrayOutput) Index(i pulumi.IntInput) GetFirewallRuleOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetFirewallRule {
+		return vs[0].([]GetFirewallRule)[vs[1].(int)]
+	}).(GetFirewallRuleOutput)
+}
+
 type GetLoadBalancerAlgorithm struct {
 	// (string) Type of the target. `server` or `labelSelector`
 	Type string `pulumi:"type"`
@@ -929,6 +1319,31 @@ func (i GetLoadBalancerAlgorithmArgs) ToGetLoadBalancerAlgorithmOutputWithContex
 	return pulumi.ToOutputWithContext(ctx, i).(GetLoadBalancerAlgorithmOutput)
 }
 
+// GetLoadBalancerAlgorithmArrayInput is an input type that accepts GetLoadBalancerAlgorithmArray and GetLoadBalancerAlgorithmArrayOutput values.
+// You can construct a concrete instance of `GetLoadBalancerAlgorithmArrayInput` via:
+//
+//          GetLoadBalancerAlgorithmArray{ GetLoadBalancerAlgorithmArgs{...} }
+type GetLoadBalancerAlgorithmArrayInput interface {
+	pulumi.Input
+
+	ToGetLoadBalancerAlgorithmArrayOutput() GetLoadBalancerAlgorithmArrayOutput
+	ToGetLoadBalancerAlgorithmArrayOutputWithContext(context.Context) GetLoadBalancerAlgorithmArrayOutput
+}
+
+type GetLoadBalancerAlgorithmArray []GetLoadBalancerAlgorithmInput
+
+func (GetLoadBalancerAlgorithmArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetLoadBalancerAlgorithm)(nil)).Elem()
+}
+
+func (i GetLoadBalancerAlgorithmArray) ToGetLoadBalancerAlgorithmArrayOutput() GetLoadBalancerAlgorithmArrayOutput {
+	return i.ToGetLoadBalancerAlgorithmArrayOutputWithContext(context.Background())
+}
+
+func (i GetLoadBalancerAlgorithmArray) ToGetLoadBalancerAlgorithmArrayOutputWithContext(ctx context.Context) GetLoadBalancerAlgorithmArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetLoadBalancerAlgorithmArrayOutput)
+}
+
 type GetLoadBalancerAlgorithmOutput struct{ *pulumi.OutputState }
 
 func (GetLoadBalancerAlgorithmOutput) ElementType() reflect.Type {
@@ -948,13 +1363,33 @@ func (o GetLoadBalancerAlgorithmOutput) Type() pulumi.StringOutput {
 	return o.ApplyT(func(v GetLoadBalancerAlgorithm) string { return v.Type }).(pulumi.StringOutput)
 }
 
+type GetLoadBalancerAlgorithmArrayOutput struct{ *pulumi.OutputState }
+
+func (GetLoadBalancerAlgorithmArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetLoadBalancerAlgorithm)(nil)).Elem()
+}
+
+func (o GetLoadBalancerAlgorithmArrayOutput) ToGetLoadBalancerAlgorithmArrayOutput() GetLoadBalancerAlgorithmArrayOutput {
+	return o
+}
+
+func (o GetLoadBalancerAlgorithmArrayOutput) ToGetLoadBalancerAlgorithmArrayOutputWithContext(ctx context.Context) GetLoadBalancerAlgorithmArrayOutput {
+	return o
+}
+
+func (o GetLoadBalancerAlgorithmArrayOutput) Index(i pulumi.IntInput) GetLoadBalancerAlgorithmOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetLoadBalancerAlgorithm {
+		return vs[0].([]GetLoadBalancerAlgorithm)[vs[1].(int)]
+	}).(GetLoadBalancerAlgorithmOutput)
+}
+
 type GetLoadBalancerServiceType struct {
 	// (int) Port the service connects to the targets on. Can be everything between `1` and `65535`.
 	DestinationPort int `pulumi:"destinationPort"`
 	// (list) List of http configurations when `protocol` is `http` or `https`.
-	HealthCheck GetLoadBalancerServiceHealthCheck `pulumi:"healthCheck"`
+	HealthChecks []GetLoadBalancerServiceHealthCheck `pulumi:"healthChecks"`
 	// (list) List of http configurations when `protocol` is `http` or `https`.
-	Http GetLoadBalancerServiceHttp `pulumi:"http"`
+	Https []GetLoadBalancerServiceHttp `pulumi:"https"`
 	// (int) Port the service listen on` . Can be everything between  `1`and`65535`. Must be unique per Load Balancer.
 	ListenPort int `pulumi:"listenPort"`
 	// (string) Protocol the health check uses. `http`, `https` or `tcp`
@@ -978,9 +1413,9 @@ type GetLoadBalancerServiceTypeArgs struct {
 	// (int) Port the service connects to the targets on. Can be everything between `1` and `65535`.
 	DestinationPort pulumi.IntInput `pulumi:"destinationPort"`
 	// (list) List of http configurations when `protocol` is `http` or `https`.
-	HealthCheck GetLoadBalancerServiceHealthCheckInput `pulumi:"healthCheck"`
+	HealthChecks GetLoadBalancerServiceHealthCheckArrayInput `pulumi:"healthChecks"`
 	// (list) List of http configurations when `protocol` is `http` or `https`.
-	Http GetLoadBalancerServiceHttpInput `pulumi:"http"`
+	Https GetLoadBalancerServiceHttpArrayInput `pulumi:"https"`
 	// (int) Port the service listen on` . Can be everything between  `1`and`65535`. Must be unique per Load Balancer.
 	ListenPort pulumi.IntInput `pulumi:"listenPort"`
 	// (string) Protocol the health check uses. `http`, `https` or `tcp`
@@ -1046,13 +1481,13 @@ func (o GetLoadBalancerServiceTypeOutput) DestinationPort() pulumi.IntOutput {
 }
 
 // (list) List of http configurations when `protocol` is `http` or `https`.
-func (o GetLoadBalancerServiceTypeOutput) HealthCheck() GetLoadBalancerServiceHealthCheckOutput {
-	return o.ApplyT(func(v GetLoadBalancerServiceType) GetLoadBalancerServiceHealthCheck { return v.HealthCheck }).(GetLoadBalancerServiceHealthCheckOutput)
+func (o GetLoadBalancerServiceTypeOutput) HealthChecks() GetLoadBalancerServiceHealthCheckArrayOutput {
+	return o.ApplyT(func(v GetLoadBalancerServiceType) []GetLoadBalancerServiceHealthCheck { return v.HealthChecks }).(GetLoadBalancerServiceHealthCheckArrayOutput)
 }
 
 // (list) List of http configurations when `protocol` is `http` or `https`.
-func (o GetLoadBalancerServiceTypeOutput) Http() GetLoadBalancerServiceHttpOutput {
-	return o.ApplyT(func(v GetLoadBalancerServiceType) GetLoadBalancerServiceHttp { return v.Http }).(GetLoadBalancerServiceHttpOutput)
+func (o GetLoadBalancerServiceTypeOutput) Https() GetLoadBalancerServiceHttpArrayOutput {
+	return o.ApplyT(func(v GetLoadBalancerServiceType) []GetLoadBalancerServiceHttp { return v.Https }).(GetLoadBalancerServiceHttpArrayOutput)
 }
 
 // (int) Port the service listen on` . Can be everything between  `1`and`65535`. Must be unique per Load Balancer.
@@ -1092,7 +1527,7 @@ func (o GetLoadBalancerServiceTypeArrayOutput) Index(i pulumi.IntInput) GetLoadB
 
 type GetLoadBalancerServiceHealthCheck struct {
 	// (list) List of http configurations when `protocol` is `http` or `https`.
-	Http GetLoadBalancerServiceHealthCheckHttp `pulumi:"http"`
+	Https []GetLoadBalancerServiceHealthCheckHttp `pulumi:"https"`
 	// (int) Interval how often the health check will be performed, in seconds.
 	Interval int `pulumi:"interval"`
 	// (int) Port the health check tries to connect to. Can be everything between `1` and `65535`.
@@ -1118,7 +1553,7 @@ type GetLoadBalancerServiceHealthCheckInput interface {
 
 type GetLoadBalancerServiceHealthCheckArgs struct {
 	// (list) List of http configurations when `protocol` is `http` or `https`.
-	Http GetLoadBalancerServiceHealthCheckHttpInput `pulumi:"http"`
+	Https GetLoadBalancerServiceHealthCheckHttpArrayInput `pulumi:"https"`
 	// (int) Interval how often the health check will be performed, in seconds.
 	Interval pulumi.IntInput `pulumi:"interval"`
 	// (int) Port the health check tries to connect to. Can be everything between `1` and `65535`.
@@ -1143,6 +1578,31 @@ func (i GetLoadBalancerServiceHealthCheckArgs) ToGetLoadBalancerServiceHealthChe
 	return pulumi.ToOutputWithContext(ctx, i).(GetLoadBalancerServiceHealthCheckOutput)
 }
 
+// GetLoadBalancerServiceHealthCheckArrayInput is an input type that accepts GetLoadBalancerServiceHealthCheckArray and GetLoadBalancerServiceHealthCheckArrayOutput values.
+// You can construct a concrete instance of `GetLoadBalancerServiceHealthCheckArrayInput` via:
+//
+//          GetLoadBalancerServiceHealthCheckArray{ GetLoadBalancerServiceHealthCheckArgs{...} }
+type GetLoadBalancerServiceHealthCheckArrayInput interface {
+	pulumi.Input
+
+	ToGetLoadBalancerServiceHealthCheckArrayOutput() GetLoadBalancerServiceHealthCheckArrayOutput
+	ToGetLoadBalancerServiceHealthCheckArrayOutputWithContext(context.Context) GetLoadBalancerServiceHealthCheckArrayOutput
+}
+
+type GetLoadBalancerServiceHealthCheckArray []GetLoadBalancerServiceHealthCheckInput
+
+func (GetLoadBalancerServiceHealthCheckArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetLoadBalancerServiceHealthCheck)(nil)).Elem()
+}
+
+func (i GetLoadBalancerServiceHealthCheckArray) ToGetLoadBalancerServiceHealthCheckArrayOutput() GetLoadBalancerServiceHealthCheckArrayOutput {
+	return i.ToGetLoadBalancerServiceHealthCheckArrayOutputWithContext(context.Background())
+}
+
+func (i GetLoadBalancerServiceHealthCheckArray) ToGetLoadBalancerServiceHealthCheckArrayOutputWithContext(ctx context.Context) GetLoadBalancerServiceHealthCheckArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetLoadBalancerServiceHealthCheckArrayOutput)
+}
+
 type GetLoadBalancerServiceHealthCheckOutput struct{ *pulumi.OutputState }
 
 func (GetLoadBalancerServiceHealthCheckOutput) ElementType() reflect.Type {
@@ -1158,8 +1618,8 @@ func (o GetLoadBalancerServiceHealthCheckOutput) ToGetLoadBalancerServiceHealthC
 }
 
 // (list) List of http configurations when `protocol` is `http` or `https`.
-func (o GetLoadBalancerServiceHealthCheckOutput) Http() GetLoadBalancerServiceHealthCheckHttpOutput {
-	return o.ApplyT(func(v GetLoadBalancerServiceHealthCheck) GetLoadBalancerServiceHealthCheckHttp { return v.Http }).(GetLoadBalancerServiceHealthCheckHttpOutput)
+func (o GetLoadBalancerServiceHealthCheckOutput) Https() GetLoadBalancerServiceHealthCheckHttpArrayOutput {
+	return o.ApplyT(func(v GetLoadBalancerServiceHealthCheck) []GetLoadBalancerServiceHealthCheckHttp { return v.Https }).(GetLoadBalancerServiceHealthCheckHttpArrayOutput)
 }
 
 // (int) Interval how often the health check will be performed, in seconds.
@@ -1185,6 +1645,26 @@ func (o GetLoadBalancerServiceHealthCheckOutput) Retries() pulumi.IntOutput {
 // (int) Timeout when a health check try will be canceled if there is no response, in seconds.
 func (o GetLoadBalancerServiceHealthCheckOutput) Timeout() pulumi.IntOutput {
 	return o.ApplyT(func(v GetLoadBalancerServiceHealthCheck) int { return v.Timeout }).(pulumi.IntOutput)
+}
+
+type GetLoadBalancerServiceHealthCheckArrayOutput struct{ *pulumi.OutputState }
+
+func (GetLoadBalancerServiceHealthCheckArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetLoadBalancerServiceHealthCheck)(nil)).Elem()
+}
+
+func (o GetLoadBalancerServiceHealthCheckArrayOutput) ToGetLoadBalancerServiceHealthCheckArrayOutput() GetLoadBalancerServiceHealthCheckArrayOutput {
+	return o
+}
+
+func (o GetLoadBalancerServiceHealthCheckArrayOutput) ToGetLoadBalancerServiceHealthCheckArrayOutputWithContext(ctx context.Context) GetLoadBalancerServiceHealthCheckArrayOutput {
+	return o
+}
+
+func (o GetLoadBalancerServiceHealthCheckArrayOutput) Index(i pulumi.IntInput) GetLoadBalancerServiceHealthCheckOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetLoadBalancerServiceHealthCheck {
+		return vs[0].([]GetLoadBalancerServiceHealthCheck)[vs[1].(int)]
+	}).(GetLoadBalancerServiceHealthCheckOutput)
 }
 
 type GetLoadBalancerServiceHealthCheckHttp struct {
@@ -1236,6 +1716,31 @@ func (i GetLoadBalancerServiceHealthCheckHttpArgs) ToGetLoadBalancerServiceHealt
 	return pulumi.ToOutputWithContext(ctx, i).(GetLoadBalancerServiceHealthCheckHttpOutput)
 }
 
+// GetLoadBalancerServiceHealthCheckHttpArrayInput is an input type that accepts GetLoadBalancerServiceHealthCheckHttpArray and GetLoadBalancerServiceHealthCheckHttpArrayOutput values.
+// You can construct a concrete instance of `GetLoadBalancerServiceHealthCheckHttpArrayInput` via:
+//
+//          GetLoadBalancerServiceHealthCheckHttpArray{ GetLoadBalancerServiceHealthCheckHttpArgs{...} }
+type GetLoadBalancerServiceHealthCheckHttpArrayInput interface {
+	pulumi.Input
+
+	ToGetLoadBalancerServiceHealthCheckHttpArrayOutput() GetLoadBalancerServiceHealthCheckHttpArrayOutput
+	ToGetLoadBalancerServiceHealthCheckHttpArrayOutputWithContext(context.Context) GetLoadBalancerServiceHealthCheckHttpArrayOutput
+}
+
+type GetLoadBalancerServiceHealthCheckHttpArray []GetLoadBalancerServiceHealthCheckHttpInput
+
+func (GetLoadBalancerServiceHealthCheckHttpArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetLoadBalancerServiceHealthCheckHttp)(nil)).Elem()
+}
+
+func (i GetLoadBalancerServiceHealthCheckHttpArray) ToGetLoadBalancerServiceHealthCheckHttpArrayOutput() GetLoadBalancerServiceHealthCheckHttpArrayOutput {
+	return i.ToGetLoadBalancerServiceHealthCheckHttpArrayOutputWithContext(context.Background())
+}
+
+func (i GetLoadBalancerServiceHealthCheckHttpArray) ToGetLoadBalancerServiceHealthCheckHttpArrayOutputWithContext(ctx context.Context) GetLoadBalancerServiceHealthCheckHttpArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetLoadBalancerServiceHealthCheckHttpArrayOutput)
+}
+
 type GetLoadBalancerServiceHealthCheckHttpOutput struct{ *pulumi.OutputState }
 
 func (GetLoadBalancerServiceHealthCheckHttpOutput) ElementType() reflect.Type {
@@ -1273,6 +1778,26 @@ func (o GetLoadBalancerServiceHealthCheckHttpOutput) StatusCodes() pulumi.IntArr
 // (bool) Enable TLS certificate checking.
 func (o GetLoadBalancerServiceHealthCheckHttpOutput) Tls() pulumi.BoolOutput {
 	return o.ApplyT(func(v GetLoadBalancerServiceHealthCheckHttp) bool { return v.Tls }).(pulumi.BoolOutput)
+}
+
+type GetLoadBalancerServiceHealthCheckHttpArrayOutput struct{ *pulumi.OutputState }
+
+func (GetLoadBalancerServiceHealthCheckHttpArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetLoadBalancerServiceHealthCheckHttp)(nil)).Elem()
+}
+
+func (o GetLoadBalancerServiceHealthCheckHttpArrayOutput) ToGetLoadBalancerServiceHealthCheckHttpArrayOutput() GetLoadBalancerServiceHealthCheckHttpArrayOutput {
+	return o
+}
+
+func (o GetLoadBalancerServiceHealthCheckHttpArrayOutput) ToGetLoadBalancerServiceHealthCheckHttpArrayOutputWithContext(ctx context.Context) GetLoadBalancerServiceHealthCheckHttpArrayOutput {
+	return o
+}
+
+func (o GetLoadBalancerServiceHealthCheckHttpArrayOutput) Index(i pulumi.IntInput) GetLoadBalancerServiceHealthCheckHttpOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetLoadBalancerServiceHealthCheckHttp {
+		return vs[0].([]GetLoadBalancerServiceHealthCheckHttp)[vs[1].(int)]
+	}).(GetLoadBalancerServiceHealthCheckHttpOutput)
 }
 
 type GetLoadBalancerServiceHttp struct {
@@ -1324,6 +1849,31 @@ func (i GetLoadBalancerServiceHttpArgs) ToGetLoadBalancerServiceHttpOutputWithCo
 	return pulumi.ToOutputWithContext(ctx, i).(GetLoadBalancerServiceHttpOutput)
 }
 
+// GetLoadBalancerServiceHttpArrayInput is an input type that accepts GetLoadBalancerServiceHttpArray and GetLoadBalancerServiceHttpArrayOutput values.
+// You can construct a concrete instance of `GetLoadBalancerServiceHttpArrayInput` via:
+//
+//          GetLoadBalancerServiceHttpArray{ GetLoadBalancerServiceHttpArgs{...} }
+type GetLoadBalancerServiceHttpArrayInput interface {
+	pulumi.Input
+
+	ToGetLoadBalancerServiceHttpArrayOutput() GetLoadBalancerServiceHttpArrayOutput
+	ToGetLoadBalancerServiceHttpArrayOutputWithContext(context.Context) GetLoadBalancerServiceHttpArrayOutput
+}
+
+type GetLoadBalancerServiceHttpArray []GetLoadBalancerServiceHttpInput
+
+func (GetLoadBalancerServiceHttpArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetLoadBalancerServiceHttp)(nil)).Elem()
+}
+
+func (i GetLoadBalancerServiceHttpArray) ToGetLoadBalancerServiceHttpArrayOutput() GetLoadBalancerServiceHttpArrayOutput {
+	return i.ToGetLoadBalancerServiceHttpArrayOutputWithContext(context.Background())
+}
+
+func (i GetLoadBalancerServiceHttpArray) ToGetLoadBalancerServiceHttpArrayOutputWithContext(ctx context.Context) GetLoadBalancerServiceHttpArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetLoadBalancerServiceHttpArrayOutput)
+}
+
 type GetLoadBalancerServiceHttpOutput struct{ *pulumi.OutputState }
 
 func (GetLoadBalancerServiceHttpOutput) ElementType() reflect.Type {
@@ -1361,6 +1911,26 @@ func (o GetLoadBalancerServiceHttpOutput) RedirectHttp() pulumi.BoolOutput {
 // (string) Determine if sticky sessions are enabled or not.
 func (o GetLoadBalancerServiceHttpOutput) StickySessions() pulumi.BoolOutput {
 	return o.ApplyT(func(v GetLoadBalancerServiceHttp) bool { return v.StickySessions }).(pulumi.BoolOutput)
+}
+
+type GetLoadBalancerServiceHttpArrayOutput struct{ *pulumi.OutputState }
+
+func (GetLoadBalancerServiceHttpArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetLoadBalancerServiceHttp)(nil)).Elem()
+}
+
+func (o GetLoadBalancerServiceHttpArrayOutput) ToGetLoadBalancerServiceHttpArrayOutput() GetLoadBalancerServiceHttpArrayOutput {
+	return o
+}
+
+func (o GetLoadBalancerServiceHttpArrayOutput) ToGetLoadBalancerServiceHttpArrayOutputWithContext(ctx context.Context) GetLoadBalancerServiceHttpArrayOutput {
+	return o
+}
+
+func (o GetLoadBalancerServiceHttpArrayOutput) Index(i pulumi.IntInput) GetLoadBalancerServiceHttpOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetLoadBalancerServiceHttp {
+		return vs[0].([]GetLoadBalancerServiceHttp)[vs[1].(int)]
+	}).(GetLoadBalancerServiceHttpOutput)
 }
 
 type GetLoadBalancerTargetType struct {
@@ -1597,6 +2167,8 @@ func (o GetSshKeysSshKeyArrayOutput) Index(i pulumi.IntInput) GetSshKeysSshKeyOu
 }
 
 func init() {
+	pulumi.RegisterOutputType(FirewallRuleOutput{})
+	pulumi.RegisterOutputType(FirewallRuleArrayOutput{})
 	pulumi.RegisterOutputType(LoadBalancerAlgorithmOutput{})
 	pulumi.RegisterOutputType(LoadBalancerAlgorithmPtrOutput{})
 	pulumi.RegisterOutputType(LoadBalancerServiceHealthCheckOutput{})
@@ -1607,12 +2179,20 @@ func init() {
 	pulumi.RegisterOutputType(LoadBalancerServiceHttpPtrOutput{})
 	pulumi.RegisterOutputType(LoadBalancerTargetTypeOutput{})
 	pulumi.RegisterOutputType(LoadBalancerTargetTypeArrayOutput{})
+	pulumi.RegisterOutputType(ServerNetworkTypeOutput{})
+	pulumi.RegisterOutputType(ServerNetworkTypeArrayOutput{})
+	pulumi.RegisterOutputType(GetFirewallRuleOutput{})
+	pulumi.RegisterOutputType(GetFirewallRuleArrayOutput{})
 	pulumi.RegisterOutputType(GetLoadBalancerAlgorithmOutput{})
+	pulumi.RegisterOutputType(GetLoadBalancerAlgorithmArrayOutput{})
 	pulumi.RegisterOutputType(GetLoadBalancerServiceTypeOutput{})
 	pulumi.RegisterOutputType(GetLoadBalancerServiceTypeArrayOutput{})
 	pulumi.RegisterOutputType(GetLoadBalancerServiceHealthCheckOutput{})
+	pulumi.RegisterOutputType(GetLoadBalancerServiceHealthCheckArrayOutput{})
 	pulumi.RegisterOutputType(GetLoadBalancerServiceHealthCheckHttpOutput{})
+	pulumi.RegisterOutputType(GetLoadBalancerServiceHealthCheckHttpArrayOutput{})
 	pulumi.RegisterOutputType(GetLoadBalancerServiceHttpOutput{})
+	pulumi.RegisterOutputType(GetLoadBalancerServiceHttpArrayOutput{})
 	pulumi.RegisterOutputType(GetLoadBalancerTargetTypeOutput{})
 	pulumi.RegisterOutputType(GetLoadBalancerTargetTypeArrayOutput{})
 	pulumi.RegisterOutputType(GetSshKeysSshKeyOutput{})

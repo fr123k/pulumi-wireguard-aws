@@ -4,10 +4,11 @@
 package hcloud
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Provides a Hetzner Cloud volume resource to manage volumes.
@@ -19,7 +20,7 @@ import (
 //
 // import (
 // 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
-// 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 // )
 //
 // func main() {
@@ -35,6 +36,7 @@ import (
 // 			Size:      pulumi.Int(50),
 // 			ServerId:  node1.ID(),
 // 			Automount: pulumi.Bool(true),
+// 			Format:    pulumi.String("ext4"),
 // 		})
 // 		if err != nil {
 // 			return err
@@ -42,6 +44,14 @@ import (
 // 		return nil
 // 	})
 // }
+// ```
+//
+// ## Import
+//
+// Volumes can be imported using their `id`
+//
+// ```sh
+//  $ pulumi import hcloud:index/volume:Volume myvolume <id>
 // ```
 type Volume struct {
 	pulumi.CustomResourceState
@@ -54,11 +64,11 @@ type Volume struct {
 	Labels pulumi.MapOutput `pulumi:"labels"`
 	// Device path on the file system for the Volume.
 	LinuxDevice pulumi.StringOutput `pulumi:"linuxDevice"`
-	// Location of the volume to create, optional if serverId argument is passed.
+	// Location of the volume to create, not allowed if serverId argument is passed.
 	Location pulumi.StringOutput `pulumi:"location"`
 	// Name of the volume to create (must be unique per project).
 	Name pulumi.StringOutput `pulumi:"name"`
-	// Server to attach the Volume to, optional if location argument is passed.
+	// Server to attach the Volume to, not allowed if location argument is passed.
 	ServerId pulumi.IntOutput `pulumi:"serverId"`
 	// Size of the volume (in GB).
 	Size pulumi.IntOutput `pulumi:"size"`
@@ -67,11 +77,12 @@ type Volume struct {
 // NewVolume registers a new resource with the given unique name, arguments, and options.
 func NewVolume(ctx *pulumi.Context,
 	name string, args *VolumeArgs, opts ...pulumi.ResourceOption) (*Volume, error) {
-	if args == nil || args.Size == nil {
-		return nil, errors.New("missing required argument 'Size'")
-	}
 	if args == nil {
-		args = &VolumeArgs{}
+		return nil, errors.New("missing one or more required arguments")
+	}
+
+	if args.Size == nil {
+		return nil, errors.New("invalid value for required argument 'Size'")
 	}
 	var resource Volume
 	err := ctx.RegisterResource("hcloud:index/volume:Volume", name, args, &resource, opts...)
@@ -103,11 +114,11 @@ type volumeState struct {
 	Labels map[string]interface{} `pulumi:"labels"`
 	// Device path on the file system for the Volume.
 	LinuxDevice *string `pulumi:"linuxDevice"`
-	// Location of the volume to create, optional if serverId argument is passed.
+	// Location of the volume to create, not allowed if serverId argument is passed.
 	Location *string `pulumi:"location"`
 	// Name of the volume to create (must be unique per project).
 	Name *string `pulumi:"name"`
-	// Server to attach the Volume to, optional if location argument is passed.
+	// Server to attach the Volume to, not allowed if location argument is passed.
 	ServerId *int `pulumi:"serverId"`
 	// Size of the volume (in GB).
 	Size *int `pulumi:"size"`
@@ -122,11 +133,11 @@ type VolumeState struct {
 	Labels pulumi.MapInput
 	// Device path on the file system for the Volume.
 	LinuxDevice pulumi.StringPtrInput
-	// Location of the volume to create, optional if serverId argument is passed.
+	// Location of the volume to create, not allowed if serverId argument is passed.
 	Location pulumi.StringPtrInput
 	// Name of the volume to create (must be unique per project).
 	Name pulumi.StringPtrInput
-	// Server to attach the Volume to, optional if location argument is passed.
+	// Server to attach the Volume to, not allowed if location argument is passed.
 	ServerId pulumi.IntPtrInput
 	// Size of the volume (in GB).
 	Size pulumi.IntPtrInput
@@ -143,11 +154,11 @@ type volumeArgs struct {
 	Format *string `pulumi:"format"`
 	// User-defined labels (key-value pairs).
 	Labels map[string]interface{} `pulumi:"labels"`
-	// Location of the volume to create, optional if serverId argument is passed.
+	// Location of the volume to create, not allowed if serverId argument is passed.
 	Location *string `pulumi:"location"`
 	// Name of the volume to create (must be unique per project).
 	Name *string `pulumi:"name"`
-	// Server to attach the Volume to, optional if location argument is passed.
+	// Server to attach the Volume to, not allowed if location argument is passed.
 	ServerId *int `pulumi:"serverId"`
 	// Size of the volume (in GB).
 	Size int `pulumi:"size"`
@@ -161,11 +172,11 @@ type VolumeArgs struct {
 	Format pulumi.StringPtrInput
 	// User-defined labels (key-value pairs).
 	Labels pulumi.MapInput
-	// Location of the volume to create, optional if serverId argument is passed.
+	// Location of the volume to create, not allowed if serverId argument is passed.
 	Location pulumi.StringPtrInput
 	// Name of the volume to create (must be unique per project).
 	Name pulumi.StringPtrInput
-	// Server to attach the Volume to, optional if location argument is passed.
+	// Server to attach the Volume to, not allowed if location argument is passed.
 	ServerId pulumi.IntPtrInput
 	// Size of the volume (in GB).
 	Size pulumi.IntInput
@@ -173,4 +184,191 @@ type VolumeArgs struct {
 
 func (VolumeArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*volumeArgs)(nil)).Elem()
+}
+
+type VolumeInput interface {
+	pulumi.Input
+
+	ToVolumeOutput() VolumeOutput
+	ToVolumeOutputWithContext(ctx context.Context) VolumeOutput
+}
+
+func (*Volume) ElementType() reflect.Type {
+	return reflect.TypeOf((*Volume)(nil))
+}
+
+func (i *Volume) ToVolumeOutput() VolumeOutput {
+	return i.ToVolumeOutputWithContext(context.Background())
+}
+
+func (i *Volume) ToVolumeOutputWithContext(ctx context.Context) VolumeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VolumeOutput)
+}
+
+func (i *Volume) ToVolumePtrOutput() VolumePtrOutput {
+	return i.ToVolumePtrOutputWithContext(context.Background())
+}
+
+func (i *Volume) ToVolumePtrOutputWithContext(ctx context.Context) VolumePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VolumePtrOutput)
+}
+
+type VolumePtrInput interface {
+	pulumi.Input
+
+	ToVolumePtrOutput() VolumePtrOutput
+	ToVolumePtrOutputWithContext(ctx context.Context) VolumePtrOutput
+}
+
+type volumePtrType VolumeArgs
+
+func (*volumePtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Volume)(nil))
+}
+
+func (i *volumePtrType) ToVolumePtrOutput() VolumePtrOutput {
+	return i.ToVolumePtrOutputWithContext(context.Background())
+}
+
+func (i *volumePtrType) ToVolumePtrOutputWithContext(ctx context.Context) VolumePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VolumePtrOutput)
+}
+
+// VolumeArrayInput is an input type that accepts VolumeArray and VolumeArrayOutput values.
+// You can construct a concrete instance of `VolumeArrayInput` via:
+//
+//          VolumeArray{ VolumeArgs{...} }
+type VolumeArrayInput interface {
+	pulumi.Input
+
+	ToVolumeArrayOutput() VolumeArrayOutput
+	ToVolumeArrayOutputWithContext(context.Context) VolumeArrayOutput
+}
+
+type VolumeArray []VolumeInput
+
+func (VolumeArray) ElementType() reflect.Type {
+	return reflect.TypeOf(([]*Volume)(nil))
+}
+
+func (i VolumeArray) ToVolumeArrayOutput() VolumeArrayOutput {
+	return i.ToVolumeArrayOutputWithContext(context.Background())
+}
+
+func (i VolumeArray) ToVolumeArrayOutputWithContext(ctx context.Context) VolumeArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VolumeArrayOutput)
+}
+
+// VolumeMapInput is an input type that accepts VolumeMap and VolumeMapOutput values.
+// You can construct a concrete instance of `VolumeMapInput` via:
+//
+//          VolumeMap{ "key": VolumeArgs{...} }
+type VolumeMapInput interface {
+	pulumi.Input
+
+	ToVolumeMapOutput() VolumeMapOutput
+	ToVolumeMapOutputWithContext(context.Context) VolumeMapOutput
+}
+
+type VolumeMap map[string]VolumeInput
+
+func (VolumeMap) ElementType() reflect.Type {
+	return reflect.TypeOf((map[string]*Volume)(nil))
+}
+
+func (i VolumeMap) ToVolumeMapOutput() VolumeMapOutput {
+	return i.ToVolumeMapOutputWithContext(context.Background())
+}
+
+func (i VolumeMap) ToVolumeMapOutputWithContext(ctx context.Context) VolumeMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VolumeMapOutput)
+}
+
+type VolumeOutput struct {
+	*pulumi.OutputState
+}
+
+func (VolumeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Volume)(nil))
+}
+
+func (o VolumeOutput) ToVolumeOutput() VolumeOutput {
+	return o
+}
+
+func (o VolumeOutput) ToVolumeOutputWithContext(ctx context.Context) VolumeOutput {
+	return o
+}
+
+func (o VolumeOutput) ToVolumePtrOutput() VolumePtrOutput {
+	return o.ToVolumePtrOutputWithContext(context.Background())
+}
+
+func (o VolumeOutput) ToVolumePtrOutputWithContext(ctx context.Context) VolumePtrOutput {
+	return o.ApplyT(func(v Volume) *Volume {
+		return &v
+	}).(VolumePtrOutput)
+}
+
+type VolumePtrOutput struct {
+	*pulumi.OutputState
+}
+
+func (VolumePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Volume)(nil))
+}
+
+func (o VolumePtrOutput) ToVolumePtrOutput() VolumePtrOutput {
+	return o
+}
+
+func (o VolumePtrOutput) ToVolumePtrOutputWithContext(ctx context.Context) VolumePtrOutput {
+	return o
+}
+
+type VolumeArrayOutput struct{ *pulumi.OutputState }
+
+func (VolumeArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Volume)(nil))
+}
+
+func (o VolumeArrayOutput) ToVolumeArrayOutput() VolumeArrayOutput {
+	return o
+}
+
+func (o VolumeArrayOutput) ToVolumeArrayOutputWithContext(ctx context.Context) VolumeArrayOutput {
+	return o
+}
+
+func (o VolumeArrayOutput) Index(i pulumi.IntInput) VolumeOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Volume {
+		return vs[0].([]Volume)[vs[1].(int)]
+	}).(VolumeOutput)
+}
+
+type VolumeMapOutput struct{ *pulumi.OutputState }
+
+func (VolumeMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]Volume)(nil))
+}
+
+func (o VolumeMapOutput) ToVolumeMapOutput() VolumeMapOutput {
+	return o
+}
+
+func (o VolumeMapOutput) ToVolumeMapOutputWithContext(ctx context.Context) VolumeMapOutput {
+	return o
+}
+
+func (o VolumeMapOutput) MapIndex(k pulumi.StringInput) VolumeOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Volume {
+		return vs[0].(map[string]Volume)[vs[1].(string)]
+	}).(VolumeOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(VolumeOutput{})
+	pulumi.RegisterOutputType(VolumePtrOutput{})
+	pulumi.RegisterOutputType(VolumeArrayOutput{})
+	pulumi.RegisterOutputType(VolumeMapOutput{})
 }

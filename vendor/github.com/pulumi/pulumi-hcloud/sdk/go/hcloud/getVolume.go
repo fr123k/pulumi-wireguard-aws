@@ -4,7 +4,7 @@
 package hcloud
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func LookupVolume(ctx *pulumi.Context, args *LookupVolumeArgs, opts ...pulumi.InvokeOption) (*LookupVolumeResult, error) {
@@ -35,7 +35,7 @@ type LookupVolumeArgs struct {
 // A collection of values returned by getVolume.
 type LookupVolumeResult struct {
 	// Unique ID of the volume.
-	Id          *int                   `pulumi:"id"`
+	Id          int                    `pulumi:"id"`
 	Labels      map[string]interface{} `pulumi:"labels"`
 	LinuxDevice string                 `pulumi:"linuxDevice"`
 	Location    *string                `pulumi:"location"`

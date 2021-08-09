@@ -4,10 +4,11 @@
 package hcloud
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Adds a target to a Hetzner Cloud Load Balancer.
@@ -19,7 +20,7 @@ import (
 //
 // import (
 // 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
-// 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 // )
 //
 // func main() {
@@ -77,14 +78,15 @@ type LoadBalancerTarget struct {
 // NewLoadBalancerTarget registers a new resource with the given unique name, arguments, and options.
 func NewLoadBalancerTarget(ctx *pulumi.Context,
 	name string, args *LoadBalancerTargetArgs, opts ...pulumi.ResourceOption) (*LoadBalancerTarget, error) {
-	if args == nil || args.LoadBalancerId == nil {
-		return nil, errors.New("missing required argument 'LoadBalancerId'")
-	}
-	if args == nil || args.Type == nil {
-		return nil, errors.New("missing required argument 'Type'")
-	}
 	if args == nil {
-		args = &LoadBalancerTargetArgs{}
+		return nil, errors.New("missing one or more required arguments")
+	}
+
+	if args.LoadBalancerId == nil {
+		return nil, errors.New("invalid value for required argument 'LoadBalancerId'")
+	}
+	if args.Type == nil {
+		return nil, errors.New("invalid value for required argument 'Type'")
 	}
 	var resource LoadBalancerTarget
 	err := ctx.RegisterResource("hcloud:index/loadBalancerTarget:LoadBalancerTarget", name, args, &resource, opts...)
@@ -202,4 +204,191 @@ type LoadBalancerTargetArgs struct {
 
 func (LoadBalancerTargetArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*loadBalancerTargetArgs)(nil)).Elem()
+}
+
+type LoadBalancerTargetInput interface {
+	pulumi.Input
+
+	ToLoadBalancerTargetOutput() LoadBalancerTargetOutput
+	ToLoadBalancerTargetOutputWithContext(ctx context.Context) LoadBalancerTargetOutput
+}
+
+func (*LoadBalancerTarget) ElementType() reflect.Type {
+	return reflect.TypeOf((*LoadBalancerTarget)(nil))
+}
+
+func (i *LoadBalancerTarget) ToLoadBalancerTargetOutput() LoadBalancerTargetOutput {
+	return i.ToLoadBalancerTargetOutputWithContext(context.Background())
+}
+
+func (i *LoadBalancerTarget) ToLoadBalancerTargetOutputWithContext(ctx context.Context) LoadBalancerTargetOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LoadBalancerTargetOutput)
+}
+
+func (i *LoadBalancerTarget) ToLoadBalancerTargetPtrOutput() LoadBalancerTargetPtrOutput {
+	return i.ToLoadBalancerTargetPtrOutputWithContext(context.Background())
+}
+
+func (i *LoadBalancerTarget) ToLoadBalancerTargetPtrOutputWithContext(ctx context.Context) LoadBalancerTargetPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LoadBalancerTargetPtrOutput)
+}
+
+type LoadBalancerTargetPtrInput interface {
+	pulumi.Input
+
+	ToLoadBalancerTargetPtrOutput() LoadBalancerTargetPtrOutput
+	ToLoadBalancerTargetPtrOutputWithContext(ctx context.Context) LoadBalancerTargetPtrOutput
+}
+
+type loadBalancerTargetPtrType LoadBalancerTargetArgs
+
+func (*loadBalancerTargetPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**LoadBalancerTarget)(nil))
+}
+
+func (i *loadBalancerTargetPtrType) ToLoadBalancerTargetPtrOutput() LoadBalancerTargetPtrOutput {
+	return i.ToLoadBalancerTargetPtrOutputWithContext(context.Background())
+}
+
+func (i *loadBalancerTargetPtrType) ToLoadBalancerTargetPtrOutputWithContext(ctx context.Context) LoadBalancerTargetPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LoadBalancerTargetPtrOutput)
+}
+
+// LoadBalancerTargetArrayInput is an input type that accepts LoadBalancerTargetArray and LoadBalancerTargetArrayOutput values.
+// You can construct a concrete instance of `LoadBalancerTargetArrayInput` via:
+//
+//          LoadBalancerTargetArray{ LoadBalancerTargetArgs{...} }
+type LoadBalancerTargetArrayInput interface {
+	pulumi.Input
+
+	ToLoadBalancerTargetArrayOutput() LoadBalancerTargetArrayOutput
+	ToLoadBalancerTargetArrayOutputWithContext(context.Context) LoadBalancerTargetArrayOutput
+}
+
+type LoadBalancerTargetArray []LoadBalancerTargetInput
+
+func (LoadBalancerTargetArray) ElementType() reflect.Type {
+	return reflect.TypeOf(([]*LoadBalancerTarget)(nil))
+}
+
+func (i LoadBalancerTargetArray) ToLoadBalancerTargetArrayOutput() LoadBalancerTargetArrayOutput {
+	return i.ToLoadBalancerTargetArrayOutputWithContext(context.Background())
+}
+
+func (i LoadBalancerTargetArray) ToLoadBalancerTargetArrayOutputWithContext(ctx context.Context) LoadBalancerTargetArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LoadBalancerTargetArrayOutput)
+}
+
+// LoadBalancerTargetMapInput is an input type that accepts LoadBalancerTargetMap and LoadBalancerTargetMapOutput values.
+// You can construct a concrete instance of `LoadBalancerTargetMapInput` via:
+//
+//          LoadBalancerTargetMap{ "key": LoadBalancerTargetArgs{...} }
+type LoadBalancerTargetMapInput interface {
+	pulumi.Input
+
+	ToLoadBalancerTargetMapOutput() LoadBalancerTargetMapOutput
+	ToLoadBalancerTargetMapOutputWithContext(context.Context) LoadBalancerTargetMapOutput
+}
+
+type LoadBalancerTargetMap map[string]LoadBalancerTargetInput
+
+func (LoadBalancerTargetMap) ElementType() reflect.Type {
+	return reflect.TypeOf((map[string]*LoadBalancerTarget)(nil))
+}
+
+func (i LoadBalancerTargetMap) ToLoadBalancerTargetMapOutput() LoadBalancerTargetMapOutput {
+	return i.ToLoadBalancerTargetMapOutputWithContext(context.Background())
+}
+
+func (i LoadBalancerTargetMap) ToLoadBalancerTargetMapOutputWithContext(ctx context.Context) LoadBalancerTargetMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LoadBalancerTargetMapOutput)
+}
+
+type LoadBalancerTargetOutput struct {
+	*pulumi.OutputState
+}
+
+func (LoadBalancerTargetOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*LoadBalancerTarget)(nil))
+}
+
+func (o LoadBalancerTargetOutput) ToLoadBalancerTargetOutput() LoadBalancerTargetOutput {
+	return o
+}
+
+func (o LoadBalancerTargetOutput) ToLoadBalancerTargetOutputWithContext(ctx context.Context) LoadBalancerTargetOutput {
+	return o
+}
+
+func (o LoadBalancerTargetOutput) ToLoadBalancerTargetPtrOutput() LoadBalancerTargetPtrOutput {
+	return o.ToLoadBalancerTargetPtrOutputWithContext(context.Background())
+}
+
+func (o LoadBalancerTargetOutput) ToLoadBalancerTargetPtrOutputWithContext(ctx context.Context) LoadBalancerTargetPtrOutput {
+	return o.ApplyT(func(v LoadBalancerTarget) *LoadBalancerTarget {
+		return &v
+	}).(LoadBalancerTargetPtrOutput)
+}
+
+type LoadBalancerTargetPtrOutput struct {
+	*pulumi.OutputState
+}
+
+func (LoadBalancerTargetPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**LoadBalancerTarget)(nil))
+}
+
+func (o LoadBalancerTargetPtrOutput) ToLoadBalancerTargetPtrOutput() LoadBalancerTargetPtrOutput {
+	return o
+}
+
+func (o LoadBalancerTargetPtrOutput) ToLoadBalancerTargetPtrOutputWithContext(ctx context.Context) LoadBalancerTargetPtrOutput {
+	return o
+}
+
+type LoadBalancerTargetArrayOutput struct{ *pulumi.OutputState }
+
+func (LoadBalancerTargetArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]LoadBalancerTarget)(nil))
+}
+
+func (o LoadBalancerTargetArrayOutput) ToLoadBalancerTargetArrayOutput() LoadBalancerTargetArrayOutput {
+	return o
+}
+
+func (o LoadBalancerTargetArrayOutput) ToLoadBalancerTargetArrayOutputWithContext(ctx context.Context) LoadBalancerTargetArrayOutput {
+	return o
+}
+
+func (o LoadBalancerTargetArrayOutput) Index(i pulumi.IntInput) LoadBalancerTargetOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) LoadBalancerTarget {
+		return vs[0].([]LoadBalancerTarget)[vs[1].(int)]
+	}).(LoadBalancerTargetOutput)
+}
+
+type LoadBalancerTargetMapOutput struct{ *pulumi.OutputState }
+
+func (LoadBalancerTargetMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]LoadBalancerTarget)(nil))
+}
+
+func (o LoadBalancerTargetMapOutput) ToLoadBalancerTargetMapOutput() LoadBalancerTargetMapOutput {
+	return o
+}
+
+func (o LoadBalancerTargetMapOutput) ToLoadBalancerTargetMapOutputWithContext(ctx context.Context) LoadBalancerTargetMapOutput {
+	return o
+}
+
+func (o LoadBalancerTargetMapOutput) MapIndex(k pulumi.StringInput) LoadBalancerTargetOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) LoadBalancerTarget {
+		return vs[0].(map[string]LoadBalancerTarget)[vs[1].(string)]
+	}).(LoadBalancerTargetOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(LoadBalancerTargetOutput{})
+	pulumi.RegisterOutputType(LoadBalancerTargetPtrOutput{})
+	pulumi.RegisterOutputType(LoadBalancerTargetArrayOutput{})
+	pulumi.RegisterOutputType(LoadBalancerTargetMapOutput{})
 }

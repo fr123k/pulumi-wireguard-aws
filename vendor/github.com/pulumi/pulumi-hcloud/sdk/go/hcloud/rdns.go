@@ -4,10 +4,11 @@
 package hcloud
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Provides a Hetzner Cloud Reverse DNS Entry to create, modify and reset reverse dns entries for Hetzner Cloud Floating IPs or servers.
@@ -21,7 +22,7 @@ import (
 //
 // import (
 // 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
-// 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 // )
 //
 // func main() {
@@ -53,7 +54,7 @@ import (
 //
 // import (
 // 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
-// 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 // )
 //
 // func main() {
@@ -77,30 +78,45 @@ import (
 // 	})
 // }
 // ```
+//
+// ## Import
+//
+// Reverse DNS entries can be imported using a compound ID with the following format`<prefix (s for server/ f for floating ip)>-<server or floating ip ID>-<IP address>` # import reverse dns entry on server with id 123, ip 192.168.100.1
+//
+// ```sh
+//  $ pulumi import hcloud:index/rdns:Rdns myrdns s-123-192.168.100.1
+// ```
+//
+// # import reverse dns entry on floating ip with id 123, ip 2001:db8::1
+//
+// ```sh
+//  $ pulumi import hcloud:index/rdns:Rdns myrdns f-123-2001:db8::1
+// ```
 type Rdns struct {
 	pulumi.CustomResourceState
 
 	// The DNS address the `ipAddress` should resolve to.
 	DnsPtr pulumi.StringOutput `pulumi:"dnsPtr"`
-	// The Floating IP the `ipAddress` belongs to.
+	// The Floating IP the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	FloatingIpId pulumi.IntPtrOutput `pulumi:"floatingIpId"`
 	// The IP address that should point to `dnsPtr`.
 	IpAddress pulumi.StringOutput `pulumi:"ipAddress"`
-	// The server the `ipAddress` belongs to.
+	// The server the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	ServerId pulumi.IntPtrOutput `pulumi:"serverId"`
 }
 
 // NewRdns registers a new resource with the given unique name, arguments, and options.
 func NewRdns(ctx *pulumi.Context,
 	name string, args *RdnsArgs, opts ...pulumi.ResourceOption) (*Rdns, error) {
-	if args == nil || args.DnsPtr == nil {
-		return nil, errors.New("missing required argument 'DnsPtr'")
-	}
-	if args == nil || args.IpAddress == nil {
-		return nil, errors.New("missing required argument 'IpAddress'")
-	}
 	if args == nil {
-		args = &RdnsArgs{}
+		return nil, errors.New("missing one or more required arguments")
+	}
+
+	if args.DnsPtr == nil {
+		return nil, errors.New("invalid value for required argument 'DnsPtr'")
+	}
+	if args.IpAddress == nil {
+		return nil, errors.New("invalid value for required argument 'IpAddress'")
 	}
 	var resource Rdns
 	err := ctx.RegisterResource("hcloud:index/rdns:Rdns", name, args, &resource, opts...)
@@ -126,22 +142,22 @@ func GetRdns(ctx *pulumi.Context,
 type rdnsState struct {
 	// The DNS address the `ipAddress` should resolve to.
 	DnsPtr *string `pulumi:"dnsPtr"`
-	// The Floating IP the `ipAddress` belongs to.
+	// The Floating IP the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	FloatingIpId *int `pulumi:"floatingIpId"`
 	// The IP address that should point to `dnsPtr`.
 	IpAddress *string `pulumi:"ipAddress"`
-	// The server the `ipAddress` belongs to.
+	// The server the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	ServerId *int `pulumi:"serverId"`
 }
 
 type RdnsState struct {
 	// The DNS address the `ipAddress` should resolve to.
 	DnsPtr pulumi.StringPtrInput
-	// The Floating IP the `ipAddress` belongs to.
+	// The Floating IP the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	FloatingIpId pulumi.IntPtrInput
 	// The IP address that should point to `dnsPtr`.
 	IpAddress pulumi.StringPtrInput
-	// The server the `ipAddress` belongs to.
+	// The server the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	ServerId pulumi.IntPtrInput
 }
 
@@ -152,11 +168,11 @@ func (RdnsState) ElementType() reflect.Type {
 type rdnsArgs struct {
 	// The DNS address the `ipAddress` should resolve to.
 	DnsPtr string `pulumi:"dnsPtr"`
-	// The Floating IP the `ipAddress` belongs to.
+	// The Floating IP the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	FloatingIpId *int `pulumi:"floatingIpId"`
 	// The IP address that should point to `dnsPtr`.
 	IpAddress string `pulumi:"ipAddress"`
-	// The server the `ipAddress` belongs to.
+	// The server the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	ServerId *int `pulumi:"serverId"`
 }
 
@@ -164,14 +180,201 @@ type rdnsArgs struct {
 type RdnsArgs struct {
 	// The DNS address the `ipAddress` should resolve to.
 	DnsPtr pulumi.StringInput
-	// The Floating IP the `ipAddress` belongs to.
+	// The Floating IP the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	FloatingIpId pulumi.IntPtrInput
 	// The IP address that should point to `dnsPtr`.
 	IpAddress pulumi.StringInput
-	// The server the `ipAddress` belongs to.
+	// The server the `ipAddress` belongs to. Specify only one of `serverId`and `floatingIpId`.
 	ServerId pulumi.IntPtrInput
 }
 
 func (RdnsArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*rdnsArgs)(nil)).Elem()
+}
+
+type RdnsInput interface {
+	pulumi.Input
+
+	ToRdnsOutput() RdnsOutput
+	ToRdnsOutputWithContext(ctx context.Context) RdnsOutput
+}
+
+func (*Rdns) ElementType() reflect.Type {
+	return reflect.TypeOf((*Rdns)(nil))
+}
+
+func (i *Rdns) ToRdnsOutput() RdnsOutput {
+	return i.ToRdnsOutputWithContext(context.Background())
+}
+
+func (i *Rdns) ToRdnsOutputWithContext(ctx context.Context) RdnsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RdnsOutput)
+}
+
+func (i *Rdns) ToRdnsPtrOutput() RdnsPtrOutput {
+	return i.ToRdnsPtrOutputWithContext(context.Background())
+}
+
+func (i *Rdns) ToRdnsPtrOutputWithContext(ctx context.Context) RdnsPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RdnsPtrOutput)
+}
+
+type RdnsPtrInput interface {
+	pulumi.Input
+
+	ToRdnsPtrOutput() RdnsPtrOutput
+	ToRdnsPtrOutputWithContext(ctx context.Context) RdnsPtrOutput
+}
+
+type rdnsPtrType RdnsArgs
+
+func (*rdnsPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Rdns)(nil))
+}
+
+func (i *rdnsPtrType) ToRdnsPtrOutput() RdnsPtrOutput {
+	return i.ToRdnsPtrOutputWithContext(context.Background())
+}
+
+func (i *rdnsPtrType) ToRdnsPtrOutputWithContext(ctx context.Context) RdnsPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RdnsPtrOutput)
+}
+
+// RdnsArrayInput is an input type that accepts RdnsArray and RdnsArrayOutput values.
+// You can construct a concrete instance of `RdnsArrayInput` via:
+//
+//          RdnsArray{ RdnsArgs{...} }
+type RdnsArrayInput interface {
+	pulumi.Input
+
+	ToRdnsArrayOutput() RdnsArrayOutput
+	ToRdnsArrayOutputWithContext(context.Context) RdnsArrayOutput
+}
+
+type RdnsArray []RdnsInput
+
+func (RdnsArray) ElementType() reflect.Type {
+	return reflect.TypeOf(([]*Rdns)(nil))
+}
+
+func (i RdnsArray) ToRdnsArrayOutput() RdnsArrayOutput {
+	return i.ToRdnsArrayOutputWithContext(context.Background())
+}
+
+func (i RdnsArray) ToRdnsArrayOutputWithContext(ctx context.Context) RdnsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RdnsArrayOutput)
+}
+
+// RdnsMapInput is an input type that accepts RdnsMap and RdnsMapOutput values.
+// You can construct a concrete instance of `RdnsMapInput` via:
+//
+//          RdnsMap{ "key": RdnsArgs{...} }
+type RdnsMapInput interface {
+	pulumi.Input
+
+	ToRdnsMapOutput() RdnsMapOutput
+	ToRdnsMapOutputWithContext(context.Context) RdnsMapOutput
+}
+
+type RdnsMap map[string]RdnsInput
+
+func (RdnsMap) ElementType() reflect.Type {
+	return reflect.TypeOf((map[string]*Rdns)(nil))
+}
+
+func (i RdnsMap) ToRdnsMapOutput() RdnsMapOutput {
+	return i.ToRdnsMapOutputWithContext(context.Background())
+}
+
+func (i RdnsMap) ToRdnsMapOutputWithContext(ctx context.Context) RdnsMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RdnsMapOutput)
+}
+
+type RdnsOutput struct {
+	*pulumi.OutputState
+}
+
+func (RdnsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Rdns)(nil))
+}
+
+func (o RdnsOutput) ToRdnsOutput() RdnsOutput {
+	return o
+}
+
+func (o RdnsOutput) ToRdnsOutputWithContext(ctx context.Context) RdnsOutput {
+	return o
+}
+
+func (o RdnsOutput) ToRdnsPtrOutput() RdnsPtrOutput {
+	return o.ToRdnsPtrOutputWithContext(context.Background())
+}
+
+func (o RdnsOutput) ToRdnsPtrOutputWithContext(ctx context.Context) RdnsPtrOutput {
+	return o.ApplyT(func(v Rdns) *Rdns {
+		return &v
+	}).(RdnsPtrOutput)
+}
+
+type RdnsPtrOutput struct {
+	*pulumi.OutputState
+}
+
+func (RdnsPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Rdns)(nil))
+}
+
+func (o RdnsPtrOutput) ToRdnsPtrOutput() RdnsPtrOutput {
+	return o
+}
+
+func (o RdnsPtrOutput) ToRdnsPtrOutputWithContext(ctx context.Context) RdnsPtrOutput {
+	return o
+}
+
+type RdnsArrayOutput struct{ *pulumi.OutputState }
+
+func (RdnsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Rdns)(nil))
+}
+
+func (o RdnsArrayOutput) ToRdnsArrayOutput() RdnsArrayOutput {
+	return o
+}
+
+func (o RdnsArrayOutput) ToRdnsArrayOutputWithContext(ctx context.Context) RdnsArrayOutput {
+	return o
+}
+
+func (o RdnsArrayOutput) Index(i pulumi.IntInput) RdnsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Rdns {
+		return vs[0].([]Rdns)[vs[1].(int)]
+	}).(RdnsOutput)
+}
+
+type RdnsMapOutput struct{ *pulumi.OutputState }
+
+func (RdnsMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]Rdns)(nil))
+}
+
+func (o RdnsMapOutput) ToRdnsMapOutput() RdnsMapOutput {
+	return o
+}
+
+func (o RdnsMapOutput) ToRdnsMapOutputWithContext(ctx context.Context) RdnsMapOutput {
+	return o
+}
+
+func (o RdnsMapOutput) MapIndex(k pulumi.StringInput) RdnsOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Rdns {
+		return vs[0].(map[string]Rdns)[vs[1].(string)]
+	}).(RdnsOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(RdnsOutput{})
+	pulumi.RegisterOutputType(RdnsPtrOutput{})
+	pulumi.RegisterOutputType(RdnsArrayOutput{})
+	pulumi.RegisterOutputType(RdnsMapOutput{})
 }
