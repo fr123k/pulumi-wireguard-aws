@@ -4,7 +4,7 @@
 package hcloud
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Provides details about a Hetzner Cloud Floating IP.
@@ -22,7 +22,7 @@ import (
 //
 // import (
 // 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
-// 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 // )
 //
 // func main() {
@@ -86,7 +86,7 @@ type LookupFloatingIpResult struct {
 	// (string) Home location.
 	HomeLocation string `pulumi:"homeLocation"`
 	// (int) Unique ID of the Floating IP.
-	Id *int `pulumi:"id"`
+	Id int `pulumi:"id"`
 	// (string) IP Address of the Floating IP.
 	IpAddress string `pulumi:"ipAddress"`
 	// (string) IPv6 subnet. (Only set if `type` is `ipv6`)

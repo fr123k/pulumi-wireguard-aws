@@ -4,10 +4,39 @@
 package hcloud
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Provides details about a specific Hetzner Cloud Certificate.
+//
+// ```go
+// package main
+//
+// import (
+// 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+// )
+//
+// func main() {
+// 	pulumi.Run(func(ctx *pulumi.Context) error {
+// 		opt0 := "sample-certificate-1"
+// 		_, err := hcloud.LookupCertificate(ctx, &hcloud.LookupCertificateArgs{
+// 			Name: &opt0,
+// 		}, nil)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		opt1 := 4711
+// 		_, err = hcloud.LookupCertificate(ctx, &hcloud.LookupCertificateArgs{
+// 			Id: &opt1,
+// 		}, nil)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	})
+// }
+// ```
 func LookupCertificate(ctx *pulumi.Context, args *LookupCertificateArgs, opts ...pulumi.InvokeOption) (*LookupCertificateResult, error) {
 	var rv LookupCertificateResult
 	err := ctx.Invoke("hcloud:index/getCertificate:getCertificate", args, &rv, opts...)
@@ -38,7 +67,7 @@ type LookupCertificateResult struct {
 	// (string) Fingerprint of the certificate.
 	Fingerprint string `pulumi:"fingerprint"`
 	// (int) Unique ID of the certificate.
-	Id *int `pulumi:"id"`
+	Id int `pulumi:"id"`
 	// (map) User-defined labels (key-value pairs) assigned to the certificate.
 	Labels map[string]interface{} `pulumi:"labels"`
 	// (string) Name of the Certificate.
@@ -47,5 +76,6 @@ type LookupCertificateResult struct {
 	NotValidAfter string `pulumi:"notValidAfter"`
 	// (string) Point in time when the Certificate becomes valid (in ISO-8601 format).
 	NotValidBefore string  `pulumi:"notValidBefore"`
+	Type           string  `pulumi:"type"`
 	WithSelector   *string `pulumi:"withSelector"`
 }
