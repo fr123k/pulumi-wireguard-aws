@@ -23,7 +23,7 @@ go-init:
 	go mod vendor
 
 pulumi-init: build
-	pulumi plugin install resource aws 3.21.0
+	pulumi plugin install resource aws 4.14.0
 	pulumi plugin ls
 	pulumi login --local
 	# pulumi login --cloud-url s3://s3-pulumi-state-d12f2f1
