@@ -9,7 +9,7 @@ import (
 
 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 const size = "cx11"
@@ -247,7 +247,7 @@ func ProvisionVM(ctx *pulumi.Context, provisionArgs *model.ProvisionArgs, actor 
 		return err
 	}
 
-	provision := server.Ipv4Address.ApplyString(func(hostip string) string {
+	provision := server.Ipv4Address.ApplyT(func(hostip string) string {
 		var result string
 		if actor != nil {
 			result = actor.Connect(hostip)

@@ -9,9 +9,9 @@ import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
-	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws"
-	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
+	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	// _ "github.com/aws/aws-sdk-go/service/ec2"
 )
 
@@ -208,7 +208,7 @@ func ProvisionVM(ctx *pulumi.Context, provisionArgs *model.ProvisionArgs, actor 
 		return err
 	}
 
-	provision := server.PublicIp.ApplyString(func(hostip string) string {
+	provision := server.PublicIp.ApplyT(func(hostip string) string {
 		var result string
 		if actor != nil {
 			result = actor.Connect(hostip)
@@ -233,7 +233,7 @@ func CreateImage(ctx *pulumi.Context, imageArgs model.ImageArgs, actor actors.Co
 		return err
 	}
 
-	provision := server.PublicIp.ApplyString(func(hostip string) string {
+	provision := server.PublicIp.ApplyT(func(hostip string) string {
 		var result string
 		if actor != nil {
 			result = actor.Connect(hostip)

@@ -6,7 +6,7 @@ import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
 	"github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/creasty/defaults"
 )
@@ -25,13 +25,13 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 	subnets := make([]model.SubnetResult, len(vpcArgs.Subnets))
 	for i, subnetArg := range vpcArgs.Subnets {
 		subnet, err := hcloud.NewNetworkSubnet(ctx, vpcArgs.Name, &hcloud.NetworkSubnetArgs{
-			NetworkId: network.ID().ApplyInt(func(id pulumi.ID) int {
+			NetworkId: network.ID().ApplyT(func(id pulumi.ID) int {
 				number, err := strconv.Atoi(string(id))
 				if err != nil {
 					panic(err)
 				}
 				return number
-			}),
+			}).(pulumi.IntOutput),
 			Type:        pulumi.String("cloud"),
 			NetworkZone: pulumi.String("eu-central"),
 			IpRange:     pulumi.String(subnetArg.Cidr),
