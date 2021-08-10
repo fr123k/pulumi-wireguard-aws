@@ -38,7 +38,7 @@ init: pulumi-init
 build:
 	go build -o ${BUILD_FOLDER}/build/wireguard-${CLOUD} cmd/wireguard/${CLOUD}/wireguard.go
 	go test -v --cover ./...
-	mkdir ./build
+	mkdir -p ./build
 	ln -fs ${BUILD_FOLDER}/build/wireguard-${CLOUD} ./build/wireguard
 
 create: pulumi-init
