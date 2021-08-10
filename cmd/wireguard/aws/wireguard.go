@@ -28,7 +28,22 @@ func main() {
         }
         keyPairName := "wireguard-"
         keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
-        vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithKeyPair(vpc, security, keyPair))
+        computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
+        computeArgs.IngressRules = []*model.SecurityRule{{
+                Protocol: "udp",
+                SourcePort: 51820,
+                DestinationPort: 51820,
+                CidrBlocks: []string{"0.0.0.0/0"},
+            },
+        }
+        computeArgs.EgressRules = []*model.SecurityRule{{
+                Protocol: "-1",
+                SourcePort: 0,
+                DestinationPort: 0,
+                CidrBlocks: []string{"0.0.0.0/0"},
+            },
+        }
+        vm, err := compute.CreateWireguardVM(ctx, computeArgs)
 
         if err != nil {
             return err

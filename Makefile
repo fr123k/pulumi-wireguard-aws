@@ -13,7 +13,7 @@ TMP_FOLDER ?= ./test/tmp
 BUILD_FOLDER ?= $(PWD)
 
 # Pulumi Configuration
-export VPN_ENABLED_SSH ?= true
+export VPN_ENABLED_SSH ?= false
 export CLIENT_IP_ADDRESS ?= 10.8.0.3
 export CLIENT_PUBLICKEY ?= 872SDXKUNDyF7iE9qrfvi96rXgkPVN0b+MOHMAqcNFg=
 export METADATA_URL ?= http://169.254.169.254/latest/meta-data/public-ipv4
@@ -38,7 +38,8 @@ init: pulumi-init
 build:
 	go build -o ${BUILD_FOLDER}/build/wireguard-${CLOUD} cmd/wireguard/${CLOUD}/wireguard.go
 	go test -v --cover ./...
-	ln -fs ${BUILD_FOLDER}/build/wireguard-${CLOUD} ${BUILD_FOLDER}/build/wireguard
+	mkdir ./build
+	ln -fs ${BUILD_FOLDER}/build/wireguard-${CLOUD} ./build/wireguard
 
 create: pulumi-init
 	pulumi up --yes
