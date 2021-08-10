@@ -21,23 +21,8 @@ const size = "t2.micro"
 func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
 	wireguardExtSecGroupArgs := &ec2.SecurityGroupArgs{
 		Description: pulumi.String("Pulumi Managed. Allow Wireguard client traffic from internet."),
-		Ingress: ec2.SecurityGroupIngressArray{
-			ec2.SecurityGroupIngressArgs{
-				Protocol:   pulumi.String("udp"),
-				FromPort:   pulumi.Int(51820),
-				ToPort:     pulumi.Int(51820),
-				CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")},
-			},
-			network.SSHIngressRule(computeArgs.Security),
-		},
-		Egress: ec2.SecurityGroupEgressArray{
-			ec2.SecurityGroupEgressArgs{
-				Protocol:   pulumi.String("-1"),
-				FromPort:   pulumi.Int(0),
-				ToPort:     pulumi.Int(0),
-				CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")},
-			},
-		},
+		Ingress: network.IngressRules(computeArgs.Security, computeArgs.IngressRules),
+		Egress: network.EgressRules(computeArgs.Security, computeArgs.EgressRules),
 		Tags: pulumi.StringMap{
 			"JobUrl":         pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
 			"Project":        pulumi.String("wireguard"),
@@ -94,9 +79,6 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 	}
 
 	mostRecent := true
-	//TODO check if jenkins master jocker ami exists use it otherwise use this one.
-	//make this behaviour configurable always use the following ami except following cases
-	// 1) jenkins jocker ami exists 2) 1) && env var JENKINS_AMI=ami
 	ami, err := aws.GetAmi(ctx, &aws.GetAmiArgs{
 		Filters: []aws.GetAmiFilter{
 			{
