@@ -107,7 +107,7 @@ func renderTemplate(template string, variables []TemplateVariable) string {
 		} else if variable.Type == ENVIRONMENT {
 
 			envVariable, ok2 := os.LookupEnv(variable.Value)
-			if ok2 == true {
+			if ok2 {
 				result = strings.ReplaceAll(result, variable.Key, envVariable)
 			} else {
 				result = strings.ReplaceAll(result, variable.Key, "")

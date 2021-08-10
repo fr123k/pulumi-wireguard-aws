@@ -24,3 +24,46 @@ func SSHIngressRule(security *model.SecurityArgs) *ec2.SecurityGroupIngressArgs 
 		CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")},
 	}
 }
+
+func MapIngress(security *model.SecurityArgs, vs []*model.SecurityRule, f func(*model.SecurityRule) *ec2.SecurityGroupIngressArgs) ec2.SecurityGroupIngressArray{
+    var vsm ec2.SecurityGroupIngressArray
+	vsm = append(vsm, SSHIngressRule(security))
+    for _, v := range vs {
+        vsm = append(vsm, f(v))
+    }
+    return vsm
+}
+
+
+func IngressRules(security *model.SecurityArgs, securityRules []*model.SecurityRule) ec2.SecurityGroupIngressArray {
+	transform := func(securityRule *model.SecurityRule) *ec2.SecurityGroupIngressArgs {
+		return &ec2.SecurityGroupIngressArgs{
+			Protocol:   pulumi.String(securityRule.Protocol),
+			FromPort:   pulumi.Int(securityRule.SourcePort),
+			ToPort:     pulumi.Int(securityRule.DestinationPort),
+			CidrBlocks: pulumi.StringArray{pulumi.String(securityRule.CidrBlocks[0])},
+		}
+	};
+	return MapIngress(security, securityRules, transform);
+}
+
+func MapEgress(security *model.SecurityArgs, vs []*model.SecurityRule, f func(*model.SecurityRule) *ec2.SecurityGroupEgressArgs) ec2.SecurityGroupEgressArray{
+    var vsm ec2.SecurityGroupEgressArray
+    for _, v := range vs {
+        vsm = append(vsm, f(v))
+    }
+    return vsm
+}
+
+
+func EgressRules(security *model.SecurityArgs, securityRules []*model.SecurityRule) ec2.SecurityGroupEgressArray {
+	transform := func(securityRule *model.SecurityRule) *ec2.SecurityGroupEgressArgs {
+		return &ec2.SecurityGroupEgressArgs{
+			Protocol:   pulumi.String(securityRule.Protocol),
+			FromPort:   pulumi.Int(securityRule.SourcePort),
+			ToPort:     pulumi.Int(securityRule.DestinationPort),
+			CidrBlocks: pulumi.StringArray{pulumi.String(securityRule.CidrBlocks[0])},
+		}
+	};
+	return MapEgress(security, securityRules, transform);
+}

@@ -363,3 +363,4 @@ To open a SSH shell just run the following command.
 * configure the client ip addresses and public keys outside of pulumi so that a change doesn't need a full recreation of the wireguard VM
   only a restart of the wireguard systemd service would be needed.
 * use the pulumi log to print message on the terminal
+* generalize security rules implementation

@@ -7,14 +7,21 @@ import (
 // SecurityArgs type that define security attributes
 type SecurityArgs struct {
 	VPNEnabledSSH bool
-	VPNCidr       string
+	VPNCidr	   string
+}
+
+type SecurityRule struct {
+	Protocol		string
+	SourcePort		int
+	DestinationPort	int
+	CidrBlocks		[]string
 }
 
 // NewSecurityArgs initialize a SecurityArgs type
 func NewSecurityArgs(vpnEnabledSSH bool, vpnCidr string) *SecurityArgs {
 	return &SecurityArgs{
-		VPNEnabledSSH: vpnEnabledSSH,
-		VPNCidr:       vpnCidr,
+		VPNEnabledSSH:	vpnEnabledSSH,
+		VPNCidr:		vpnCidr,
 	}
 }
 
