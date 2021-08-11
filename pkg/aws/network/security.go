@@ -41,10 +41,20 @@ func IngressRules(security *model.SecurityArgs, securityRules []*model.SecurityR
 			Protocol:   pulumi.String(securityRule.Protocol),
 			FromPort:   pulumi.Int(securityRule.SourcePort),
 			ToPort:     pulumi.Int(securityRule.DestinationPort),
-			CidrBlocks: pulumi.StringArray{pulumi.String(securityRule.CidrBlocks[0])},
+			CidrBlocks: pulumi.ToStringArray(securityRule.CidrBlocks),
+			SecurityGroups: ToStringArray(securityRule.SecurityGroups),
 		}
 	};
+	
 	return MapIngress(security, securityRules, transform);
+}
+
+func ToStringArray(securityGroups []*model.SecurityGroup) pulumi.StringArray {
+	a := make(pulumi.StringArray, len(securityGroups))
+	for i, securityGroup := range securityGroups {
+		a[i] = securityGroup.ID()
+	}
+	return a
 }
 
 func MapEgress(security *model.SecurityArgs, vs []*model.SecurityRule, f func(*model.SecurityRule) *ec2.SecurityGroupEgressArgs) ec2.SecurityGroupEgressArray{
