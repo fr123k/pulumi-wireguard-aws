@@ -12,71 +12,35 @@ import (
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	// _ "github.com/aws/aws-sdk-go/service/ec2"
 )
 
 const size = "t2.micro"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
+
+func CreateSecurityGroups(ctx *pulumi.Context, computeArgs *model.ComputeArgs) ([]*model.SecurityGroup, error) {
+	for _, securityGroup := range computeArgs.SecurityGroups {
+		securityGroupArgs := &ec2.SecurityGroupArgs{
+			Description: pulumi.String(securityGroup.Description),
+			Ingress: network.IngressRules(computeArgs.Security, securityGroup.IngressRules),
+			Egress: network.EgressRules(computeArgs.Security, securityGroup.EgressRules),
+			Tags: pulumi.ToStringMap(securityGroup.Tags),
+		}
+		if computeArgs.Vpc != nil {
+			securityGroupArgs.VpcId = computeArgs.Vpc.ID()
+		}
+		sgExternal, err := ec2.NewSecurityGroup(ctx, securityGroup.Name, securityGroupArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		securityGroup.State = sgExternal.CustomResourceState
+	}
+	return computeArgs.SecurityGroups, nil
+}
+
 func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
-	wireguardExtSecGroupArgs := &ec2.SecurityGroupArgs{
-		Description: pulumi.String("Pulumi Managed. Allow Wireguard client traffic from internet."),
-		Ingress: network.IngressRules(computeArgs.Security, computeArgs.IngressRules),
-		Egress: network.EgressRules(computeArgs.Security, computeArgs.EgressRules),
-		Tags: pulumi.StringMap{
-			"JobUrl":         pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
-			"Project":        pulumi.String("wireguard"),
-			"pulumi-managed": pulumi.String("True"),
-		},
-	}
-	if computeArgs.Vpc != nil {
-		wireguardExtSecGroupArgs.VpcId = computeArgs.Vpc.ID()
-	}
-
-	sgExternal, err := ec2.NewSecurityGroup(ctx, "wireguard-external", wireguardExtSecGroupArgs)
-	if err != nil {
-		return nil, err
-	}
-
-	wireguardAdminSecGroupArgs := &ec2.SecurityGroupArgs{
-		Description: pulumi.String("Terraform Managed. Allow admin traffic internal resources from VPN"),
-		Ingress: ec2.SecurityGroupIngressArray{
-			ec2.SecurityGroupIngressArgs{
-				Protocol:       pulumi.String("-1"),
-				FromPort:       pulumi.Int(0),
-				ToPort:         pulumi.Int(0),
-				SecurityGroups: pulumi.StringArray{sgExternal.ID()},
-			},
-			ec2.SecurityGroupIngressArgs{
-				Protocol:       pulumi.String("icmp"),
-				FromPort:       pulumi.Int(8),
-				ToPort:         pulumi.Int(0),
-				SecurityGroups: pulumi.StringArray{sgExternal.ID()},
-			},
-		},
-		Egress: ec2.SecurityGroupEgressArray{
-			ec2.SecurityGroupEgressArgs{
-				Protocol:   pulumi.String("-1"),
-				FromPort:   pulumi.Int(0),
-				ToPort:     pulumi.Int(0),
-				CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")},
-			},
-		},
-		Tags: pulumi.StringMap{
-			"JobUrl":         pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
-			"Project":        pulumi.String("wireguard"),
-			"pulumi-managed": pulumi.String("True"),
-		},
-	}
-
-	if computeArgs.Vpc != nil {
-		wireguardAdminSecGroupArgs.VpcId = computeArgs.Vpc.ID()
-	}
-
-	sgAdmin, err := ec2.NewSecurityGroup(ctx, "wireguard-admin", wireguardAdminSecGroupArgs)
-	if err != nil {
-		return nil, err
-	}
+	CreateSecurityGroups(ctx, computeArgs)
 
 	mostRecent := true
 	ami, err := aws.GetAmi(ctx, &aws.GetAmiArgs{
@@ -161,9 +125,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 		Ami:          pulumi.String(amiID),
 		UserData:     pulumi.String(userData.Content),
 
-		VpcSecurityGroupIds: pulumi.StringArray{
-			sgExternal.ID(), sgAdmin.ID(),
-		},
+		VpcSecurityGroupIds: network.ToStringArray(computeArgs.SecurityGroups),
 	}
 
 	if computeArgs.Vpc != nil {
@@ -231,7 +193,7 @@ func CreateImage(ctx *pulumi.Context, imageArgs model.ImageArgs, actor actors.Co
 		}, pulumi.IgnoreChanges([]string{"sourceInstanceId"}))
 
 		if err != nil {
-			panic(fmt.Errorf("Failed to create Ami Image: %s", err))
+			panic(fmt.Errorf("failed to create ami image: %s", err))
 		}
 
 		return result
