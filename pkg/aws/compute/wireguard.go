@@ -17,28 +17,6 @@ import (
 const size = "t2.micro"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-
-func CreateSecurityGroups(ctx *pulumi.Context, computeArgs *model.ComputeArgs) ([]*model.SecurityGroup, error) {
-	for _, securityGroup := range computeArgs.SecurityGroups {
-		securityGroupArgs := &ec2.SecurityGroupArgs{
-			Description: pulumi.String(securityGroup.Description),
-			Ingress: network.IngressRules(computeArgs.Security, securityGroup.IngressRules),
-			Egress: network.EgressRules(computeArgs.Security, securityGroup.EgressRules),
-			Tags: pulumi.ToStringMap(securityGroup.Tags),
-		}
-		if computeArgs.Vpc != nil {
-			securityGroupArgs.VpcId = computeArgs.Vpc.ID()
-		}
-		sgExternal, err := ec2.NewSecurityGroup(ctx, securityGroup.Name, securityGroupArgs)
-		if err != nil {
-			return nil, err
-		}
-
-		securityGroup.State = sgExternal.CustomResourceState
-	}
-	return computeArgs.SecurityGroups, nil
-}
-
 func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
 	CreateSecurityGroups(ctx, computeArgs)
 

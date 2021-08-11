@@ -45,7 +45,6 @@ func IngressRules(security *model.SecurityArgs, securityRules []*model.SecurityR
 			SecurityGroups: ToStringArray(securityRule.SecurityGroups),
 		}
 	};
-	
 	return MapIngress(security, securityRules, transform);
 }
 
