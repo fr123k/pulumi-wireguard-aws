@@ -29,6 +29,7 @@ func (compute ComputeResult) ID() pulumi.IDOutput {
 type ComputeArgs struct {
 	Vpc				*VpcResult
 	Security		*SecurityArgs
+	SecurityGroups 	[]*SecurityGroup
 	IngressRules	[]*SecurityRule
 	EgressRules		[]*SecurityRule
 	KeyPair			*KeyPairArgs
