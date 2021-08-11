@@ -9,6 +9,7 @@ import (
     "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/compute"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
@@ -94,6 +95,9 @@ func main() {
                 Username:   "ubuntu",
                 Timeout:    2 * time.Minute,
                 SSHKeyPair: *keyPair.SSHKeyPair,
+            },
+            utility.Logger{
+                Ctx: ctx,
             },
         )
 

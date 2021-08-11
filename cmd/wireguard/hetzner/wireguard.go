@@ -8,6 +8,7 @@ import (
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/compute"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/network"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
@@ -18,6 +19,7 @@ const size = "t2.large"
 func main() {
     pulumi.Run(func(ctx *pulumi.Context) error {
         cfg := config.New(ctx, "")
+
         security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), wireguardCfg.VPCArgsDefault)
         security.Println()
 
@@ -39,6 +41,9 @@ func main() {
                 Username:   "root",
                 Timeout:    2 * time.Minute,
                 SSHKeyPair: *keyPair.SSHKeyPair,
+            },
+            utility.Logger{
+                Ctx: ctx,
             },
         )
 

@@ -238,7 +238,6 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 }
 
 func ProvisionVM(ctx *pulumi.Context, provisionArgs *model.ProvisionArgs, actor actors.Connector) error {
-
     server, err := hcloud.GetServer(ctx, "wireguard2", provisionArgs.SourceCompute.ID(), &hcloud.ServerState{
         Status: pulumi.String("running"),
     })
