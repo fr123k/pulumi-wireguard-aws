@@ -5,6 +5,7 @@ import (
     "time"
 
     "github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 )
 
 // SSHConnectorArgs this defines the ssh connection related arguments.
@@ -19,12 +20,14 @@ type SSHConnectorArgs struct {
 type SSHConnector struct {
     args *SSHConnectorArgs
     connector
+    log utility.Logger
 }
 
 // NewSSHConnector initialize an ssh connector
-func NewSSHConnector(args SSHConnectorArgs) SSHConnector {
+func NewSSHConnector(args SSHConnectorArgs, log utility.Logger) SSHConnector {
     sshConnector := SSHConnector{
         args: &args,
+        log:  log,
     }
     sshConnector.connector = newConnector()
     return sshConnector
@@ -36,23 +39,27 @@ func (c *SSHConnector) Connect(address string) string {
     resultChan := make(chan string, 0)
     c.actions <- func() {
         sshClient := ssh.SSHClientConfig{
-            Hostname:   address,
-            Port:       c.args.Port,
-            Username:   c.args.Username,
-            SSHKeyPair: c.args.SSHKeyPair,
-            Timeout:    c.args.Timeout,
+            Hostname:      address,
+            Port:          c.args.Port,
+            Username:      c.args.Username,
+            SSHKeyPair:    c.args.SSHKeyPair,
+            Timeout:       c.args.Timeout,
+            IgnoreHostKey: true,
+            Log:           c.log,
         }
 
-        fmt.Printf("Open SSH connection to %s", address)
+        c.log.Info("Open SSH connection to %s", address)
 
         result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
         if err != nil {
+            c.log.Error("Failed to run cmd : %s", err)
             panic(fmt.Errorf("Failed to run cmd : %s", err))
         }
-        fmt.Printf("Result: %s", *result)
+        c.log.Info("Result: %s", *result)
 
         result, err = sshClient.SSHCommand("sudo cat /tmp/server_publickey")
         if err != nil {
+            c.log.Error("Failed to run cmd : %s", err)
             panic(fmt.Errorf("Failed to run cmd : %s", err))
         }
         resultChan <- *result
