@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	_ "io"
-	_ "io/ioutil"
-	_ "os"
+    "fmt"
+    _ "io"
+    _ "io/ioutil"
+    _ "os"
 
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
 )
 
 //TODO pass private key file
@@ -15,9 +15,9 @@ import (
 func main() {
 
     sshClient := ssh.SSHClientConfig{
-        Hostname: "ec2-34-242-223-163.eu-west-1.compute.amazonaws.com",
-        Port: 22,
-        Username: "ubuntu",
+        Hostname:   "ec2-34-242-223-163.eu-west-1.compute.amazonaws.com",
+        Port:       22,
+        Username:   "ubuntu",
         SSHKeyPair: *ssh.ReadPrivateKey("/Users/franki/private/github/pulumi-wireguard-aws/keys/wireguard.pem"),
     }
 
