@@ -1,46 +1,46 @@
 package main
 
 import (
-	"time"
+    "time"
 
-	wireguardCfg "github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/config"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/compute"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
+    wireguardCfg "github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/config"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/compute"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
+    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+    "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 const size = "t2.large"
 
 func main() {
-	pulumi.Run(func(ctx *pulumi.Context) error {
-		cfg := config.New(ctx, "")
-		security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), wireguardCfg.VPCArgsDefault)
-		security.Println()
+    pulumi.Run(func(ctx *pulumi.Context) error {
+        cfg := config.New(ctx, "")
+        security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), wireguardCfg.VPCArgsDefault)
+        security.Println()
 
-		keyPairName := "wireguard-packer"
-		keyPair := model.NewKeyPairArgsWithKey(&keyPairName)
-		vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithSecurityAndKeyPair(security, keyPair))
+        keyPairName := "wireguard-packer"
+        keyPair := model.NewKeyPairArgsWithKey(&keyPairName)
+        vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithSecurityAndKeyPair(security, keyPair))
 
-		if err != nil {
-			return err
-		}
+        if err != nil {
+            return err
+        }
 
-		sshConnector := actors.NewSSHConnector(
-			actors.SSHConnectorArgs{
-				Port:       22,
-				Username:   "ubuntu",
-				Timeout:    2 * time.Minute,
-				SSHKeyPair: *keyPair.SSHKeyPair,
-			},
-		)
+        sshConnector := actors.NewSSHConnector(
+            actors.SSHConnectorArgs{
+                Port:       22,
+                Username:   "ubuntu",
+                Timeout:    2 * time.Minute,
+                SSHKeyPair: *keyPair.SSHKeyPair,
+            },
+        )
 
-		err = compute.CreateImage(ctx, model.ImageArgs{
-			Name:          "wireguard-ami-new",
-			SourceCompute: vm,
-		}, &sshConnector)
-		return err
-	})
+        err = compute.CreateImage(ctx, model.ImageArgs{
+            Name:          "wireguard-ami-new",
+            SourceCompute: vm,
+        }, &sshConnector)
+        return err
+    })
 }
