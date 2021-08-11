@@ -1,16 +1,16 @@
 package main
 
 import (
-	"time"
+    "time"
 
-	wireguardCfg "github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/config"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/compute"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/network"
-	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
+    wireguardCfg "github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/config"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/compute"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/network"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
+    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+    "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 const size = "t2.large"
@@ -42,9 +42,9 @@ func main() {
             },
         )
 
-        compute.ProvisionVM(ctx,  &model.ProvisionArgs{
-            ExportName:     "wireguard.publicKey",
-            SourceCompute:  vm,
+        compute.ProvisionVM(ctx, &model.ProvisionArgs{
+            ExportName:    "wireguard.publicKey",
+            SourceCompute: vm,
         }, &sshConnector)
 
         return err
