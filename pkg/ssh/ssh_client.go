@@ -25,6 +25,7 @@ type SSHClientConfig struct {
     SSHKeyPair    SSHKey
     IgnoreHostKey bool          `default:true`
     Timeout       time.Duration `default:30000`
+    Log           utility.Logger
 }
 
 type SSHKey struct {
@@ -62,9 +63,10 @@ func (sshClientConfig SSHClientConfig) SSHSession() (*ssh.Session, error) {
             con, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", sshClientConfig.Hostname, sshClientConfig.Port), sshConfig)
             if err != nil {
                 if retries > 10 {
+                    sshClientConfig.Log.Error("failed to dial: %s", err)
                     return true, nil, fmt.Errorf("failed to dial: %s", err)
                 }
-                fmt.Printf("Retry ssh connection retries: %d, error: %s", retries, err)
+                sshClientConfig.Log.Debug("Retry ssh connection retries: %d, error: %s", retries, err)
                 return false, nil, nil
             }
             return true, con, nil
@@ -72,6 +74,7 @@ func (sshClientConfig SSHClientConfig) SSHSession() (*ssh.Session, error) {
     })
 
     if err != nil || connection == nil {
+        sshClientConfig.Log.Error("failed to dial: %s", err)
         return nil, fmt.Errorf("failed to dial: %s", err)
     }
 
@@ -82,6 +85,7 @@ func (sshClientConfig SSHClientConfig) SSHSession() (*ssh.Session, error) {
 
     session, err := connection.(*ssh.Client).NewSession()
     if err != nil {
+        sshClientConfig.Log.Error("failed to create session: %s", err)
         return nil, fmt.Errorf("failed to create session: %s", err)
     }
 
@@ -123,10 +127,14 @@ func (sshClientConfig SSHClientConfig) SSHCommand(command string) (*string, erro
     }
     defer session.Close()
 
+    sshClientConfig.Log.Info("Run SSH command to %s", command)
+
     result, err := session.Output(command)
     if err != nil {
         return nil, fmt.Errorf("failed to run ssh command: %s", err)
     }
+    sshClientConfig.Log.Info("Result: %s", result)
+
     fmt.Printf("Result: %s", result)
 
     str := string(result)
