@@ -33,6 +33,47 @@ type SecurityGroupResult struct {
     State pulumi.CustomResourceState
 }
 
+func AllowAllRule() *SecurityRule {
+    return &SecurityRule{
+        Protocol:        "-1",
+        SourcePort:      0,
+        DestinationPort: 0,
+        CidrBlocks:      []string{"0.0.0.0/0"},
+    }
+}
+
+func AllowAllRuleSecGroup(securityGroup *SecurityGroup) *SecurityRule {
+    return &SecurityRule{
+        Protocol:        "-1",
+        SourcePort:      0,
+        DestinationPort: 0,
+        SecurityGroups:  []*SecurityGroup{securityGroup},
+    }
+}
+
+func AllowOnePortRule(protocol string, port int) *SecurityRule {
+    return &SecurityRule{
+        Protocol:        protocol,
+        SourcePort:      port,
+        DestinationPort: port,
+        CidrBlocks:      []string{"0.0.0.0/0"},
+    }
+}
+
+func AllowICMPRule(securityGroup *SecurityGroup) *SecurityRule {
+    return &SecurityRule{
+        Protocol:        "icmp",
+        SourcePort:      8,
+        DestinationPort: 0,
+        SecurityGroups:  []*SecurityGroup{securityGroup},
+    }
+}
+
+func (rule SecurityRule) AddSecurityGroup(securityGroup *SecurityGroup) *SecurityRule {
+    rule.SecurityGroups = append(rule.SecurityGroups, securityGroup)
+    return &rule
+}
+
 // ID return resource id
 func (security SecurityGroupResult) ID() pulumi.IDOutput {
     return security.State.ID()
