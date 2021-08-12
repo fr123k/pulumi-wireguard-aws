@@ -43,43 +43,27 @@ func main() {
             Name:        "wireguard-external",
             Description: "Pulumi Managed. Allow Wireguard client traffic from internet.",
             Tags:        tags,
-            IngressRules: []*model.SecurityRule{{
-                Protocol:        "udp",
-                SourcePort:      51820,
-                DestinationPort: 51820,
-                CidrBlocks:      []string{"0.0.0.0/0"},
-            }},
-            EgressRules: []*model.SecurityRule{{
-                Protocol:        "-1",
-                SourcePort:      0,
-                DestinationPort: 0,
-                CidrBlocks:      []string{"0.0.0.0/0"},
-            }},
+            IngressRules: []*model.SecurityRule{
+                model.AllowOnePortRule("udp", 51820),
+            },
+            EgressRules: []*model.SecurityRule{
+                model.AllowAllRule(),
+            },
         }
         //The order is important the referenced security groups has to be first.
         computeArgs.SecurityGroups = []*model.SecurityGroup{
             &externalSecurityGroup,
             {
                 Name:        "wireguard-admin",
-                Description: "Terraform Managed. Allow admin traffic internal resources from VPN",
+                Description: "Pulumi Managed. Allow admin traffic internal resources from VPN",
                 Tags:        tags,
-                IngressRules: []*model.SecurityRule{{
-                    Protocol:        "-1",
-                    SourcePort:      0,
-                    DestinationPort: 0,
-                    SecurityGroups:  []*model.SecurityGroup{&externalSecurityGroup},
-                }, {
-                    Protocol:        "icmp",
-                    SourcePort:      8,
-                    DestinationPort: 0,
-                    SecurityGroups:  []*model.SecurityGroup{&externalSecurityGroup},
-                }},
-                EgressRules: []*model.SecurityRule{{
-                    Protocol:        "-1",
-                    SourcePort:      0,
-                    DestinationPort: 0,
-                    CidrBlocks:      []string{"0.0.0.0/0"},
-                }},
+                IngressRules: []*model.SecurityRule{
+                    model.AllowAllRuleSecGroup(&externalSecurityGroup),
+                    model.AllowICMPRule(&externalSecurityGroup),
+                },
+                EgressRules: []*model.SecurityRule{
+                    model.AllowAllRule(),
+                },
             },
         }
 
