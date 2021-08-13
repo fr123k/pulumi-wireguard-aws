@@ -6,12 +6,12 @@ import (
     "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
-    "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
     "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func CreateSecurityGroups(ctx *pulumi.Context, computeArgs *model.ComputeArgs) ([]*model.SecurityGroup, error) {
+func CreateSecurityGroups(ctx *pulumi.Context, computeArgs *model.ComputeArgs) ([]*model.SecurityGroup, []*ec2.SecurityGroup, error) {
+    ec2SecGroups := make([]*ec2.SecurityGroup, 0)
     for _, securityGroup := range computeArgs.SecurityGroups {
         securityGroupArgs := &ec2.SecurityGroupArgs{
             Description: pulumi.String(securityGroup.Description),
@@ -24,20 +24,19 @@ func CreateSecurityGroups(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (
         }
         sgExternal, err := ec2.NewSecurityGroup(ctx, securityGroup.Name, securityGroupArgs)
         if err != nil {
-            return nil, err
+            return nil, nil, err
         }
-
+        ec2SecGroups = append(ec2SecGroups, sgExternal)
         securityGroup.State = sgExternal.CustomResourceState
     }
-    return computeArgs.SecurityGroups, nil
+    return computeArgs.SecurityGroups, ec2SecGroups, nil
 }
 
 func GetImage(ctx *pulumi.Context, imageArgs []*model.ImageArgs) (*string, error) {
     for _, image := range imageArgs {
         // mostRecent := true
-
-        amiIds, err := aws.GetAmiIds(ctx, &aws.GetAmiIdsArgs{
-            Filters: []aws.GetAmiIdsFilter{
+        amiIds, err := ec2.GetAmiIds(ctx, &ec2.GetAmiIdsArgs{
+            Filters: []ec2.GetAmiIdsFilter{
                 {
                     Name:   "name",
                     Values: []string{image.Name},
