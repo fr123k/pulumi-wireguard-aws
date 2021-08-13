@@ -1,4 +1,4 @@
-package config
+package model
 
 import (
     "testing"
@@ -6,7 +6,7 @@ import (
 
 // TestVpcArg with default args
 func TestVpcArg(t *testing.T) {
-    vpcArg := vpcArg("awesome name", "192.168.0.0")
+    vpcArg := VpcArg("awesome name", "192.168.0.0")
 
     if vpcArg.Name != "awesome name" {
         t.Errorf("The Name is wrong, got: %s, want: %s.", vpcArg.Name, "awesome name")
