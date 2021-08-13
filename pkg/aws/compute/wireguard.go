@@ -9,7 +9,6 @@ import (
     "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
-    "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
     "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -18,54 +17,15 @@ const size = "t2.micro"
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
 func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
-    CreateSecurityGroups(ctx, computeArgs)
-
-    mostRecent := true
-    ami, err := aws.GetAmi(ctx, &aws.GetAmiArgs{
-        Filters: []aws.GetAmiFilter{
-            {
-                Name:   "name",
-                Values: []string{"ubuntu/images/hvm-ssd/ubuntu-*-18.04-amd64-server-*"},
-            },
-        },
-        Owners:     []string{"099720109477"},
-        MostRecent: &mostRecent,
-    })
-
+    securityGroups, err := CreateSecurityGroups(ctx, computeArgs)
     if err != nil {
         return nil, err
     }
 
-    ami2, err := aws.GetAmiIds(ctx, &aws.GetAmiIdsArgs{
-        Filters: []aws.GetAmiIdsFilter{
-            {
-                Name: "name",
-                Values: []string{
-                    "wireguard-ami",
-                },
-            },
-            {
-                Name: "state",
-                Values: []string{
-                    "available",
-                },
-            },
-        },
-        // MostRecent: &mostRecent,
-        Owners: []string{
-            "self",
-        },
-    }, nil)
+    imageID, err := GetImage(ctx, computeArgs.Images)
 
     if err != nil {
         return nil, err
-    }
-
-    var amiID string
-    if ami2.Ids != nil && len(ami2.Ids) > 0 {
-        amiID = ami2.Ids[0]
-    } else {
-        amiID = ami.Id
     }
 
     //TODO cloud-init use only if jenkins ami doesn't exists.
@@ -76,6 +36,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
         "{{ MAILJET_API_CREDENTIALS }}": "MAILJET_API_CREDENTIALS",
         "{{ METADATA_URL }}":            "METADATA_URL",
     }
+
     userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
     if err != nil {
         return nil, err
@@ -94,16 +55,17 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 
     wireguardEc2Args := &ec2.InstanceArgs{
         AssociatePublicIpAddress: pulumi.Bool(true),
+        //TODO pass tags
         Tags: pulumi.StringMap{
             "Name":   pulumi.String("wireguard"),
             "JobUrl": pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
         },
         InstanceType: pulumi.String(size),
         KeyName:      keyPair.KeyName,
-        Ami:          pulumi.String(amiID),
+        Ami:          pulumi.String(*imageID),
         UserData:     pulumi.String(userData.Content),
 
-        VpcSecurityGroupIds: network.ToStringArray(computeArgs.SecurityGroups),
+        VpcSecurityGroupIds: network.ToStringArray(securityGroups),
     }
 
     if computeArgs.Vpc != nil {

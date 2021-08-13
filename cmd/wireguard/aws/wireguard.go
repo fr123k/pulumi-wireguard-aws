@@ -33,6 +33,18 @@ func main() {
         keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
         computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
 
+        computeArgs.Images = []*model.ImageArgs{
+            {
+                Name: "wireguard-ami",
+                Owners: []string{"self"},
+                States: []string{"available"},
+            },
+            {
+                Name: "ubuntu/images/hvm-ssd/ubuntu-*-18.04-amd64-server-*",
+                Owners: []string{"099720109477"},
+            },
+        }
+
         tags := map[string]string{
             "JobUrl":         os.Getenv("TRAVIS_JOB_WEB_URL"),
             "Project":        "wireguard",
