@@ -51,6 +51,13 @@ func AllowAllRuleSecGroup(securityGroup *SecurityGroup) *SecurityRule {
     }
 }
 
+func AllowSSHRule(security *SecurityArgs) *SecurityRule {
+    if security.VPNEnabledSSH {
+        return AllowOnePortRule("ssh", 22).CidrBlock(security.VPNCidr)
+    }
+    return AllowOnePortRule("ssh", 22)
+}
+
 func AllowOnePortRule(protocol string, port int) *SecurityRule {
     return &SecurityRule{
         Protocol:        protocol,
@@ -67,6 +74,11 @@ func AllowICMPRule(securityGroup *SecurityGroup) *SecurityRule {
         DestinationPort: 0,
         SecurityGroups:  []*SecurityGroup{securityGroup},
     }
+}
+
+func (rule SecurityRule) CidrBlock(cidrBlock string) *SecurityRule {
+    rule.CidrBlocks = []string{cidrBlock}
+    return &rule
 }
 
 func (rule SecurityRule) AddSecurityGroup(securityGroup *SecurityGroup) *SecurityRule {
