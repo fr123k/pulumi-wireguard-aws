@@ -17,6 +17,8 @@ type ProvisionArgs struct {
 
 type ImageArgs struct {
     Name          string
+    Owners        []string
+    States        []string
     SourceCompute *ComputeResult
 }
 
@@ -33,7 +35,7 @@ type ComputeArgs struct {
     IngressRules   []*SecurityRule
     EgressRules    []*SecurityRule
     KeyPair        *KeyPairArgs
-    Image          *ImageArgs
+    Images         []*ImageArgs
 }
 
 func NewComputeArgs(vpc *VpcResult, security *SecurityArgs) *ComputeArgs {
