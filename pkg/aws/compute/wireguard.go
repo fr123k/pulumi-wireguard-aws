@@ -15,9 +15,15 @@ import (
 
 const size = "t2.micro"
 
-//CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
-    securityGroups, err := CreateSecurityGroups(ctx, computeArgs)
+type infrastructure struct {
+    groups   []*ec2.SecurityGroup
+    server   *ec2.Instance
+    imageID  *string
+    userData *string
+}
+
+func createWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*infrastructure, error) {
+    securityGroups, ec2SecurityGroups, err := CreateSecurityGroups(ctx, computeArgs)
     if err != nil {
         return nil, err
     }
@@ -74,11 +80,27 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 
     server, err := ec2.NewInstance(ctx, "wireguard", wireguardEc2Args)
 
-    ctx.Export("publicIp", server.PublicIp)
-    ctx.Export("publicDns", server.PublicDns)
+    return &infrastructure{
+        groups: ec2SecurityGroups,
+        server:  server,
+        imageID: imageID,
+        userData: &userData.Content,
+    }, nil
+}
+
+//CreateWireguardVM creates a wireguard ec2 aws instance
+func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
+    infra, err := createWireguardVM(ctx, computeArgs)
+
+    if err != nil {
+        return nil, err
+    }
+
+    ctx.Export("publicIp", infra.server.PublicIp)
+    ctx.Export("publicDns", infra.server.PublicDns)
 
     return &model.ComputeResult{
-        Compute: server.CustomResourceState,
+        Compute: infra.server.CustomResourceState,
     }, err
 }
 
