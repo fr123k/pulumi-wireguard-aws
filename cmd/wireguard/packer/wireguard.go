@@ -3,7 +3,6 @@ package main
 import (
     "time"
 
-    wireguardCfg "github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/config"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/compute"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
@@ -18,7 +17,7 @@ const size = "t2.large"
 func main() {
     pulumi.Run(func(ctx *pulumi.Context) error {
         cfg := config.New(ctx, "")
-        security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), wireguardCfg.VPCArgsDefault)
+        security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), model.VPCArgsDefault)
         security.Println()
 
         keyPairName := "wireguard-packer"
