@@ -3,7 +3,6 @@ package main
 import (
     "time"
 
-    wireguardCfg "github.com/fr123k/pulumi-wireguard-aws/cmd/wireguard/config"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/compute"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/network"
@@ -20,10 +19,10 @@ func main() {
     pulumi.Run(func(ctx *pulumi.Context) error {
         cfg := config.New(ctx, "")
 
-        security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), wireguardCfg.VPCArgsDefault)
+        security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), model.VPCArgsDefault)
         security.Println()
 
-        vpc, err := network.CreateVPC(ctx, wireguardCfg.VPCArgsDefault)
+        vpc, err := network.CreateVPC(ctx, model.VPCArgsDefault)
         if err != nil {
             return err
         }

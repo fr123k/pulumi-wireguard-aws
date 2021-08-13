@@ -1,6 +1,9 @@
 package model
 
 import (
+    "fmt"
+
+    "github.com/creasty/defaults"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
 
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -26,6 +29,8 @@ type VpcResult struct {
     Vpc pulumi.CustomResourceState
 }
 
+var VPCArgsDefault = VpcArg("wireguard", "10.8.0.0")
+
 // SubnetResult define the generated properties
 type SubnetResult struct {
     Subnet pulumi.CustomResourceState
@@ -44,4 +49,17 @@ func (vpc VpcResult) IDtoInt() pulumi.IntOutput {
 //ID return resource id
 func (subnet SubnetResult) ID() pulumi.IDOutput {
     return subnet.Subnet.ID()
+}
+
+func VpcArg(name string, cidr string) *VpcArgs {
+    vpcArgs := &VpcArgs{
+        Name: name,
+        Cidr: fmt.Sprintf("%s/16", cidr),
+        Subnets: []SubnetArgs{{
+            Cidr: fmt.Sprintf("%s/24", cidr),
+        },
+        },
+    }
+    defaults.MustSet(vpcArgs)
+    return vpcArgs
 }
