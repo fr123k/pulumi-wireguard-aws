@@ -17,10 +17,23 @@ func DefaultComputeArgs(ctx *pulumi.Context) (*model.ComputeArgs, error) {
         return nil, err
     }
 
+    userDataVariables := map[string]string{
+        "{{ CLIENT_PUBLICKEY }}":        "CLIENT_PUBLICKEY",
+        "{{ CLIENT_IP_ADDRESS }}":       "CLIENT_IP_ADDRESS",
+        "{{ MAILJET_API_CREDENTIALS }}": "MAILJET_API_CREDENTIALS",
+        "{{ METADATA_URL }}":            "METADATA_URL",
+    }
+
+    userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
+    if err != nil {
+        return nil, err
+    }
+
     keyPairName := "wireguard-"
     keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
     computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
-
+    computeArgs.UserData = userData
+    computeArgs.Name = "wireguard"
     computeArgs.Images = []*model.ImageArgs{
         model.SelfImage("wireguard-ami"),
         {
@@ -75,10 +88,23 @@ func DefaultComputeArgs2(ctx *pulumi.Context) (*model.ComputeArgs, error) {
         return nil, err
     }
 
+    userDataVariables := map[string]string{
+        "{{ CLIENT_PUBLICKEY }}":        "CLIENT_PUBLICKEY",
+        "{{ CLIENT_IP_ADDRESS }}":       "CLIENT_IP_ADDRESS",
+        "{{ MAILJET_API_CREDENTIALS }}": "MAILJET_API_CREDENTIALS",
+        "{{ METADATA_URL }}":            "METADATA_URL",
+    }
+
+    userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
+    if err != nil {
+        return nil, err
+    }
+
     keyPairName := "wireguard-"
     keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
     computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
-
+    computeArgs.UserData = userData
+    computeArgs.Name = "wireguard"
     computeArgs.Images = []*model.ImageArgs{
         model.SelfImage("wireguard-ami"),
         {
