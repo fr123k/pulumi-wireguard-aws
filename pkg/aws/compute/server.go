@@ -59,5 +59,5 @@ func GetImage(ctx *pulumi.Context, imageArgs []*model.ImageArgs) (*string, error
         }
     }
 
-    return nil, fmt.Errorf("no AMI found.")
+    return nil, fmt.Errorf("no AMI found")
 }
