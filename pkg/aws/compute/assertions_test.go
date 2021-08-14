@@ -1,12 +1,12 @@
 package compute
 
 import (
-	"sync"
-	"testing"
+    "sync"
+    "testing"
 
-	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/stretchr/testify/assert"
+    "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
+    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+    "github.com/stretchr/testify/assert"
 )
 
 type assertion = func(t assert.TestingT, s interface{}, contains interface{}, msg string, args ...interface{}) bool
@@ -56,7 +56,12 @@ func assertSSHPort(t *testing.T, infra *infrastructure, wg *sync.WaitGroup, publ
                 }
             }
 
-            assert.Falsef(t, i.FromPort == 22 && (openToInternet && !public), "illegal SSH port 22 open to the Internet (CIDR 0.0.0.0/0) on group %v", urn)
+            if i.FromPort != 22 {
+                continue
+            }
+            assert.Equal(t, "tcp", i.Protocol, "Expect protocol 'tcp' for ssh rule on group %v", urn)
+            assert.Falsef(t, openToInternet && !public, "illegal SSH port 22 open to the Internet (CIDR 0.0.0.0/0) on group %v", urn)
+
         }
 
         wg.Done()

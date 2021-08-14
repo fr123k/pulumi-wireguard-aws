@@ -80,6 +80,10 @@ func createWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*in
 
     server, err := ec2.NewInstance(ctx, "wireguard", wireguardEc2Args)
 
+    if err != nil {
+        return nil, err
+    }
+
     return &infrastructure{
         groups: ec2SecurityGroups,
         server:  server,
