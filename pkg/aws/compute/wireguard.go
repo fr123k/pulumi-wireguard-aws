@@ -19,10 +19,10 @@ type infrastructure struct {
     groups   []*ec2.SecurityGroup
     server   *ec2.Instance
     imageID  *string
-    userData *string
+    userData *model.UserData
 }
 
-func createWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*infrastructure, error) {
+func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*infrastructure, error) {
     securityGroups, ec2SecurityGroups, err := CreateSecurityGroups(ctx, computeArgs)
     if err != nil {
         return nil, err
@@ -34,6 +34,56 @@ func createWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*in
         return nil, err
     }
 
+    if computeArgs.UserData != nil {
+        ctx.Export("cloud-init", pulumi.String(computeArgs.UserData.Content))
+    }
+
+    keyPair, err := ec2.NewKeyPair(ctx, *computeArgs.KeyPair.Name, &ec2.KeyPairArgs{
+        KeyName:   pulumi.String(*computeArgs.KeyPair.Name),
+        PublicKey: pulumi.String(*computeArgs.KeyPair.SSHKeyPair.PublicKeyStr),
+    })
+
+    if err != nil {
+        return nil, err
+    }
+
+    ec2Args := &ec2.InstanceArgs{
+        AssociatePublicIpAddress: pulumi.Bool(true),
+        //TODO pass tags
+        Tags: pulumi.StringMap{
+            "Name":   pulumi.String(computeArgs.Name),
+            "JobUrl": pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
+        },
+        InstanceType: pulumi.String(size),
+        KeyName:      keyPair.KeyName,
+        Ami:          pulumi.String(*imageID),
+        VpcSecurityGroupIds: network.ToStringArray(securityGroups),
+    }
+
+    if (computeArgs.UserData != nil) {
+        ec2Args.UserData = pulumi.String(computeArgs.UserData.Content)
+    }
+
+    if computeArgs.Vpc != nil {
+        ec2Args.SubnetId = computeArgs.Vpc.SubnetResults[0].ID()
+    }
+
+    server, err := ec2.NewInstance(ctx, computeArgs.Name, ec2Args)
+
+    if err != nil {
+        return nil, err
+    }
+
+    return &infrastructure{
+        groups:   ec2SecurityGroups,
+        server:   server,
+        imageID:  imageID,
+        userData: computeArgs.UserData,
+    }, nil
+}
+
+//CreateWireguardVM creates a wireguard ec2 aws instance
+func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
     //TODO cloud-init use only if jenkins ami doesn't exists.
     // yaml, err := getCloudInitYaml("cloud-init/cloud-init.yaml", awsKeyID, awsKeySecret)
     userDataVariables := map[string]string{
@@ -48,53 +98,9 @@ func createWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*in
         return nil, err
     }
 
-    ctx.Export("cloud-init", pulumi.String(userData.Content))
+    computeArgs.UserData = userData
 
-    keyPair, err := ec2.NewKeyPair(ctx, *computeArgs.KeyPair.Name, &ec2.KeyPairArgs{
-        KeyName:   pulumi.String(*computeArgs.KeyPair.Name),
-        PublicKey: pulumi.String(*computeArgs.KeyPair.SSHKeyPair.PublicKeyStr),
-    })
-
-    if err != nil {
-        return nil, err
-    }
-
-    wireguardEc2Args := &ec2.InstanceArgs{
-        AssociatePublicIpAddress: pulumi.Bool(true),
-        //TODO pass tags
-        Tags: pulumi.StringMap{
-            "Name":   pulumi.String("wireguard"),
-            "JobUrl": pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
-        },
-        InstanceType: pulumi.String(size),
-        KeyName:      keyPair.KeyName,
-        Ami:          pulumi.String(*imageID),
-        UserData:     pulumi.String(userData.Content),
-
-        VpcSecurityGroupIds: network.ToStringArray(securityGroups),
-    }
-
-    if computeArgs.Vpc != nil {
-        wireguardEc2Args.SubnetId = computeArgs.Vpc.SubnetResults[0].ID()
-    }
-
-    server, err := ec2.NewInstance(ctx, "wireguard", wireguardEc2Args)
-
-    if err != nil {
-        return nil, err
-    }
-
-    return &infrastructure{
-        groups: ec2SecurityGroups,
-        server:  server,
-        imageID: imageID,
-        userData: &userData.Content,
-    }, nil
-}
-
-//CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
-    infra, err := createWireguardVM(ctx, computeArgs)
+    infra, err := CreateServer(ctx, computeArgs)
 
     if err != nil {
         return nil, err

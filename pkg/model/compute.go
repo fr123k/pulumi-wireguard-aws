@@ -37,6 +37,7 @@ func SelfImage(name string) *ImageArgs {
 
 // ComputeArgs defines the input parameter for the compute resource functions.
 type ComputeArgs struct {
+    Name           string
     Vpc            *VpcResult
     Security       *SecurityArgs
     SecurityGroups []*SecurityGroup
@@ -44,6 +45,7 @@ type ComputeArgs struct {
     EgressRules    []*SecurityRule
     KeyPair        *KeyPairArgs
     Images         []*ImageArgs
+    UserData       *UserData
 }
 
 func NewComputeArgs(vpc *VpcResult, security *SecurityArgs) *ComputeArgs {
