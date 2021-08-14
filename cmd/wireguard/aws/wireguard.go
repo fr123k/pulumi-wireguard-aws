@@ -36,7 +36,7 @@ func createInfraStructure(ctx *pulumi.Context) (error) {
     keyPairName := "wireguard-"
     keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
     computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
-
+    computeArgs.Name = "wireguard"
     computeArgs.Images = []*model.ImageArgs{
         {
             Name:   "wireguard-ami",
