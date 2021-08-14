@@ -31,6 +31,8 @@ func assertUserDataNotNil(t *testing.T, infra *infrastructure, wg *sync.WaitGrou
         userData := all[1].(string)
 
         assert.NotNil(t, userData, "expect userData set on server on server %v", urn)
+        assert.NotEmpty(t,userData, "expect userData set on server on server %v", urn)
+
         wg.Done()
         return nil
     })

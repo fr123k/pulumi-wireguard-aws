@@ -19,7 +19,7 @@ func Setup(t *testing.T, infraArgs InfrastructureArgsFnc, test testFnc) {
             return err
         }
 
-        infra, err := createWireguardVM(ctx, computeArgs)
+        infra, err := CreateServer(ctx, computeArgs)
         assert.NoError(t, err)
         test(t, &wg, infra)
 
