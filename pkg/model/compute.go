@@ -27,6 +27,14 @@ func (compute ComputeResult) ID() pulumi.IDOutput {
     return compute.Compute.ID()
 }
 
+func SelfImage(name string) *ImageArgs {
+    return &ImageArgs{
+        Name:   name,
+        Owners: []string{"self"},
+        States: []string{"available"},
+    }
+}
+
 // ComputeArgs defines the input parameter for the compute resource functions.
 type ComputeArgs struct {
     Vpc            *VpcResult
