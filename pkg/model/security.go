@@ -53,9 +53,9 @@ func AllowAllRuleSecGroup(securityGroup *SecurityGroup) *SecurityRule {
 
 func AllowSSHRule(security *SecurityArgs) *SecurityRule {
     if security.VPNEnabledSSH {
-        return AllowOnePortRule("ssh", 22).CidrBlock(security.VPNCidr)
+        return AllowOnePortRule("tcp", 22).CidrBlock(security.VPNCidr)
     }
-    return AllowOnePortRule("ssh", 22)
+    return AllowOnePortRule("tcp", 22)
 }
 
 func AllowOnePortRule(protocol string, port int) *SecurityRule {
