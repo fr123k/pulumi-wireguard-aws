@@ -39,7 +39,7 @@ script:
   - make wireguard-client-keys
   - export CLIENT_PUBLICKEY=$(cat ./test/tmp/client_publickey)
   - make deploy
-  - make validate
+  - make validate-${PROJECT}
 
 after_script:
   - make clean
