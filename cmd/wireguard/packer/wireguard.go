@@ -1,18 +1,13 @@
 package main
 
 import (
-    "time"
-
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/compute"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
-
-const size = "t2.large"
 
 func main() {
     pulumi.Run(func(ctx *pulumi.Context) error {
@@ -28,27 +23,7 @@ func main() {
             return err
         }
 
-        sshConnector := actors.NewSSHConnector(
-            actors.SSHConnectorArgs{
-                Port:       22,
-                Username:   "ubuntu",
-                Timeout:    2 * time.Minute,
-                SSHKeyPair: *keyPair.SSHKeyPair,
-                Commands: []actors.SSHCommand{
-                    {
-                        Command: "sudo cloud-init status --wait",
-                        Output:  false,
-                    },
-                    {
-                        Command: "sudo cat /tmp/server_publickey",
-                        Output:  true,
-                    },
-                },
-            },
-            utility.Logger{
-                Ctx: ctx,
-            },
-        )
+        sshConnector := shared.WireguardProvisioner(ctx, keyPair)
 
         err = compute.CreateImage(ctx, model.ImageArgs{
             Name:          "wireguard-ami-new",
