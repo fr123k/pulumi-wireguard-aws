@@ -60,6 +60,6 @@ func ProjectFileContent() {
 
 func TestUserData(t *testing.T) {
     ProjectFileContent()
-    _, err := model.Util.ReadFile("cloud-init/user-data.txt")
+    _, err := model.Util.ReadFile("cloud-init/wireguard.txt")
     assert.NoError(t, err)
 }

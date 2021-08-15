@@ -8,7 +8,7 @@ import (
     "github.com/stretchr/testify/assert"
 )
 
-type testFnc = func(t *testing.T, wg *sync.WaitGroup, infra *infrastructure)
+type testFnc = func(t *testing.T, wg *sync.WaitGroup, infra *Infrastructure)
 
 func Setup(t *testing.T, infraArgs InfrastructureArgsFnc, test testFnc) {
     err := pulumi.RunErr(func(ctx *pulumi.Context) error {
@@ -19,7 +19,7 @@ func Setup(t *testing.T, infraArgs InfrastructureArgsFnc, test testFnc) {
             return err
         }
 
-        infra, err := CreateServer(ctx, computeArgs)
+        infra, err := CreateServer(ctx, computeArgs, nil)
         assert.NoError(t, err)
         test(t, &wg, infra)
 
@@ -30,8 +30,8 @@ func Setup(t *testing.T, infraArgs InfrastructureArgsFnc, test testFnc) {
 }
 
 func TestWireguardWithVPNEnabled(t *testing.T) {
-    Setup(t, DefaultComputeArgs ,func(t *testing.T, wg *sync.WaitGroup, infra *infrastructure) {
-        assert.Equal(t, "ami-0eb1f3cdeeb8eed2a", *infra.imageID)
+    Setup(t, DefaultComputeArgs ,func(t *testing.T, wg *sync.WaitGroup, infra *Infrastructure) {
+        assert.Equal(t, "ami-0eb1f3cdeeb8eed2a", *infra.ImageID)
 
         assertTags(t, infra, wg, "Name", assert.Containsf)
         assertTags(t, infra, wg, "JobUrl", assert.Containsf)
@@ -44,8 +44,8 @@ func TestWireguardWithVPNEnabled(t *testing.T) {
 }
 
 func TestWireguardWithVPNDisabled(t *testing.T) {
-    Setup(t, DefaultComputeArgs2, func(t *testing.T, wg *sync.WaitGroup, infra *infrastructure) {
-        assert.Equal(t, "ami-0eb1f3cdeeb8eed2a", *infra.imageID)
+    Setup(t, DefaultComputeArgs2, func(t *testing.T, wg *sync.WaitGroup, infra *Infrastructure) {
+        assert.Equal(t, "ami-0eb1f3cdeeb8eed2a", *infra.ImageID)
 
         assertTags(t, infra, wg, "Name", assert.Containsf)
         assertTags(t, infra, wg, "JobUrl", assert.Containsf)

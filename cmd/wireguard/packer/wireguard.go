@@ -22,7 +22,7 @@ func main() {
 
         keyPairName := "wireguard-packer"
         keyPair := model.NewKeyPairArgsWithKey(&keyPairName)
-        vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithSecurityAndKeyPair(security, keyPair))
+        vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithSecurityAndKeyPair(security, keyPair), nil)
 
         if err != nil {
             return err
