@@ -188,7 +188,7 @@ type AvailabilityZoneGroupArrayInput interface {
 type AvailabilityZoneGroupArray []AvailabilityZoneGroupInput
 
 func (AvailabilityZoneGroupArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*AvailabilityZoneGroup)(nil))
+	return reflect.TypeOf((*[]*AvailabilityZoneGroup)(nil)).Elem()
 }
 
 func (i AvailabilityZoneGroupArray) ToAvailabilityZoneGroupArrayOutput() AvailabilityZoneGroupArrayOutput {
@@ -213,7 +213,7 @@ type AvailabilityZoneGroupMapInput interface {
 type AvailabilityZoneGroupMap map[string]AvailabilityZoneGroupInput
 
 func (AvailabilityZoneGroupMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*AvailabilityZoneGroup)(nil))
+	return reflect.TypeOf((*map[string]*AvailabilityZoneGroup)(nil)).Elem()
 }
 
 func (i AvailabilityZoneGroupMap) ToAvailabilityZoneGroupMapOutput() AvailabilityZoneGroupMapOutput {
@@ -224,9 +224,7 @@ func (i AvailabilityZoneGroupMap) ToAvailabilityZoneGroupMapOutputWithContext(ct
 	return pulumi.ToOutputWithContext(ctx, i).(AvailabilityZoneGroupMapOutput)
 }
 
-type AvailabilityZoneGroupOutput struct {
-	*pulumi.OutputState
-}
+type AvailabilityZoneGroupOutput struct{ *pulumi.OutputState }
 
 func (AvailabilityZoneGroupOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*AvailabilityZoneGroup)(nil))
@@ -245,14 +243,12 @@ func (o AvailabilityZoneGroupOutput) ToAvailabilityZoneGroupPtrOutput() Availabi
 }
 
 func (o AvailabilityZoneGroupOutput) ToAvailabilityZoneGroupPtrOutputWithContext(ctx context.Context) AvailabilityZoneGroupPtrOutput {
-	return o.ApplyT(func(v AvailabilityZoneGroup) *AvailabilityZoneGroup {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v AvailabilityZoneGroup) *AvailabilityZoneGroup {
 		return &v
 	}).(AvailabilityZoneGroupPtrOutput)
 }
 
-type AvailabilityZoneGroupPtrOutput struct {
-	*pulumi.OutputState
-}
+type AvailabilityZoneGroupPtrOutput struct{ *pulumi.OutputState }
 
 func (AvailabilityZoneGroupPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**AvailabilityZoneGroup)(nil))
@@ -264,6 +260,16 @@ func (o AvailabilityZoneGroupPtrOutput) ToAvailabilityZoneGroupPtrOutput() Avail
 
 func (o AvailabilityZoneGroupPtrOutput) ToAvailabilityZoneGroupPtrOutputWithContext(ctx context.Context) AvailabilityZoneGroupPtrOutput {
 	return o
+}
+
+func (o AvailabilityZoneGroupPtrOutput) Elem() AvailabilityZoneGroupOutput {
+	return o.ApplyT(func(v *AvailabilityZoneGroup) AvailabilityZoneGroup {
+		if v != nil {
+			return *v
+		}
+		var ret AvailabilityZoneGroup
+		return ret
+	}).(AvailabilityZoneGroupOutput)
 }
 
 type AvailabilityZoneGroupArrayOutput struct{ *pulumi.OutputState }

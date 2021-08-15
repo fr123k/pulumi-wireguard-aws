@@ -197,7 +197,7 @@ type CarrierGatewayArrayInput interface {
 type CarrierGatewayArray []CarrierGatewayInput
 
 func (CarrierGatewayArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*CarrierGateway)(nil))
+	return reflect.TypeOf((*[]*CarrierGateway)(nil)).Elem()
 }
 
 func (i CarrierGatewayArray) ToCarrierGatewayArrayOutput() CarrierGatewayArrayOutput {
@@ -222,7 +222,7 @@ type CarrierGatewayMapInput interface {
 type CarrierGatewayMap map[string]CarrierGatewayInput
 
 func (CarrierGatewayMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*CarrierGateway)(nil))
+	return reflect.TypeOf((*map[string]*CarrierGateway)(nil)).Elem()
 }
 
 func (i CarrierGatewayMap) ToCarrierGatewayMapOutput() CarrierGatewayMapOutput {
@@ -233,9 +233,7 @@ func (i CarrierGatewayMap) ToCarrierGatewayMapOutputWithContext(ctx context.Cont
 	return pulumi.ToOutputWithContext(ctx, i).(CarrierGatewayMapOutput)
 }
 
-type CarrierGatewayOutput struct {
-	*pulumi.OutputState
-}
+type CarrierGatewayOutput struct{ *pulumi.OutputState }
 
 func (CarrierGatewayOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*CarrierGateway)(nil))
@@ -254,14 +252,12 @@ func (o CarrierGatewayOutput) ToCarrierGatewayPtrOutput() CarrierGatewayPtrOutpu
 }
 
 func (o CarrierGatewayOutput) ToCarrierGatewayPtrOutputWithContext(ctx context.Context) CarrierGatewayPtrOutput {
-	return o.ApplyT(func(v CarrierGateway) *CarrierGateway {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v CarrierGateway) *CarrierGateway {
 		return &v
 	}).(CarrierGatewayPtrOutput)
 }
 
-type CarrierGatewayPtrOutput struct {
-	*pulumi.OutputState
-}
+type CarrierGatewayPtrOutput struct{ *pulumi.OutputState }
 
 func (CarrierGatewayPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**CarrierGateway)(nil))
@@ -273,6 +269,16 @@ func (o CarrierGatewayPtrOutput) ToCarrierGatewayPtrOutput() CarrierGatewayPtrOu
 
 func (o CarrierGatewayPtrOutput) ToCarrierGatewayPtrOutputWithContext(ctx context.Context) CarrierGatewayPtrOutput {
 	return o
+}
+
+func (o CarrierGatewayPtrOutput) Elem() CarrierGatewayOutput {
+	return o.ApplyT(func(v *CarrierGateway) CarrierGateway {
+		if v != nil {
+			return *v
+		}
+		var ret CarrierGateway
+		return ret
+	}).(CarrierGatewayOutput)
 }
 
 type CarrierGatewayArrayOutput struct{ *pulumi.OutputState }

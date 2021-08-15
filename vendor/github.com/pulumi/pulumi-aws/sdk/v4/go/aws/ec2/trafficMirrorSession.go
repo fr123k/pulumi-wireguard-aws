@@ -285,7 +285,7 @@ type TrafficMirrorSessionArrayInput interface {
 type TrafficMirrorSessionArray []TrafficMirrorSessionInput
 
 func (TrafficMirrorSessionArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*TrafficMirrorSession)(nil))
+	return reflect.TypeOf((*[]*TrafficMirrorSession)(nil)).Elem()
 }
 
 func (i TrafficMirrorSessionArray) ToTrafficMirrorSessionArrayOutput() TrafficMirrorSessionArrayOutput {
@@ -310,7 +310,7 @@ type TrafficMirrorSessionMapInput interface {
 type TrafficMirrorSessionMap map[string]TrafficMirrorSessionInput
 
 func (TrafficMirrorSessionMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*TrafficMirrorSession)(nil))
+	return reflect.TypeOf((*map[string]*TrafficMirrorSession)(nil)).Elem()
 }
 
 func (i TrafficMirrorSessionMap) ToTrafficMirrorSessionMapOutput() TrafficMirrorSessionMapOutput {
@@ -321,9 +321,7 @@ func (i TrafficMirrorSessionMap) ToTrafficMirrorSessionMapOutputWithContext(ctx 
 	return pulumi.ToOutputWithContext(ctx, i).(TrafficMirrorSessionMapOutput)
 }
 
-type TrafficMirrorSessionOutput struct {
-	*pulumi.OutputState
-}
+type TrafficMirrorSessionOutput struct{ *pulumi.OutputState }
 
 func (TrafficMirrorSessionOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*TrafficMirrorSession)(nil))
@@ -342,14 +340,12 @@ func (o TrafficMirrorSessionOutput) ToTrafficMirrorSessionPtrOutput() TrafficMir
 }
 
 func (o TrafficMirrorSessionOutput) ToTrafficMirrorSessionPtrOutputWithContext(ctx context.Context) TrafficMirrorSessionPtrOutput {
-	return o.ApplyT(func(v TrafficMirrorSession) *TrafficMirrorSession {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficMirrorSession) *TrafficMirrorSession {
 		return &v
 	}).(TrafficMirrorSessionPtrOutput)
 }
 
-type TrafficMirrorSessionPtrOutput struct {
-	*pulumi.OutputState
-}
+type TrafficMirrorSessionPtrOutput struct{ *pulumi.OutputState }
 
 func (TrafficMirrorSessionPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**TrafficMirrorSession)(nil))
@@ -361,6 +357,16 @@ func (o TrafficMirrorSessionPtrOutput) ToTrafficMirrorSessionPtrOutput() Traffic
 
 func (o TrafficMirrorSessionPtrOutput) ToTrafficMirrorSessionPtrOutputWithContext(ctx context.Context) TrafficMirrorSessionPtrOutput {
 	return o
+}
+
+func (o TrafficMirrorSessionPtrOutput) Elem() TrafficMirrorSessionOutput {
+	return o.ApplyT(func(v *TrafficMirrorSession) TrafficMirrorSession {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficMirrorSession
+		return ret
+	}).(TrafficMirrorSessionOutput)
 }
 
 type TrafficMirrorSessionArrayOutput struct{ *pulumi.OutputState }

@@ -22,7 +22,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pulumi/pulumi-aws/sdk/v3 v3.38.1 // indirect
-	github.com/pulumi/pulumi-aws/sdk/v4 v4.14.0
+	github.com/pulumi/pulumi-aws/sdk/v4 v4.15.0
 	github.com/pulumi/pulumi-hcloud/sdk v1.1.1
 	github.com/pulumi/pulumi/sdk/v2 v2.25.2 // indirect
 	github.com/pulumi/pulumi/sdk/v3 v3.9.1

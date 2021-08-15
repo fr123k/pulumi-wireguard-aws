@@ -439,7 +439,7 @@ type EipArrayInput interface {
 type EipArray []EipInput
 
 func (EipArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*Eip)(nil))
+	return reflect.TypeOf((*[]*Eip)(nil)).Elem()
 }
 
 func (i EipArray) ToEipArrayOutput() EipArrayOutput {
@@ -464,7 +464,7 @@ type EipMapInput interface {
 type EipMap map[string]EipInput
 
 func (EipMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*Eip)(nil))
+	return reflect.TypeOf((*map[string]*Eip)(nil)).Elem()
 }
 
 func (i EipMap) ToEipMapOutput() EipMapOutput {
@@ -475,9 +475,7 @@ func (i EipMap) ToEipMapOutputWithContext(ctx context.Context) EipMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(EipMapOutput)
 }
 
-type EipOutput struct {
-	*pulumi.OutputState
-}
+type EipOutput struct{ *pulumi.OutputState }
 
 func (EipOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Eip)(nil))
@@ -496,14 +494,12 @@ func (o EipOutput) ToEipPtrOutput() EipPtrOutput {
 }
 
 func (o EipOutput) ToEipPtrOutputWithContext(ctx context.Context) EipPtrOutput {
-	return o.ApplyT(func(v Eip) *Eip {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Eip) *Eip {
 		return &v
 	}).(EipPtrOutput)
 }
 
-type EipPtrOutput struct {
-	*pulumi.OutputState
-}
+type EipPtrOutput struct{ *pulumi.OutputState }
 
 func (EipPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**Eip)(nil))
@@ -515,6 +511,16 @@ func (o EipPtrOutput) ToEipPtrOutput() EipPtrOutput {
 
 func (o EipPtrOutput) ToEipPtrOutputWithContext(ctx context.Context) EipPtrOutput {
 	return o
+}
+
+func (o EipPtrOutput) Elem() EipOutput {
+	return o.ApplyT(func(v *Eip) Eip {
+		if v != nil {
+			return *v
+		}
+		var ret Eip
+		return ret
+	}).(EipOutput)
 }
 
 type EipArrayOutput struct{ *pulumi.OutputState }

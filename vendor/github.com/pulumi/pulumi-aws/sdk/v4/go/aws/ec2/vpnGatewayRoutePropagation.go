@@ -182,7 +182,7 @@ type VpnGatewayRoutePropagationArrayInput interface {
 type VpnGatewayRoutePropagationArray []VpnGatewayRoutePropagationInput
 
 func (VpnGatewayRoutePropagationArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*VpnGatewayRoutePropagation)(nil))
+	return reflect.TypeOf((*[]*VpnGatewayRoutePropagation)(nil)).Elem()
 }
 
 func (i VpnGatewayRoutePropagationArray) ToVpnGatewayRoutePropagationArrayOutput() VpnGatewayRoutePropagationArrayOutput {
@@ -207,7 +207,7 @@ type VpnGatewayRoutePropagationMapInput interface {
 type VpnGatewayRoutePropagationMap map[string]VpnGatewayRoutePropagationInput
 
 func (VpnGatewayRoutePropagationMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*VpnGatewayRoutePropagation)(nil))
+	return reflect.TypeOf((*map[string]*VpnGatewayRoutePropagation)(nil)).Elem()
 }
 
 func (i VpnGatewayRoutePropagationMap) ToVpnGatewayRoutePropagationMapOutput() VpnGatewayRoutePropagationMapOutput {
@@ -218,9 +218,7 @@ func (i VpnGatewayRoutePropagationMap) ToVpnGatewayRoutePropagationMapOutputWith
 	return pulumi.ToOutputWithContext(ctx, i).(VpnGatewayRoutePropagationMapOutput)
 }
 
-type VpnGatewayRoutePropagationOutput struct {
-	*pulumi.OutputState
-}
+type VpnGatewayRoutePropagationOutput struct{ *pulumi.OutputState }
 
 func (VpnGatewayRoutePropagationOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*VpnGatewayRoutePropagation)(nil))
@@ -239,14 +237,12 @@ func (o VpnGatewayRoutePropagationOutput) ToVpnGatewayRoutePropagationPtrOutput(
 }
 
 func (o VpnGatewayRoutePropagationOutput) ToVpnGatewayRoutePropagationPtrOutputWithContext(ctx context.Context) VpnGatewayRoutePropagationPtrOutput {
-	return o.ApplyT(func(v VpnGatewayRoutePropagation) *VpnGatewayRoutePropagation {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v VpnGatewayRoutePropagation) *VpnGatewayRoutePropagation {
 		return &v
 	}).(VpnGatewayRoutePropagationPtrOutput)
 }
 
-type VpnGatewayRoutePropagationPtrOutput struct {
-	*pulumi.OutputState
-}
+type VpnGatewayRoutePropagationPtrOutput struct{ *pulumi.OutputState }
 
 func (VpnGatewayRoutePropagationPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**VpnGatewayRoutePropagation)(nil))
@@ -258,6 +254,16 @@ func (o VpnGatewayRoutePropagationPtrOutput) ToVpnGatewayRoutePropagationPtrOutp
 
 func (o VpnGatewayRoutePropagationPtrOutput) ToVpnGatewayRoutePropagationPtrOutputWithContext(ctx context.Context) VpnGatewayRoutePropagationPtrOutput {
 	return o
+}
+
+func (o VpnGatewayRoutePropagationPtrOutput) Elem() VpnGatewayRoutePropagationOutput {
+	return o.ApplyT(func(v *VpnGatewayRoutePropagation) VpnGatewayRoutePropagation {
+		if v != nil {
+			return *v
+		}
+		var ret VpnGatewayRoutePropagation
+		return ret
+	}).(VpnGatewayRoutePropagationOutput)
 }
 
 type VpnGatewayRoutePropagationArrayOutput struct{ *pulumi.OutputState }
