@@ -1,19 +1,14 @@
 package main
 
 import (
-    "time"
-
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/compute"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/network"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
-
-const size = "t2.large"
 
 func main() {
     pulumi.Run(func(ctx *pulumi.Context) error {
@@ -28,11 +23,12 @@ func main() {
         }
         keyPairName := "wireguard-"
         keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
+        keyPair.Username = "root"
         computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
         computeArgs.Name = "wireguard"
         computeArgs.Images = []*model.ImageArgs{
             {
-                Name:   "ubuntu-20.04",
+                Name: "ubuntu-20.04",
             },
         }
 
@@ -42,27 +38,7 @@ func main() {
             return err
         }
 
-        sshConnector := actors.NewSSHConnector(
-            actors.SSHConnectorArgs{
-                Port:       22,
-                Username:   "root",
-                Timeout:    2 * time.Minute,
-                SSHKeyPair: *keyPair.SSHKeyPair,
-                Commands: []actors.SSHCommand{
-                    {
-                        Command: "sudo cloud-init status --wait",
-                        Output:  false,
-                    },
-                    {
-                        Command: "sudo cat /tmp/server_publickey",
-                        Output:  true,
-                    },
-                },
-            },
-            utility.Logger{
-                Ctx: ctx,
-            },
-        )
+        sshConnector := shared.WireguardProvisioner(ctx, keyPair)
 
         compute.ProvisionVM(ctx, &model.ProvisionArgs{
             ExportName:    "wireguard.publicKey",

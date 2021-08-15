@@ -2,20 +2,16 @@ package main
 
 import (
     "os"
-    "time"
 
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/compute"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
-
-const size = "t2.large"
 
 func main() {
     pulumi.Run(func(ctx *pulumi.Context) error {
@@ -28,7 +24,7 @@ func exports(ctx *pulumi.Context, infra *compute.Infrastructure) {
     ctx.Export("publicDns", infra.Server.PublicDns)
 }
 
-func createInfraStructure(ctx *pulumi.Context) (error) {
+func createInfraStructure(ctx *pulumi.Context) error {
     cfg := config.New(ctx, "")
     security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), model.VPCArgsDefault)
     security.Println()
@@ -95,27 +91,7 @@ func createInfraStructure(ctx *pulumi.Context) (error) {
         return err
     }
 
-    sshConnector := actors.NewSSHConnector(
-        actors.SSHConnectorArgs{
-            Port:       22,
-            Username:   "ubuntu",
-            Timeout:    2 * time.Minute,
-            SSHKeyPair: *keyPair.SSHKeyPair,
-            Commands: []actors.SSHCommand{
-                {
-                    Command: "sudo cloud-init status --wait",
-                    Output: false,
-                },
-                {
-                    Command: "sudo cat /tmp/server_publickey",
-                    Output: true,
-                },
-            },
-        },
-        utility.Logger{
-            Ctx: ctx,
-        },
-    )
+    sshConnector := shared.WireguardProvisioner(ctx, keyPair)
 
     compute.ProvisionVM(ctx, &model.ProvisionArgs{
         ExportName:    "wireguard.publicKey",
