@@ -1,28 +1,31 @@
 package compute
 
 import (
-    "fmt"
-    "os"
-    "strings"
+	"fmt"
+	"os"
+	"strings"
 
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
+	"github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
-    "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
-    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 const size = "t2.micro"
 
-type infrastructure struct {
-    groups   []*ec2.SecurityGroup
-    server   *ec2.Instance
-    imageID  *string
-    userData *model.UserData
+type Infrastructure struct {
+    Groups   []*ec2.SecurityGroup
+    Server   *ec2.Instance
+    ImageID  *string
+    UserData *model.UserData
 }
 
-func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*infrastructure, error) {
+type exportsFnc = func(ctx *pulumi.Context, infra *Infrastructure)
+
+func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, exports exportsFnc) (*Infrastructure, error) {
     securityGroups, ec2SecurityGroups, err := CreateSecurityGroups(ctx, computeArgs)
     if err != nil {
         return nil, err
@@ -38,13 +41,15 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*infrast
         ctx.Export("cloud-init", pulumi.String(computeArgs.UserData.Content))
     }
 
-    keyPair, err := ec2.NewKeyPair(ctx, *computeArgs.KeyPair.Name, &ec2.KeyPairArgs{
-        KeyName:   pulumi.String(*computeArgs.KeyPair.Name),
-        PublicKey: pulumi.String(*computeArgs.KeyPair.SSHKeyPair.PublicKeyStr),
-    })
-
-    if err != nil {
-        return nil, err
+    //TODO improve only create keypair if sshkey os specified
+    if computeArgs.KeyPair.SSHKeyPair != nil {
+        _, err := ec2.NewKeyPair(ctx, *computeArgs.KeyPair.Name, &ec2.KeyPairArgs{
+            KeyName:   pulumi.String(*computeArgs.KeyPair.Name),
+            PublicKey: pulumi.String(*computeArgs.KeyPair.SSHKeyPair.PublicKeyStr),
+        })
+        if err != nil {
+            return nil, err
+        }
     }
 
     ec2Args := &ec2.InstanceArgs{
@@ -54,13 +59,13 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*infrast
             "Name":   pulumi.String(computeArgs.Name),
             "JobUrl": pulumi.String(os.Getenv("TRAVIS_JOB_WEB_URL")),
         },
-        InstanceType: pulumi.String(size),
-        KeyName:      keyPair.KeyName,
-        Ami:          pulumi.String(*imageID),
+        InstanceType:        pulumi.String(size),
+        KeyName:             pulumi.String(*computeArgs.KeyPair.Name),
+        Ami:                 pulumi.String(*imageID),
         VpcSecurityGroupIds: network.ToStringArray(securityGroups),
     }
 
-    if (computeArgs.UserData != nil) {
+    if computeArgs.UserData != nil {
         ec2Args.UserData = pulumi.String(computeArgs.UserData.Content)
     }
 
@@ -74,43 +79,37 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*infrast
         return nil, err
     }
 
-    return &infrastructure{
-        groups:   ec2SecurityGroups,
-        server:   server,
-        imageID:  imageID,
-        userData: computeArgs.UserData,
-    }, nil
+    infra := Infrastructure{
+        Groups:   ec2SecurityGroups,
+        Server:   server,
+        ImageID:  imageID,
+        UserData: computeArgs.UserData,
+    }
+
+    if exports != nil {
+        exports(ctx, &infra)
+    }
+
+    return &infra, nil
 }
 
 //CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
-    //TODO cloud-init use only if jenkins ami doesn't exists.
-    // yaml, err := getCloudInitYaml("cloud-init/cloud-init.yaml", awsKeyID, awsKeySecret)
-    userDataVariables := map[string]string{
-        "{{ CLIENT_PUBLICKEY }}":        "CLIENT_PUBLICKEY",
-        "{{ CLIENT_IP_ADDRESS }}":       "CLIENT_IP_ADDRESS",
-        "{{ MAILJET_API_CREDENTIALS }}": "MAILJET_API_CREDENTIALS",
-        "{{ METADATA_URL }}":            "METADATA_URL",
-    }
-
-    userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
+func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, exports exportsFnc) (*model.ComputeResult, error) {
+    userData, err := shared.WireguardUserData()
     if err != nil {
         return nil, err
     }
 
     computeArgs.UserData = userData
 
-    infra, err := CreateServer(ctx, computeArgs)
+    infra, err := CreateServer(ctx, computeArgs, exports)
 
     if err != nil {
         return nil, err
     }
 
-    ctx.Export("publicIp", infra.server.PublicIp)
-    ctx.Export("publicDns", infra.server.PublicDns)
-
     return &model.ComputeResult{
-        Compute: infra.server.CustomResourceState,
+        Compute: infra.Server.CustomResourceState,
     }, err
 }
 

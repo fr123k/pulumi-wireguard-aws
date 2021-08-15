@@ -24,7 +24,7 @@ func DefaultComputeArgs(ctx *pulumi.Context) (*model.ComputeArgs, error) {
         "{{ METADATA_URL }}":            "METADATA_URL",
     }
 
-    userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
+    userData, err := model.NewUserData("cloud-init/wireguard.txt", model.TemplateVariablesEnvironment(userDataVariables))
     if err != nil {
         return nil, err
     }
@@ -95,7 +95,7 @@ func DefaultComputeArgs2(ctx *pulumi.Context) (*model.ComputeArgs, error) {
         "{{ METADATA_URL }}":            "METADATA_URL",
     }
 
-    userData, err := model.NewUserData("cloud-init/user-data.txt", model.TemplateVariablesEnvironment(userDataVariables))
+    userData, err := model.NewUserData("cloud-init/wireguard.txt", model.TemplateVariablesEnvironment(userDataVariables))
     if err != nil {
         return nil, err
     }
