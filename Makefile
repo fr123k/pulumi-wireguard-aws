@@ -80,5 +80,8 @@ wireguard-client-keys: prepare
 wireguard-public-key: prepare
 	echo "${WIREGUARD_SERVER_PUBLIC_KEY}" > ${TMP_FOLDER}/server_publickey
 
-validate: wireguard-public-key
+validate-wireguard: wireguard-public-key
 	$(MAKE) -C test -e WIREGUARD_SERVER_IP=${WIREGUARD_SERVER_IP} -e TMP_FOLDER=${TMP_FOLDER} wireguard-client
+
+validate-jenkins:
+	echo "valid"
