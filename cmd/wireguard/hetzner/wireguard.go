@@ -40,6 +40,16 @@ func main() {
                 Username:   "root",
                 Timeout:    2 * time.Minute,
                 SSHKeyPair: *keyPair.SSHKeyPair,
+                Commands: []actors.SSHCommand{
+                    {
+                        Command: "sudo cloud-init status --wait",
+                        Output:  false,
+                    },
+                    {
+                        Command: "sudo cat /tmp/server_publickey",
+                        Output:  true,
+                    },
+                },
             },
             utility.Logger{
                 Ctx: ctx,
