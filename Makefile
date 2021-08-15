@@ -1,8 +1,9 @@
 .PHONY: build
 export PULUMI_CONFIG_PASSPHRASE ?= test
 #STACK_SUFFIX ?="-$(shell pwgen -s 8 1)"
+PROJECT ?= wireguard
 CLOUD ?= aws
-STACK_NAME ?= ${CLOUD}${STACK_SUFFIX}
+STACK_NAME ?= ${PROJECT}-${CLOUD}${STACK_SUFFIX}
 AWS_REGION ?= eu-west-1
 WIREGUARD_SERVER_IP=$(shell pulumi stack output publicIp)
 WIREGUARD_SERVER_PUBLIC_KEY=$(shell pulumi stack output wireguard.publicKey)
@@ -36,10 +37,10 @@ pulumi-init: build
 init: pulumi-init
 
 build:
-	go build -o ${BUILD_FOLDER}/build/wireguard-${CLOUD} cmd/wireguard/${CLOUD}/wireguard.go
+	go build -o ${BUILD_FOLDER}/build/${PROJECT}-${CLOUD} cmd/${PROJECT}/${CLOUD}/${PROJECT}.go
 	go test -v --cover ./...
 	mkdir -p ./build
-	ln -fs ${BUILD_FOLDER}/build/wireguard-${CLOUD} ./build/wireguard
+	ln -fs ${BUILD_FOLDER}/build/${PROJECT}-${CLOUD} ./build/wireguard
 
 create: pulumi-init
 	pulumi up --yes
