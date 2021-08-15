@@ -28,7 +28,15 @@ func main() {
         }
         keyPairName := "wireguard-"
         keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
-        vm, err := compute.CreateWireguardVM(ctx, model.NewComputeArgsWithKeyPair(vpc, security, keyPair))
+        computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
+        computeArgs.Name = "wireguard"
+        computeArgs.Images = []*model.ImageArgs{
+            {
+                Name:   "ubuntu-20.04",
+            },
+        }
+
+        vm, err := compute.CreateWireguardVM(ctx, computeArgs)
 
         if err != nil {
             return err
