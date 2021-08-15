@@ -803,7 +803,7 @@ type VpnConnectionArrayInput interface {
 type VpnConnectionArray []VpnConnectionInput
 
 func (VpnConnectionArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*VpnConnection)(nil))
+	return reflect.TypeOf((*[]*VpnConnection)(nil)).Elem()
 }
 
 func (i VpnConnectionArray) ToVpnConnectionArrayOutput() VpnConnectionArrayOutput {
@@ -828,7 +828,7 @@ type VpnConnectionMapInput interface {
 type VpnConnectionMap map[string]VpnConnectionInput
 
 func (VpnConnectionMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*VpnConnection)(nil))
+	return reflect.TypeOf((*map[string]*VpnConnection)(nil)).Elem()
 }
 
 func (i VpnConnectionMap) ToVpnConnectionMapOutput() VpnConnectionMapOutput {
@@ -839,9 +839,7 @@ func (i VpnConnectionMap) ToVpnConnectionMapOutputWithContext(ctx context.Contex
 	return pulumi.ToOutputWithContext(ctx, i).(VpnConnectionMapOutput)
 }
 
-type VpnConnectionOutput struct {
-	*pulumi.OutputState
-}
+type VpnConnectionOutput struct{ *pulumi.OutputState }
 
 func (VpnConnectionOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*VpnConnection)(nil))
@@ -860,14 +858,12 @@ func (o VpnConnectionOutput) ToVpnConnectionPtrOutput() VpnConnectionPtrOutput {
 }
 
 func (o VpnConnectionOutput) ToVpnConnectionPtrOutputWithContext(ctx context.Context) VpnConnectionPtrOutput {
-	return o.ApplyT(func(v VpnConnection) *VpnConnection {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v VpnConnection) *VpnConnection {
 		return &v
 	}).(VpnConnectionPtrOutput)
 }
 
-type VpnConnectionPtrOutput struct {
-	*pulumi.OutputState
-}
+type VpnConnectionPtrOutput struct{ *pulumi.OutputState }
 
 func (VpnConnectionPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**VpnConnection)(nil))
@@ -879,6 +875,16 @@ func (o VpnConnectionPtrOutput) ToVpnConnectionPtrOutput() VpnConnectionPtrOutpu
 
 func (o VpnConnectionPtrOutput) ToVpnConnectionPtrOutputWithContext(ctx context.Context) VpnConnectionPtrOutput {
 	return o
+}
+
+func (o VpnConnectionPtrOutput) Elem() VpnConnectionOutput {
+	return o.ApplyT(func(v *VpnConnection) VpnConnection {
+		if v != nil {
+			return *v
+		}
+		var ret VpnConnection
+		return ret
+	}).(VpnConnectionOutput)
 }
 
 type VpnConnectionArrayOutput struct{ *pulumi.OutputState }

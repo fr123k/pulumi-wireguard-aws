@@ -314,7 +314,7 @@ type DefaultSecurityGroupArrayInput interface {
 type DefaultSecurityGroupArray []DefaultSecurityGroupInput
 
 func (DefaultSecurityGroupArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*DefaultSecurityGroup)(nil))
+	return reflect.TypeOf((*[]*DefaultSecurityGroup)(nil)).Elem()
 }
 
 func (i DefaultSecurityGroupArray) ToDefaultSecurityGroupArrayOutput() DefaultSecurityGroupArrayOutput {
@@ -339,7 +339,7 @@ type DefaultSecurityGroupMapInput interface {
 type DefaultSecurityGroupMap map[string]DefaultSecurityGroupInput
 
 func (DefaultSecurityGroupMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*DefaultSecurityGroup)(nil))
+	return reflect.TypeOf((*map[string]*DefaultSecurityGroup)(nil)).Elem()
 }
 
 func (i DefaultSecurityGroupMap) ToDefaultSecurityGroupMapOutput() DefaultSecurityGroupMapOutput {
@@ -350,9 +350,7 @@ func (i DefaultSecurityGroupMap) ToDefaultSecurityGroupMapOutputWithContext(ctx 
 	return pulumi.ToOutputWithContext(ctx, i).(DefaultSecurityGroupMapOutput)
 }
 
-type DefaultSecurityGroupOutput struct {
-	*pulumi.OutputState
-}
+type DefaultSecurityGroupOutput struct{ *pulumi.OutputState }
 
 func (DefaultSecurityGroupOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*DefaultSecurityGroup)(nil))
@@ -371,14 +369,12 @@ func (o DefaultSecurityGroupOutput) ToDefaultSecurityGroupPtrOutput() DefaultSec
 }
 
 func (o DefaultSecurityGroupOutput) ToDefaultSecurityGroupPtrOutputWithContext(ctx context.Context) DefaultSecurityGroupPtrOutput {
-	return o.ApplyT(func(v DefaultSecurityGroup) *DefaultSecurityGroup {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v DefaultSecurityGroup) *DefaultSecurityGroup {
 		return &v
 	}).(DefaultSecurityGroupPtrOutput)
 }
 
-type DefaultSecurityGroupPtrOutput struct {
-	*pulumi.OutputState
-}
+type DefaultSecurityGroupPtrOutput struct{ *pulumi.OutputState }
 
 func (DefaultSecurityGroupPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**DefaultSecurityGroup)(nil))
@@ -390,6 +386,16 @@ func (o DefaultSecurityGroupPtrOutput) ToDefaultSecurityGroupPtrOutput() Default
 
 func (o DefaultSecurityGroupPtrOutput) ToDefaultSecurityGroupPtrOutputWithContext(ctx context.Context) DefaultSecurityGroupPtrOutput {
 	return o
+}
+
+func (o DefaultSecurityGroupPtrOutput) Elem() DefaultSecurityGroupOutput {
+	return o.ApplyT(func(v *DefaultSecurityGroup) DefaultSecurityGroup {
+		if v != nil {
+			return *v
+		}
+		var ret DefaultSecurityGroup
+		return ret
+	}).(DefaultSecurityGroupOutput)
 }
 
 type DefaultSecurityGroupArrayOutput struct{ *pulumi.OutputState }

@@ -221,7 +221,7 @@ type DedicatedHostArrayInput interface {
 type DedicatedHostArray []DedicatedHostInput
 
 func (DedicatedHostArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*DedicatedHost)(nil))
+	return reflect.TypeOf((*[]*DedicatedHost)(nil)).Elem()
 }
 
 func (i DedicatedHostArray) ToDedicatedHostArrayOutput() DedicatedHostArrayOutput {
@@ -246,7 +246,7 @@ type DedicatedHostMapInput interface {
 type DedicatedHostMap map[string]DedicatedHostInput
 
 func (DedicatedHostMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*DedicatedHost)(nil))
+	return reflect.TypeOf((*map[string]*DedicatedHost)(nil)).Elem()
 }
 
 func (i DedicatedHostMap) ToDedicatedHostMapOutput() DedicatedHostMapOutput {
@@ -257,9 +257,7 @@ func (i DedicatedHostMap) ToDedicatedHostMapOutputWithContext(ctx context.Contex
 	return pulumi.ToOutputWithContext(ctx, i).(DedicatedHostMapOutput)
 }
 
-type DedicatedHostOutput struct {
-	*pulumi.OutputState
-}
+type DedicatedHostOutput struct{ *pulumi.OutputState }
 
 func (DedicatedHostOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*DedicatedHost)(nil))
@@ -278,14 +276,12 @@ func (o DedicatedHostOutput) ToDedicatedHostPtrOutput() DedicatedHostPtrOutput {
 }
 
 func (o DedicatedHostOutput) ToDedicatedHostPtrOutputWithContext(ctx context.Context) DedicatedHostPtrOutput {
-	return o.ApplyT(func(v DedicatedHost) *DedicatedHost {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v DedicatedHost) *DedicatedHost {
 		return &v
 	}).(DedicatedHostPtrOutput)
 }
 
-type DedicatedHostPtrOutput struct {
-	*pulumi.OutputState
-}
+type DedicatedHostPtrOutput struct{ *pulumi.OutputState }
 
 func (DedicatedHostPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**DedicatedHost)(nil))
@@ -297,6 +293,16 @@ func (o DedicatedHostPtrOutput) ToDedicatedHostPtrOutput() DedicatedHostPtrOutpu
 
 func (o DedicatedHostPtrOutput) ToDedicatedHostPtrOutputWithContext(ctx context.Context) DedicatedHostPtrOutput {
 	return o
+}
+
+func (o DedicatedHostPtrOutput) Elem() DedicatedHostOutput {
+	return o.ApplyT(func(v *DedicatedHost) DedicatedHost {
+		if v != nil {
+			return *v
+		}
+		var ret DedicatedHost
+		return ret
+	}).(DedicatedHostOutput)
 }
 
 type DedicatedHostArrayOutput struct{ *pulumi.OutputState }

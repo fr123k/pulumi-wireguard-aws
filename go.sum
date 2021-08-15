@@ -340,6 +340,8 @@ github.com/pulumi/pulumi-aws/sdk/v3 v3.38.1 h1:byze2zMeWAfXj95V2j/sr0U4eY5LKU6Hj
 github.com/pulumi/pulumi-aws/sdk/v3 v3.38.1/go.mod h1:RLQWCCARvzFKmDsgcLeqcM7Occ20uBF3SZKaPPc4/9s=
 github.com/pulumi/pulumi-aws/sdk/v4 v4.14.0 h1:wyAM0u4fgVkTxrKC697F3hy9X99bElgEPpLwZD0ck0I=
 github.com/pulumi/pulumi-aws/sdk/v4 v4.14.0/go.mod h1:31LC9pNuxOtzZ7E1/MaSHmeKkU/J9yAWsHjBqZ3GWjI=
+github.com/pulumi/pulumi-aws/sdk/v4 v4.15.0 h1:/IJjyP93RxVljOWJkByHl+q2R5oK5tWCVEW6nMMvUV0=
+github.com/pulumi/pulumi-aws/sdk/v4 v4.15.0/go.mod h1:31LC9pNuxOtzZ7E1/MaSHmeKkU/J9yAWsHjBqZ3GWjI=
 github.com/pulumi/pulumi-hcloud v1.1.1 h1:k1K7MtOebl7zdBnN+fg/iVN574YtFQP29EqccAgsofE=
 github.com/pulumi/pulumi-hcloud/sdk v1.1.1 h1:OoF4lf9ajCw4sK83SWys6L1BeifHC2M1+3/359nQa0E=
 github.com/pulumi/pulumi-hcloud/sdk v1.1.1/go.mod h1:LvquwgfbhWrPSroxe6ZyjarGjYTFI4MAtfv6LmCtYUI=

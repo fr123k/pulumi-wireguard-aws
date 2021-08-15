@@ -190,7 +190,7 @@ type VpcDhcpOptionsAssociationArrayInput interface {
 type VpcDhcpOptionsAssociationArray []VpcDhcpOptionsAssociationInput
 
 func (VpcDhcpOptionsAssociationArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*VpcDhcpOptionsAssociation)(nil))
+	return reflect.TypeOf((*[]*VpcDhcpOptionsAssociation)(nil)).Elem()
 }
 
 func (i VpcDhcpOptionsAssociationArray) ToVpcDhcpOptionsAssociationArrayOutput() VpcDhcpOptionsAssociationArrayOutput {
@@ -215,7 +215,7 @@ type VpcDhcpOptionsAssociationMapInput interface {
 type VpcDhcpOptionsAssociationMap map[string]VpcDhcpOptionsAssociationInput
 
 func (VpcDhcpOptionsAssociationMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*VpcDhcpOptionsAssociation)(nil))
+	return reflect.TypeOf((*map[string]*VpcDhcpOptionsAssociation)(nil)).Elem()
 }
 
 func (i VpcDhcpOptionsAssociationMap) ToVpcDhcpOptionsAssociationMapOutput() VpcDhcpOptionsAssociationMapOutput {
@@ -226,9 +226,7 @@ func (i VpcDhcpOptionsAssociationMap) ToVpcDhcpOptionsAssociationMapOutputWithCo
 	return pulumi.ToOutputWithContext(ctx, i).(VpcDhcpOptionsAssociationMapOutput)
 }
 
-type VpcDhcpOptionsAssociationOutput struct {
-	*pulumi.OutputState
-}
+type VpcDhcpOptionsAssociationOutput struct{ *pulumi.OutputState }
 
 func (VpcDhcpOptionsAssociationOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*VpcDhcpOptionsAssociation)(nil))
@@ -247,14 +245,12 @@ func (o VpcDhcpOptionsAssociationOutput) ToVpcDhcpOptionsAssociationPtrOutput() 
 }
 
 func (o VpcDhcpOptionsAssociationOutput) ToVpcDhcpOptionsAssociationPtrOutputWithContext(ctx context.Context) VpcDhcpOptionsAssociationPtrOutput {
-	return o.ApplyT(func(v VpcDhcpOptionsAssociation) *VpcDhcpOptionsAssociation {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v VpcDhcpOptionsAssociation) *VpcDhcpOptionsAssociation {
 		return &v
 	}).(VpcDhcpOptionsAssociationPtrOutput)
 }
 
-type VpcDhcpOptionsAssociationPtrOutput struct {
-	*pulumi.OutputState
-}
+type VpcDhcpOptionsAssociationPtrOutput struct{ *pulumi.OutputState }
 
 func (VpcDhcpOptionsAssociationPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**VpcDhcpOptionsAssociation)(nil))
@@ -266,6 +262,16 @@ func (o VpcDhcpOptionsAssociationPtrOutput) ToVpcDhcpOptionsAssociationPtrOutput
 
 func (o VpcDhcpOptionsAssociationPtrOutput) ToVpcDhcpOptionsAssociationPtrOutputWithContext(ctx context.Context) VpcDhcpOptionsAssociationPtrOutput {
 	return o
+}
+
+func (o VpcDhcpOptionsAssociationPtrOutput) Elem() VpcDhcpOptionsAssociationOutput {
+	return o.ApplyT(func(v *VpcDhcpOptionsAssociation) VpcDhcpOptionsAssociation {
+		if v != nil {
+			return *v
+		}
+		var ret VpcDhcpOptionsAssociation
+		return ret
+	}).(VpcDhcpOptionsAssociationOutput)
 }
 
 type VpcDhcpOptionsAssociationArrayOutput struct{ *pulumi.OutputState }

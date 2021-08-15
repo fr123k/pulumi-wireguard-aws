@@ -127,10 +127,11 @@ github.com/pkg/errors
 github.com/pmezard/go-difflib/difflib
 # github.com/pulumi/pulumi-aws/sdk/v3 v3.38.1
 ## explicit
-# github.com/pulumi/pulumi-aws/sdk/v4 v4.14.0
+# github.com/pulumi/pulumi-aws/sdk/v4 v4.15.0
 ## explicit
 github.com/pulumi/pulumi-aws/sdk/v4/go/aws
 github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2
+github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam
 # github.com/pulumi/pulumi-hcloud/sdk v1.1.1
 ## explicit
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud

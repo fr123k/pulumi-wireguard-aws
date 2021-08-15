@@ -416,7 +416,7 @@ type AmiArrayInput interface {
 type AmiArray []AmiInput
 
 func (AmiArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*Ami)(nil))
+	return reflect.TypeOf((*[]*Ami)(nil)).Elem()
 }
 
 func (i AmiArray) ToAmiArrayOutput() AmiArrayOutput {
@@ -441,7 +441,7 @@ type AmiMapInput interface {
 type AmiMap map[string]AmiInput
 
 func (AmiMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*Ami)(nil))
+	return reflect.TypeOf((*map[string]*Ami)(nil)).Elem()
 }
 
 func (i AmiMap) ToAmiMapOutput() AmiMapOutput {
@@ -452,9 +452,7 @@ func (i AmiMap) ToAmiMapOutputWithContext(ctx context.Context) AmiMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(AmiMapOutput)
 }
 
-type AmiOutput struct {
-	*pulumi.OutputState
-}
+type AmiOutput struct{ *pulumi.OutputState }
 
 func (AmiOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Ami)(nil))
@@ -473,14 +471,12 @@ func (o AmiOutput) ToAmiPtrOutput() AmiPtrOutput {
 }
 
 func (o AmiOutput) ToAmiPtrOutputWithContext(ctx context.Context) AmiPtrOutput {
-	return o.ApplyT(func(v Ami) *Ami {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Ami) *Ami {
 		return &v
 	}).(AmiPtrOutput)
 }
 
-type AmiPtrOutput struct {
-	*pulumi.OutputState
-}
+type AmiPtrOutput struct{ *pulumi.OutputState }
 
 func (AmiPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**Ami)(nil))
@@ -492,6 +488,16 @@ func (o AmiPtrOutput) ToAmiPtrOutput() AmiPtrOutput {
 
 func (o AmiPtrOutput) ToAmiPtrOutputWithContext(ctx context.Context) AmiPtrOutput {
 	return o
+}
+
+func (o AmiPtrOutput) Elem() AmiOutput {
+	return o.ApplyT(func(v *Ami) Ami {
+		if v != nil {
+			return *v
+		}
+		var ret Ami
+		return ret
+	}).(AmiOutput)
 }
 
 type AmiArrayOutput struct{ *pulumi.OutputState }

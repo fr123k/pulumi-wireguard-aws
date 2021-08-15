@@ -228,7 +228,7 @@ type KeyPairArrayInput interface {
 type KeyPairArray []KeyPairInput
 
 func (KeyPairArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*KeyPair)(nil))
+	return reflect.TypeOf((*[]*KeyPair)(nil)).Elem()
 }
 
 func (i KeyPairArray) ToKeyPairArrayOutput() KeyPairArrayOutput {
@@ -253,7 +253,7 @@ type KeyPairMapInput interface {
 type KeyPairMap map[string]KeyPairInput
 
 func (KeyPairMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*KeyPair)(nil))
+	return reflect.TypeOf((*map[string]*KeyPair)(nil)).Elem()
 }
 
 func (i KeyPairMap) ToKeyPairMapOutput() KeyPairMapOutput {
@@ -264,9 +264,7 @@ func (i KeyPairMap) ToKeyPairMapOutputWithContext(ctx context.Context) KeyPairMa
 	return pulumi.ToOutputWithContext(ctx, i).(KeyPairMapOutput)
 }
 
-type KeyPairOutput struct {
-	*pulumi.OutputState
-}
+type KeyPairOutput struct{ *pulumi.OutputState }
 
 func (KeyPairOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*KeyPair)(nil))
@@ -285,14 +283,12 @@ func (o KeyPairOutput) ToKeyPairPtrOutput() KeyPairPtrOutput {
 }
 
 func (o KeyPairOutput) ToKeyPairPtrOutputWithContext(ctx context.Context) KeyPairPtrOutput {
-	return o.ApplyT(func(v KeyPair) *KeyPair {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v KeyPair) *KeyPair {
 		return &v
 	}).(KeyPairPtrOutput)
 }
 
-type KeyPairPtrOutput struct {
-	*pulumi.OutputState
-}
+type KeyPairPtrOutput struct{ *pulumi.OutputState }
 
 func (KeyPairPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**KeyPair)(nil))
@@ -304,6 +300,16 @@ func (o KeyPairPtrOutput) ToKeyPairPtrOutput() KeyPairPtrOutput {
 
 func (o KeyPairPtrOutput) ToKeyPairPtrOutputWithContext(ctx context.Context) KeyPairPtrOutput {
 	return o
+}
+
+func (o KeyPairPtrOutput) Elem() KeyPairOutput {
+	return o.ApplyT(func(v *KeyPair) KeyPair {
+		if v != nil {
+			return *v
+		}
+		var ret KeyPair
+		return ret
+	}).(KeyPairOutput)
 }
 
 type KeyPairArrayOutput struct{ *pulumi.OutputState }

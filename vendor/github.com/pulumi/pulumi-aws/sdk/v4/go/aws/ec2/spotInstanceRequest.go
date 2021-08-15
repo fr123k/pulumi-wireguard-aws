@@ -776,7 +776,7 @@ type SpotInstanceRequestArrayInput interface {
 type SpotInstanceRequestArray []SpotInstanceRequestInput
 
 func (SpotInstanceRequestArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*SpotInstanceRequest)(nil))
+	return reflect.TypeOf((*[]*SpotInstanceRequest)(nil)).Elem()
 }
 
 func (i SpotInstanceRequestArray) ToSpotInstanceRequestArrayOutput() SpotInstanceRequestArrayOutput {
@@ -801,7 +801,7 @@ type SpotInstanceRequestMapInput interface {
 type SpotInstanceRequestMap map[string]SpotInstanceRequestInput
 
 func (SpotInstanceRequestMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*SpotInstanceRequest)(nil))
+	return reflect.TypeOf((*map[string]*SpotInstanceRequest)(nil)).Elem()
 }
 
 func (i SpotInstanceRequestMap) ToSpotInstanceRequestMapOutput() SpotInstanceRequestMapOutput {
@@ -812,9 +812,7 @@ func (i SpotInstanceRequestMap) ToSpotInstanceRequestMapOutputWithContext(ctx co
 	return pulumi.ToOutputWithContext(ctx, i).(SpotInstanceRequestMapOutput)
 }
 
-type SpotInstanceRequestOutput struct {
-	*pulumi.OutputState
-}
+type SpotInstanceRequestOutput struct{ *pulumi.OutputState }
 
 func (SpotInstanceRequestOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*SpotInstanceRequest)(nil))
@@ -833,14 +831,12 @@ func (o SpotInstanceRequestOutput) ToSpotInstanceRequestPtrOutput() SpotInstance
 }
 
 func (o SpotInstanceRequestOutput) ToSpotInstanceRequestPtrOutputWithContext(ctx context.Context) SpotInstanceRequestPtrOutput {
-	return o.ApplyT(func(v SpotInstanceRequest) *SpotInstanceRequest {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v SpotInstanceRequest) *SpotInstanceRequest {
 		return &v
 	}).(SpotInstanceRequestPtrOutput)
 }
 
-type SpotInstanceRequestPtrOutput struct {
-	*pulumi.OutputState
-}
+type SpotInstanceRequestPtrOutput struct{ *pulumi.OutputState }
 
 func (SpotInstanceRequestPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**SpotInstanceRequest)(nil))
@@ -852,6 +848,16 @@ func (o SpotInstanceRequestPtrOutput) ToSpotInstanceRequestPtrOutput() SpotInsta
 
 func (o SpotInstanceRequestPtrOutput) ToSpotInstanceRequestPtrOutputWithContext(ctx context.Context) SpotInstanceRequestPtrOutput {
 	return o
+}
+
+func (o SpotInstanceRequestPtrOutput) Elem() SpotInstanceRequestOutput {
+	return o.ApplyT(func(v *SpotInstanceRequest) SpotInstanceRequest {
+		if v != nil {
+			return *v
+		}
+		var ret SpotInstanceRequest
+		return ret
+	}).(SpotInstanceRequestOutput)
 }
 
 type SpotInstanceRequestArrayOutput struct{ *pulumi.OutputState }

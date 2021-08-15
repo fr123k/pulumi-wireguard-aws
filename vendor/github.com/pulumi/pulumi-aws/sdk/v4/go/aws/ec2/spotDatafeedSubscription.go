@@ -191,7 +191,7 @@ type SpotDatafeedSubscriptionArrayInput interface {
 type SpotDatafeedSubscriptionArray []SpotDatafeedSubscriptionInput
 
 func (SpotDatafeedSubscriptionArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*SpotDatafeedSubscription)(nil))
+	return reflect.TypeOf((*[]*SpotDatafeedSubscription)(nil)).Elem()
 }
 
 func (i SpotDatafeedSubscriptionArray) ToSpotDatafeedSubscriptionArrayOutput() SpotDatafeedSubscriptionArrayOutput {
@@ -216,7 +216,7 @@ type SpotDatafeedSubscriptionMapInput interface {
 type SpotDatafeedSubscriptionMap map[string]SpotDatafeedSubscriptionInput
 
 func (SpotDatafeedSubscriptionMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*SpotDatafeedSubscription)(nil))
+	return reflect.TypeOf((*map[string]*SpotDatafeedSubscription)(nil)).Elem()
 }
 
 func (i SpotDatafeedSubscriptionMap) ToSpotDatafeedSubscriptionMapOutput() SpotDatafeedSubscriptionMapOutput {
@@ -227,9 +227,7 @@ func (i SpotDatafeedSubscriptionMap) ToSpotDatafeedSubscriptionMapOutputWithCont
 	return pulumi.ToOutputWithContext(ctx, i).(SpotDatafeedSubscriptionMapOutput)
 }
 
-type SpotDatafeedSubscriptionOutput struct {
-	*pulumi.OutputState
-}
+type SpotDatafeedSubscriptionOutput struct{ *pulumi.OutputState }
 
 func (SpotDatafeedSubscriptionOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*SpotDatafeedSubscription)(nil))
@@ -248,14 +246,12 @@ func (o SpotDatafeedSubscriptionOutput) ToSpotDatafeedSubscriptionPtrOutput() Sp
 }
 
 func (o SpotDatafeedSubscriptionOutput) ToSpotDatafeedSubscriptionPtrOutputWithContext(ctx context.Context) SpotDatafeedSubscriptionPtrOutput {
-	return o.ApplyT(func(v SpotDatafeedSubscription) *SpotDatafeedSubscription {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v SpotDatafeedSubscription) *SpotDatafeedSubscription {
 		return &v
 	}).(SpotDatafeedSubscriptionPtrOutput)
 }
 
-type SpotDatafeedSubscriptionPtrOutput struct {
-	*pulumi.OutputState
-}
+type SpotDatafeedSubscriptionPtrOutput struct{ *pulumi.OutputState }
 
 func (SpotDatafeedSubscriptionPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**SpotDatafeedSubscription)(nil))
@@ -267,6 +263,16 @@ func (o SpotDatafeedSubscriptionPtrOutput) ToSpotDatafeedSubscriptionPtrOutput()
 
 func (o SpotDatafeedSubscriptionPtrOutput) ToSpotDatafeedSubscriptionPtrOutputWithContext(ctx context.Context) SpotDatafeedSubscriptionPtrOutput {
 	return o
+}
+
+func (o SpotDatafeedSubscriptionPtrOutput) Elem() SpotDatafeedSubscriptionOutput {
+	return o.ApplyT(func(v *SpotDatafeedSubscription) SpotDatafeedSubscription {
+		if v != nil {
+			return *v
+		}
+		var ret SpotDatafeedSubscription
+		return ret
+	}).(SpotDatafeedSubscriptionOutput)
 }
 
 type SpotDatafeedSubscriptionArrayOutput struct{ *pulumi.OutputState }
