@@ -335,7 +335,7 @@ type PeeringConnectionOptionsArrayInput interface {
 type PeeringConnectionOptionsArray []PeeringConnectionOptionsInput
 
 func (PeeringConnectionOptionsArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*PeeringConnectionOptions)(nil))
+	return reflect.TypeOf((*[]*PeeringConnectionOptions)(nil)).Elem()
 }
 
 func (i PeeringConnectionOptionsArray) ToPeeringConnectionOptionsArrayOutput() PeeringConnectionOptionsArrayOutput {
@@ -360,7 +360,7 @@ type PeeringConnectionOptionsMapInput interface {
 type PeeringConnectionOptionsMap map[string]PeeringConnectionOptionsInput
 
 func (PeeringConnectionOptionsMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*PeeringConnectionOptions)(nil))
+	return reflect.TypeOf((*map[string]*PeeringConnectionOptions)(nil)).Elem()
 }
 
 func (i PeeringConnectionOptionsMap) ToPeeringConnectionOptionsMapOutput() PeeringConnectionOptionsMapOutput {
@@ -371,9 +371,7 @@ func (i PeeringConnectionOptionsMap) ToPeeringConnectionOptionsMapOutputWithCont
 	return pulumi.ToOutputWithContext(ctx, i).(PeeringConnectionOptionsMapOutput)
 }
 
-type PeeringConnectionOptionsOutput struct {
-	*pulumi.OutputState
-}
+type PeeringConnectionOptionsOutput struct{ *pulumi.OutputState }
 
 func (PeeringConnectionOptionsOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*PeeringConnectionOptions)(nil))
@@ -392,14 +390,12 @@ func (o PeeringConnectionOptionsOutput) ToPeeringConnectionOptionsPtrOutput() Pe
 }
 
 func (o PeeringConnectionOptionsOutput) ToPeeringConnectionOptionsPtrOutputWithContext(ctx context.Context) PeeringConnectionOptionsPtrOutput {
-	return o.ApplyT(func(v PeeringConnectionOptions) *PeeringConnectionOptions {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v PeeringConnectionOptions) *PeeringConnectionOptions {
 		return &v
 	}).(PeeringConnectionOptionsPtrOutput)
 }
 
-type PeeringConnectionOptionsPtrOutput struct {
-	*pulumi.OutputState
-}
+type PeeringConnectionOptionsPtrOutput struct{ *pulumi.OutputState }
 
 func (PeeringConnectionOptionsPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**PeeringConnectionOptions)(nil))
@@ -411,6 +407,16 @@ func (o PeeringConnectionOptionsPtrOutput) ToPeeringConnectionOptionsPtrOutput()
 
 func (o PeeringConnectionOptionsPtrOutput) ToPeeringConnectionOptionsPtrOutputWithContext(ctx context.Context) PeeringConnectionOptionsPtrOutput {
 	return o
+}
+
+func (o PeeringConnectionOptionsPtrOutput) Elem() PeeringConnectionOptionsOutput {
+	return o.ApplyT(func(v *PeeringConnectionOptions) PeeringConnectionOptions {
+		if v != nil {
+			return *v
+		}
+		var ret PeeringConnectionOptions
+		return ret
+	}).(PeeringConnectionOptionsOutput)
 }
 
 type PeeringConnectionOptionsArrayOutput struct{ *pulumi.OutputState }

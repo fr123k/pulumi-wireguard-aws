@@ -309,7 +309,7 @@ type DefaultVpcArrayInput interface {
 type DefaultVpcArray []DefaultVpcInput
 
 func (DefaultVpcArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*DefaultVpc)(nil))
+	return reflect.TypeOf((*[]*DefaultVpc)(nil)).Elem()
 }
 
 func (i DefaultVpcArray) ToDefaultVpcArrayOutput() DefaultVpcArrayOutput {
@@ -334,7 +334,7 @@ type DefaultVpcMapInput interface {
 type DefaultVpcMap map[string]DefaultVpcInput
 
 func (DefaultVpcMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*DefaultVpc)(nil))
+	return reflect.TypeOf((*map[string]*DefaultVpc)(nil)).Elem()
 }
 
 func (i DefaultVpcMap) ToDefaultVpcMapOutput() DefaultVpcMapOutput {
@@ -345,9 +345,7 @@ func (i DefaultVpcMap) ToDefaultVpcMapOutputWithContext(ctx context.Context) Def
 	return pulumi.ToOutputWithContext(ctx, i).(DefaultVpcMapOutput)
 }
 
-type DefaultVpcOutput struct {
-	*pulumi.OutputState
-}
+type DefaultVpcOutput struct{ *pulumi.OutputState }
 
 func (DefaultVpcOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*DefaultVpc)(nil))
@@ -366,14 +364,12 @@ func (o DefaultVpcOutput) ToDefaultVpcPtrOutput() DefaultVpcPtrOutput {
 }
 
 func (o DefaultVpcOutput) ToDefaultVpcPtrOutputWithContext(ctx context.Context) DefaultVpcPtrOutput {
-	return o.ApplyT(func(v DefaultVpc) *DefaultVpc {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v DefaultVpc) *DefaultVpc {
 		return &v
 	}).(DefaultVpcPtrOutput)
 }
 
-type DefaultVpcPtrOutput struct {
-	*pulumi.OutputState
-}
+type DefaultVpcPtrOutput struct{ *pulumi.OutputState }
 
 func (DefaultVpcPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**DefaultVpc)(nil))
@@ -385,6 +381,16 @@ func (o DefaultVpcPtrOutput) ToDefaultVpcPtrOutput() DefaultVpcPtrOutput {
 
 func (o DefaultVpcPtrOutput) ToDefaultVpcPtrOutputWithContext(ctx context.Context) DefaultVpcPtrOutput {
 	return o
+}
+
+func (o DefaultVpcPtrOutput) Elem() DefaultVpcOutput {
+	return o.ApplyT(func(v *DefaultVpc) DefaultVpc {
+		if v != nil {
+			return *v
+		}
+		var ret DefaultVpc
+		return ret
+	}).(DefaultVpcOutput)
 }
 
 type DefaultVpcArrayOutput struct{ *pulumi.OutputState }

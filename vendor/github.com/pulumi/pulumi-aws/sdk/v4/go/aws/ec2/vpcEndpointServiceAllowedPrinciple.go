@@ -191,7 +191,7 @@ type VpcEndpointServiceAllowedPrincipleArrayInput interface {
 type VpcEndpointServiceAllowedPrincipleArray []VpcEndpointServiceAllowedPrincipleInput
 
 func (VpcEndpointServiceAllowedPrincipleArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*VpcEndpointServiceAllowedPrinciple)(nil))
+	return reflect.TypeOf((*[]*VpcEndpointServiceAllowedPrinciple)(nil)).Elem()
 }
 
 func (i VpcEndpointServiceAllowedPrincipleArray) ToVpcEndpointServiceAllowedPrincipleArrayOutput() VpcEndpointServiceAllowedPrincipleArrayOutput {
@@ -216,7 +216,7 @@ type VpcEndpointServiceAllowedPrincipleMapInput interface {
 type VpcEndpointServiceAllowedPrincipleMap map[string]VpcEndpointServiceAllowedPrincipleInput
 
 func (VpcEndpointServiceAllowedPrincipleMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*VpcEndpointServiceAllowedPrinciple)(nil))
+	return reflect.TypeOf((*map[string]*VpcEndpointServiceAllowedPrinciple)(nil)).Elem()
 }
 
 func (i VpcEndpointServiceAllowedPrincipleMap) ToVpcEndpointServiceAllowedPrincipleMapOutput() VpcEndpointServiceAllowedPrincipleMapOutput {
@@ -227,9 +227,7 @@ func (i VpcEndpointServiceAllowedPrincipleMap) ToVpcEndpointServiceAllowedPrinci
 	return pulumi.ToOutputWithContext(ctx, i).(VpcEndpointServiceAllowedPrincipleMapOutput)
 }
 
-type VpcEndpointServiceAllowedPrincipleOutput struct {
-	*pulumi.OutputState
-}
+type VpcEndpointServiceAllowedPrincipleOutput struct{ *pulumi.OutputState }
 
 func (VpcEndpointServiceAllowedPrincipleOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*VpcEndpointServiceAllowedPrinciple)(nil))
@@ -248,14 +246,12 @@ func (o VpcEndpointServiceAllowedPrincipleOutput) ToVpcEndpointServiceAllowedPri
 }
 
 func (o VpcEndpointServiceAllowedPrincipleOutput) ToVpcEndpointServiceAllowedPrinciplePtrOutputWithContext(ctx context.Context) VpcEndpointServiceAllowedPrinciplePtrOutput {
-	return o.ApplyT(func(v VpcEndpointServiceAllowedPrinciple) *VpcEndpointServiceAllowedPrinciple {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v VpcEndpointServiceAllowedPrinciple) *VpcEndpointServiceAllowedPrinciple {
 		return &v
 	}).(VpcEndpointServiceAllowedPrinciplePtrOutput)
 }
 
-type VpcEndpointServiceAllowedPrinciplePtrOutput struct {
-	*pulumi.OutputState
-}
+type VpcEndpointServiceAllowedPrinciplePtrOutput struct{ *pulumi.OutputState }
 
 func (VpcEndpointServiceAllowedPrinciplePtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**VpcEndpointServiceAllowedPrinciple)(nil))
@@ -267,6 +263,16 @@ func (o VpcEndpointServiceAllowedPrinciplePtrOutput) ToVpcEndpointServiceAllowed
 
 func (o VpcEndpointServiceAllowedPrinciplePtrOutput) ToVpcEndpointServiceAllowedPrinciplePtrOutputWithContext(ctx context.Context) VpcEndpointServiceAllowedPrinciplePtrOutput {
 	return o
+}
+
+func (o VpcEndpointServiceAllowedPrinciplePtrOutput) Elem() VpcEndpointServiceAllowedPrincipleOutput {
+	return o.ApplyT(func(v *VpcEndpointServiceAllowedPrinciple) VpcEndpointServiceAllowedPrinciple {
+		if v != nil {
+			return *v
+		}
+		var ret VpcEndpointServiceAllowedPrinciple
+		return ret
+	}).(VpcEndpointServiceAllowedPrincipleOutput)
 }
 
 type VpcEndpointServiceAllowedPrincipleArrayOutput struct{ *pulumi.OutputState }

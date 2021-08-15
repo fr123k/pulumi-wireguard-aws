@@ -308,7 +308,7 @@ type NetworkAclRuleArrayInput interface {
 type NetworkAclRuleArray []NetworkAclRuleInput
 
 func (NetworkAclRuleArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*NetworkAclRule)(nil))
+	return reflect.TypeOf((*[]*NetworkAclRule)(nil)).Elem()
 }
 
 func (i NetworkAclRuleArray) ToNetworkAclRuleArrayOutput() NetworkAclRuleArrayOutput {
@@ -333,7 +333,7 @@ type NetworkAclRuleMapInput interface {
 type NetworkAclRuleMap map[string]NetworkAclRuleInput
 
 func (NetworkAclRuleMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*NetworkAclRule)(nil))
+	return reflect.TypeOf((*map[string]*NetworkAclRule)(nil)).Elem()
 }
 
 func (i NetworkAclRuleMap) ToNetworkAclRuleMapOutput() NetworkAclRuleMapOutput {
@@ -344,9 +344,7 @@ func (i NetworkAclRuleMap) ToNetworkAclRuleMapOutputWithContext(ctx context.Cont
 	return pulumi.ToOutputWithContext(ctx, i).(NetworkAclRuleMapOutput)
 }
 
-type NetworkAclRuleOutput struct {
-	*pulumi.OutputState
-}
+type NetworkAclRuleOutput struct{ *pulumi.OutputState }
 
 func (NetworkAclRuleOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*NetworkAclRule)(nil))
@@ -365,14 +363,12 @@ func (o NetworkAclRuleOutput) ToNetworkAclRulePtrOutput() NetworkAclRulePtrOutpu
 }
 
 func (o NetworkAclRuleOutput) ToNetworkAclRulePtrOutputWithContext(ctx context.Context) NetworkAclRulePtrOutput {
-	return o.ApplyT(func(v NetworkAclRule) *NetworkAclRule {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v NetworkAclRule) *NetworkAclRule {
 		return &v
 	}).(NetworkAclRulePtrOutput)
 }
 
-type NetworkAclRulePtrOutput struct {
-	*pulumi.OutputState
-}
+type NetworkAclRulePtrOutput struct{ *pulumi.OutputState }
 
 func (NetworkAclRulePtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**NetworkAclRule)(nil))
@@ -384,6 +380,16 @@ func (o NetworkAclRulePtrOutput) ToNetworkAclRulePtrOutput() NetworkAclRulePtrOu
 
 func (o NetworkAclRulePtrOutput) ToNetworkAclRulePtrOutputWithContext(ctx context.Context) NetworkAclRulePtrOutput {
 	return o
+}
+
+func (o NetworkAclRulePtrOutput) Elem() NetworkAclRuleOutput {
+	return o.ApplyT(func(v *NetworkAclRule) NetworkAclRule {
+		if v != nil {
+			return *v
+		}
+		var ret NetworkAclRule
+		return ret
+	}).(NetworkAclRuleOutput)
 }
 
 type NetworkAclRuleArrayOutput struct{ *pulumi.OutputState }
