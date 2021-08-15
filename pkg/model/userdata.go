@@ -34,6 +34,10 @@ const (
     STRING TemplateVariableType = 0
     //ENVIRONMENT the variable value reference a environment variable value.
     ENVIRONMENT TemplateVariableType = 1
+    //ENV_PROPERTY the variable value reference a environment variable value.
+    ENV_PROPERTY TemplateVariableType = 2
+    //STRING_PROPERTY the variable is just a string and its key and value are used without modification.
+    STRING_PROPERTY TemplateVariableType = 3
 )
 
 //TemplateVariables converts a list map of variables to a TemplateVariable array with the passed variablesType
@@ -57,9 +61,19 @@ func TemplateVariablesString(variables map[string]string) []TemplateVariable {
     return TemplateVariables(variables, STRING)
 }
 
+//TemplateVariablesStringProperty converts a list map of variables to a TemplateVariable array with the variablesType STRING_PROPERTY
+func TemplateVariablesStringProperty(variables map[string]string) []TemplateVariable {
+    return TemplateVariables(variables, STRING_PROPERTY)
+}
+
 //TemplateVariablesEnvironment converts a list map of variables to a TemplateVariable array with the variablesType ENVIRONMENT
 func TemplateVariablesEnvironment(variables map[string]string) []TemplateVariable {
     return TemplateVariables(variables, ENVIRONMENT)
+}
+
+//TemplateVariablesEnvProperty converts a list map of variables to a TemplateVariable array with the variablesType ENV_PROPERTY
+func TemplateVariablesEnvProperty(variables map[string]string) []TemplateVariable {
+    return TemplateVariables(variables, ENV_PROPERTY)
 }
 
 //NewUserDataWithContentNoVariables return a UserData type fully initialized
@@ -101,16 +115,29 @@ func renderTemplate(template string, variables []TemplateVariable) string {
     result := template
     for _, variable := range variables {
         fmt.Println("Key:", variable.Key, "Value:", variable.Value)
+        keyReplace := fmt.Sprintf("{{ %s }}", variable.Key)
         if variable.Type == STRING {
 
-            result = strings.ReplaceAll(result, variable.Key, variable.Value)
+            result = strings.ReplaceAll(result, keyReplace, variable.Value)
+        } else if variable.Type == STRING_PROPERTY {
+
+            valueReplace := fmt.Sprintf("%s=%s", variable.Key, variable.Value)
+            result = strings.ReplaceAll(result, keyReplace, valueReplace)
         } else if variable.Type == ENVIRONMENT {
 
             envVariable, ok2 := os.LookupEnv(variable.Value)
             if ok2 {
-                result = strings.ReplaceAll(result, variable.Key, envVariable)
+                result = strings.ReplaceAll(result, keyReplace, envVariable)
             } else {
-                result = strings.ReplaceAll(result, variable.Key, "")
+                result = strings.ReplaceAll(result, keyReplace, "")
+            }
+        } else if variable.Type == ENV_PROPERTY {
+            envVariable, ok2 := os.LookupEnv(variable.Value)
+            valueReplace := fmt.Sprintf("%s=%s", variable.Key, envVariable)
+            if ok2 {
+                result = strings.ReplaceAll(result, keyReplace, valueReplace)
+            } else {
+                result = strings.ReplaceAll(result, keyReplace, "")
             }
         }
     }

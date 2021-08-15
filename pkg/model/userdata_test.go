@@ -22,6 +22,13 @@ PublicKey = TEST_CLIENT_PUBLICKEY
 PersistentKeepalive = 25
 EOF`
 
+const userDataContentStringPropertyExpected = `
+MYV4IP=$(curl TEST_METADATA_URL=TEST_METADATA_URL)
+
+PublicKey = TEST_CLIENT_PUBLICKEY=TEST_CLIENT_PUBLICKEY
+PersistentKeepalive = 25
+EOF`
+
 const userDataContentExpectedEmptyVariables = `
 MYV4IP=$(curl )
 
@@ -36,10 +43,17 @@ PublicKey = ENV_CLIENT_PUBLICKEY
 PersistentKeepalive = 25
 EOF`
 
+const userDataContentEnvPropertyVariablesExpected = `
+MYV4IP=$(curl TEST_METADATA_URL=ENV_TEST_METADATA_URL)
+
+PublicKey = TEST_CLIENT_PUBLICKEY=ENV_CLIENT_PUBLICKEY
+PersistentKeepalive = 25
+EOF`
+
 func userDataVariables() map[string]string {
     return map[string]string{
-        "{{ TEST_CLIENT_PUBLICKEY }}": "TEST_CLIENT_PUBLICKEY",
-        "{{ TEST_METADATA_URL }}":     "TEST_METADATA_URL",
+        "TEST_CLIENT_PUBLICKEY": "TEST_CLIENT_PUBLICKEY",
+        "TEST_METADATA_URL":     "TEST_METADATA_URL",
     }
 }
 
@@ -101,6 +115,21 @@ func TestNewUserDataWithContent(t *testing.T) {
 
     if userData.Content != userDataContentExpected {
         t.Errorf("The userData content is wrong, got: %s, want: %s.", userData.Content, userDataContentExpected)
+    }
+}
+
+//TestNewUserDataWithContentStringProperty test the NewUserDataWithContent method
+func TestNewUserDataWithContentStringProperty(t *testing.T) {
+    userData, err := NewUserDataWithContent(userDataContent, TemplateVariablesStringProperty(userDataVariables()))
+
+    assert(t, err)
+
+    if userData.OriginalContent != userDataContent {
+        t.Errorf("The userData original content is wrong, got: %s, want: %s.", userData.OriginalContent, userDataContent)
+    }
+
+    if userData.Content != userDataContentStringPropertyExpected {
+        t.Errorf("The userData content is wrong, got: %s, want: %s.", userData.Content, userDataContentStringPropertyExpected)
     }
 }
 
@@ -191,7 +220,26 @@ func TestNewUserDataWithEnvironmentVariables(t *testing.T) {
     }
 
     if userData.Content != userDataContentEnvironmentVariablesExpected {
-        t.Errorf("The userData content is wrong, got: %s, want: %s.", userData.Content, userDataContent)
+        t.Errorf("The userData content is wrong, got: %s, want: %s.", userData.Content, userDataContentEnvironmentVariablesExpected)
+    }
+}
+
+func TestNewUserDataWithEnvPropertyVariables(t *testing.T) {
+    os.Setenv("TEST_CLIENT_PUBLICKEY", "ENV_CLIENT_PUBLICKEY")
+    os.Setenv("TEST_METADATA_URL", "ENV_TEST_METADATA_URL")
+
+    MockFileContent(userDataContent)
+
+    userData, err := NewUserData("nonexistingfile", TemplateVariablesEnvProperty(userDataVariables()))
+
+    assert(t, err)
+
+    if userData.OriginalContent != userDataContent {
+        t.Errorf("The userData original content is wrong, got: %s, want: %s.", userData.OriginalContent, userDataContent)
+    }
+
+    if userData.Content != userDataContentEnvPropertyVariablesExpected {
+        t.Errorf("The userData content is wrong, got: %s, want: %s.", userData.Content, userDataContentEnvPropertyVariablesExpected)
     }
 }
 
