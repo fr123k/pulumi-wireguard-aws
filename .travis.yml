@@ -12,8 +12,8 @@ go:
 
 env:
   jobs:
-    - CLOUD=aws SSH_USER=ubuntu METADATA_URL=http://169.254.169.254/latest/meta-data/public-ipv4
-    - CLOUD=hetzner SSH_USER=root METADATA_URL=http://169.254.169.254/hetzner/v1/metadata/public-ipv4
+    - PROJECT=wireguard CLOUD=aws SSH_USER=ubuntu METADATA_URL=http://169.254.169.254/latest/meta-data/public-ipv4
+    - PROJECT=wireguard CLOUD=hetzner SSH_USER=root METADATA_URL=http://169.254.169.254/hetzner/v1/metadata/public-ipv4
     - PROJECT=jenkins CLOUD=aws SSH_USER=ubuntu METADATA_URL=http://169.254.169.254/latest/meta-data/public-ipv4
     - PROJECT=jenkins CLOUD=hetzner SSH_USER=root METADATA_URL=http://169.254.169.254/hetzner/v1/metadata/public-ipv4
   global:
