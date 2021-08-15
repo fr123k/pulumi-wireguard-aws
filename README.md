@@ -100,7 +100,7 @@ To open the ssh port for public access set the value of the `vpn_enabled_ssh` pu
 #### Prerequisites
 
 * mailjet account with certified sender address and api keys
-* change the sender and recipient address in the `user-data.txt` file
+* change the sender and recipient address in the `wireguard.txt` file
 
 This implementation is a proof of concept to share the wireguard server public elastic ip address and the
 public key without the need to have ssh access to the server.

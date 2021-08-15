@@ -11,9 +11,9 @@ import (
 
 type assertion = func(t assert.TestingT, s interface{}, contains interface{}, msg string, args ...interface{}) bool
 
-func assertTags(t *testing.T, infra *infrastructure, wg *sync.WaitGroup, expected interface{}, assertFnc assertion) {
+func assertTags(t *testing.T, infra *Infrastructure, wg *sync.WaitGroup, expected interface{}, assertFnc assertion) {
     wg.Add(1)
-    pulumi.All(infra.server.URN(), infra.server.Tags).ApplyT(func(all []interface{}) error {
+    pulumi.All(infra.Server.URN(), infra.Server.Tags).ApplyT(func(all []interface{}) error {
         urn := all[0].(pulumi.URN)
         tags := all[1].(map[string]string)
 
@@ -24,9 +24,9 @@ func assertTags(t *testing.T, infra *infrastructure, wg *sync.WaitGroup, expecte
     })
 }
 
-func assertUserDataNotNil(t *testing.T, infra *infrastructure, wg *sync.WaitGroup) {
+func assertUserDataNotNil(t *testing.T, infra *Infrastructure, wg *sync.WaitGroup) {
     wg.Add(1)
-    pulumi.All(infra.server.URN(), infra.server.UserData).ApplyT(func(all []interface{}) error {
+    pulumi.All(infra.Server.URN(), infra.Server.UserData).ApplyT(func(all []interface{}) error {
         urn := all[0].(pulumi.URN)
         userData := all[1].(string)
 
@@ -38,9 +38,9 @@ func assertUserDataNotNil(t *testing.T, infra *infrastructure, wg *sync.WaitGrou
     })
 }
 
-func assertSSHPort(t *testing.T, infra *infrastructure, wg *sync.WaitGroup, public bool) {
+func assertSSHPort(t *testing.T, infra *Infrastructure, wg *sync.WaitGroup, public bool) {
     wg.Add(1)
-    pulumi.All(infra.groups[0].URN(), infra.groups[0].Ingress, infra.groups[1].Ingress).ApplyT(func(all []interface{}) error {
+    pulumi.All(infra.Groups[0].URN(), infra.Groups[0].Ingress, infra.Groups[1].Ingress).ApplyT(func(all []interface{}) error {
         urn := all[0].(pulumi.URN)
 
         ingress := append(all[1].([]ec2.SecurityGroupIngress), all[2].([]ec2.SecurityGroupIngress)...)

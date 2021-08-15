@@ -23,6 +23,11 @@ func main() {
     })
 }
 
+func exports(ctx *pulumi.Context, infra *compute.Infrastructure) {
+    ctx.Export("publicIp", infra.Server.PublicIp)
+    ctx.Export("publicDns", infra.Server.PublicDns)
+}
+
 func createInfraStructure(ctx *pulumi.Context) (error) {
     cfg := config.New(ctx, "")
     security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), model.VPCArgsDefault)
@@ -84,7 +89,7 @@ func createInfraStructure(ctx *pulumi.Context) (error) {
         },
     }
 
-    vm, err := compute.CreateWireguardVM(ctx, computeArgs)
+    vm, err := compute.CreateWireguardVM(ctx, computeArgs, exports)
 
     if err != nil {
         return err

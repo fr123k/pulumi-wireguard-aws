@@ -35,17 +35,19 @@ func CreateSecurityGroups(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (
 func GetImage(ctx *pulumi.Context, imageArgs []*model.ImageArgs) (*string, error) {
     for _, image := range imageArgs {
         // mostRecent := true
+        filters := make([]ec2.GetAmiIdsFilter, 0)
+        filters = append(filters, ec2.GetAmiIdsFilter{
+            Name:   "name",
+            Values: []string{image.Name},
+        })
+        if len(image.States) > 0 {
+            filters = append(filters, ec2.GetAmiIdsFilter{
+                Name:   "state",
+                Values: image.States,
+            })
+        }
         amiIds, err := ec2.GetAmiIds(ctx, &ec2.GetAmiIdsArgs{
-            Filters: []ec2.GetAmiIdsFilter{
-                {
-                    Name:   "name",
-                    Values: []string{image.Name},
-                },
-                {
-                    Name:   "state",
-                    Values: image.States,
-                },
-            },
+            Filters: filters,
             Owners: image.Owners,
             // MostRecent: &mostRecent,
         })
