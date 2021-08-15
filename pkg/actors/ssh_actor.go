@@ -2,6 +2,7 @@ package actors
 
 import (
     "fmt"
+    "strings"
     "time"
 
     "github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
@@ -14,6 +15,7 @@ type SSHConnectorArgs struct {
     Username   string
     SSHKeyPair ssh.SSHKey
     Timeout    time.Duration
+    Commands   []SSHCommand
 }
 
 // SSHConnector the ssh implementation of the Connector actor
@@ -21,6 +23,11 @@ type SSHConnector struct {
     args *SSHConnectorArgs
     connector
     log utility.Logger
+}
+
+type SSHCommand struct {
+    Command string
+    Output  bool
 }
 
 // NewSSHConnector initialize an ssh connector
@@ -49,20 +56,32 @@ func (c *SSHConnector) Connect(address string) string {
         }
 
         c.log.Info("Open SSH connection to %s", address)
-
-        result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
-        if err != nil {
-            c.log.Error("Failed to run cmd : %s", err)
-            panic(fmt.Errorf("Failed to run cmd : %s", err))
+        var output strings.Builder
+        for _, cmd := range c.args.Commands {
+            result, err := sshClient.SSHCommand(cmd.Command)
+            if err != nil {
+                c.log.Error("Failed to run cmd '%s' with error '%s'", cmd.Command, err)
+                panic(fmt.Errorf("Failed to run cmd '%s' with error '%s'", cmd.Command, err))
+            }
+            c.log.Info("Result: %s", *result)
+            if cmd.Output {
+                output.WriteString(*result)
+            }
         }
-        c.log.Info("Result: %s", *result)
+        resultChan <- output.String()
+        // result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
+        // if err != nil {
+        //     c.log.Error("Failed to run cmd : %s", err)
+        //     panic(fmt.Errorf("Failed to run cmd : %s", err))
+        // }
+        // c.log.Info("Result: %s", *result)
 
-        result, err = sshClient.SSHCommand("sudo cat /tmp/server_publickey")
-        if err != nil {
-            c.log.Error("Failed to run cmd : %s", err)
-            panic(fmt.Errorf("Failed to run cmd : %s", err))
-        }
-        resultChan <- *result
+        // result, err = sshClient.SSHCommand("sudo cat /tmp/server_publickey")
+        // if err != nil {
+        //     c.log.Error("Failed to run cmd : %s", err)
+        //     panic(fmt.Errorf("Failed to run cmd : %s", err))
+        // }
+        // resultChan <- *result
     }
     return <-resultChan
 }
