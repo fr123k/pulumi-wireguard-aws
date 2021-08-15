@@ -10,7 +10,6 @@ import (
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/network"
 
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
@@ -56,7 +55,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
     }
 
     keyPairName := "development"
-    keyPair := model.NewKeyPairArgs(&keyPairName)
+    keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
     computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
     computeArgs.Name = "jenkins-master"
     computeArgs.UserData = userData
@@ -105,13 +104,12 @@ func createInfraStructure(ctx *pulumi.Context) error {
         return err
     }
 
-    sshKeys := ssh.ReadPrivateKey("/home/vagrant/.ssh/development.pem")
     sshConnector := actors.NewSSHConnector(
         actors.SSHConnectorArgs{
             Port:       22,
             Username:   "root",
             Timeout:    2 * time.Minute,
-            SSHKeyPair: *sshKeys,
+            SSHKeyPair: *keyPair.SSHKeyPair,
             Commands: []actors.SSHCommand{
                 {
                     Command: "sudo cloud-init status --wait",
