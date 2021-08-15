@@ -9,6 +9,7 @@ import (
 )
 
 type KeyPairArgs struct {
+    Username     string
     Name         *string
     RandomNumber *int
     SSHKeyPair   *ssh.SSHKey
@@ -23,6 +24,7 @@ func NewKeyPairArgsWithRandomName(name *string) *KeyPairArgs {
     randomNumber := rand.New(randSrc).Intn(100000)
     keyPairName := fmt.Sprintf("%s%d", *name, randomNumber)
     return &KeyPairArgs{
+        Username:     "ubuntu",
         Name:         &keyPairName,
         RandomNumber: &randomNumber,
     }
@@ -33,6 +35,7 @@ func NewKeyPairArgsWithRandomNameWithKeyFile(name *string, publicKeyFile *string
     randomNumber := rand.New(randSrc).Intn(100000)
     keyPairName := fmt.Sprintf("%s%d", *name, randomNumber)
     return &KeyPairArgs{
+        Username:     "ubuntu",
         Name:         &keyPairName,
         RandomNumber: &randomNumber,
         //TODO pass private key file as well ?
@@ -42,6 +45,7 @@ func NewKeyPairArgsWithRandomNameWithKeyFile(name *string, publicKeyFile *string
 
 func NewKeyPairArgsWithKeyFile(name *string, privateKeyFile string, publicKeyFile string) *KeyPairArgs {
     return &KeyPairArgs{
+        Username:   "ubuntu",
         Name:       name,
         SSHKeyPair: ssh.ReadKeyPair(privateKeyFile, publicKeyFile),
     }
@@ -49,6 +53,7 @@ func NewKeyPairArgsWithKeyFile(name *string, privateKeyFile string, publicKeyFil
 
 func NewKeyPairArgsWithKey(name *string) *KeyPairArgs {
     return &KeyPairArgs{
+        Username:   "ubuntu",
         Name:       name,
         SSHKeyPair: ssh.GenerateKeyPair(),
     }
@@ -60,6 +65,7 @@ func NewKeyPairArgsWithRandomNameAndKey(name *string) *KeyPairArgs {
     keyPairName := fmt.Sprintf("%s%d", *name, randomNumber)
 
     return &KeyPairArgs{
+        Username:     "ubuntu",
         Name:         &keyPairName,
         RandomNumber: &randomNumber,
         SSHKeyPair:   ssh.GenerateKeyPair(),

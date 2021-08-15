@@ -2,14 +2,12 @@ package main
 
 import (
     "os"
-    "time"
 
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/actors"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/compute"
     "github.com/fr123k/pulumi-wireguard-aws/pkg/hetzner/network"
+    "github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
     "github.com/fr123k/pulumi-wireguard-aws/pkg/model"
-    "github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -30,17 +28,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
 
     //TODO fetch new created aws key and secret
     // secret := config.Require("secret")
-    userDataEnvVariables := map[string]string{
-        "SEED_BRANCH_JOBS": "SEED_BRANCH_JOBS",
-    }
-
-    userDataPropertyVariables := map[string]string{
-        "ADMIN_PASSWORD": utility.RandomSecret(32),
-        "AWS_KEY_ID":     "undefined",
-        "AWS_KEY_SECRET": "undefined",
-    }
-
-    userData, err := model.NewUserData("cloud-init/jenkins.yaml", append(model.TemplateVariablesEnvironment(userDataEnvVariables), model.TemplateVariablesStringProperty(userDataPropertyVariables)...))
+    userData, err := shared.JenkinsUserData("cloud-init/jenkins.yaml")
     if err != nil {
         return err
     }
@@ -55,15 +43,16 @@ func createInfraStructure(ctx *pulumi.Context) error {
 
     keyPairName := "development"
     keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
+    keyPair.Username = "root"
     computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
     computeArgs.Name = "jenkins-master"
     computeArgs.UserData = userData
     computeArgs.Images = []*model.ImageArgs{
         {
-            Name: "45467990", //jenkins-master snapshots image id
+            Name: "ubuntu-20.04",
         },
         {
-            Name: "ubuntu-20.04",
+            Name: "45467990", //jenkins-master snapshots image id
         },
     }
 
@@ -73,29 +62,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
         "pulumi-managed": "True",
     }
 
-    externalSecurityGroup := model.SecurityGroup{
-        Name:        "jenkins-security-group",
-        Description: "Pulumi Managed.",
-        Tags:        tags,
-        IngressRules: []*model.SecurityRule{
-            model.AllowOnePortRule("tcp", 80),
-            model.AllowOnePortRule("tcp", 22).CidrBlock("95.90.244.46/32"),
-            model.AllowSSHRule(security),
-        },
-        EgressRules: []*model.SecurityRule{
-            model.AllowOnePortRule("tcp", 80),
-            model.AllowOnePortRule("tcp", 443),
-            model.AllowOnePortRule("tcp", 22),
-            model.AllowOnePortRule("tcp", 22).CidrBlock("140.82.118.0/24"),
-            model.AllowOnePortRule("tcp", 22).CidrBlock("140.82.121.4/32"),
-            model.AllowOnePortRule("tcp", 22).CidrBlock("204.232.175.90/32"),
-            model.AllowOnePortRule("tcp", 22).CidrBlock("207.97.227.239/32"),
-        },
-    }
-    //The order is important the referenced security groups has to be first.
-    computeArgs.SecurityGroups = []*model.SecurityGroup{
-        &externalSecurityGroup,
-    }
+    computeArgs.SecurityGroups = shared.JenkinsSecGroup(tags, security)
 
     vm, err := compute.CreateServer(ctx, computeArgs, exports)
 
@@ -103,23 +70,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
         return err
     }
 
-    sshConnector := actors.NewSSHConnector(
-        actors.SSHConnectorArgs{
-            Port:       22,
-            Username:   "root",
-            Timeout:    2 * time.Minute,
-            SSHKeyPair: *keyPair.SSHKeyPair,
-            Commands: []actors.SSHCommand{
-                {
-                    Command: "sudo cloud-init status --wait",
-                    Output: false,
-                },
-            },
-        },
-        utility.Logger{
-            Ctx: ctx,
-        },
-    )
+    sshConnector := shared.JenkinsProvisioner(ctx, keyPair)
 
     compute.ProvisionVM(ctx, &model.ProvisionArgs{
         ExportName: "jenkins.publicKey",
