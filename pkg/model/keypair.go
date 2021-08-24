@@ -51,6 +51,14 @@ func NewKeyPairArgsWithKeyFile(name *string, privateKeyFile string, publicKeyFil
     }
 }
 
+func NewKeyPairArgsWithPrivateKeyFile(name *string, privateKeyFile string) *KeyPairArgs {
+    return &KeyPairArgs{
+        Username:   "ubuntu",
+        Name:       name,
+        SSHKeyPair: ssh.ReadPrivateKey(privateKeyFile),
+    }
+}
+
 func NewKeyPairArgsWithKey(name *string) *KeyPairArgs {
     return &KeyPairArgs{
         Username:   "ubuntu",
