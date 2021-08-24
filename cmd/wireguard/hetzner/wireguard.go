@@ -22,8 +22,13 @@ func main() {
             return err
         }
         keyPairName := "wireguard-"
+        
         keyPair := model.NewKeyPairArgsWithRandomNameAndKey(&keyPairName)
-        keyPair.Username = "root"
+        //Uncomment to enable ssh access for debugging
+        // keyPair := model.NewKeyPairArgsWithPrivateKeyFile(&keyPairName, "./development.pem")
+        // keyPair.Name = &keyPairName
+
+        keyPair.Username = "frank.ittermann"
         computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
         computeArgs.Name = "wireguard"
         computeArgs.Images = []*model.ImageArgs{
@@ -40,10 +45,17 @@ func main() {
 
         sshConnector := shared.WireguardProvisioner(ctx, keyPair)
 
+        //TODO implement exporting of mutliptl ssh output with one session
         compute.ProvisionVM(ctx, &model.ProvisionArgs{
             ExportName:    "wireguard.publicKey",
             SourceCompute: vm,
         }, &sshConnector)
+
+        sshConnectorPassword := shared.WireguardPasswordProvisioner(ctx, keyPair)
+        compute.ProvisionVM(ctx, &model.ProvisionArgs{
+            ExportName:    "wireguard.password",
+            SourceCompute: vm,
+        }, &sshConnectorPassword)
 
         return err
     })
