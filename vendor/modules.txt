@@ -52,6 +52,7 @@ github.com/cheggaaa/pb
 ## explicit
 github.com/creasty/defaults
 # github.com/davecgh/go-spew v1.1.1
+## explicit
 github.com/davecgh/go-spew/spew
 # github.com/djherbis/times v1.2.0
 ## explicit
@@ -110,6 +111,7 @@ github.com/mattn/go-runewidth
 # github.com/mitchellh/go-homedir v1.1.0
 github.com/mitchellh/go-homedir
 # github.com/mitchellh/go-ps v1.0.0
+## explicit
 github.com/mitchellh/go-ps
 # github.com/opentracing/basictracer-go v1.0.0
 ## explicit
@@ -124,14 +126,16 @@ github.com/opentracing/opentracing-go/log
 ## explicit
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
+## explicit
 github.com/pmezard/go-difflib/difflib
 # github.com/pulumi/pulumi-aws/sdk/v3 v3.38.1
 ## explicit
-# github.com/pulumi/pulumi-aws/sdk/v4 v4.15.0
+# github.com/pulumi/pulumi-aws/sdk/v4 v4.17.0
 ## explicit
 github.com/pulumi/pulumi-aws/sdk/v4/go/aws
 github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2
 github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam
+github.com/pulumi/pulumi-aws/sdk/v4/go/aws/route53
 # github.com/pulumi/pulumi-hcloud/sdk v1.1.1
 ## explicit
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud
@@ -261,6 +265,7 @@ golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
 # golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1
+## explicit
 golang.org/x/term
 # golang.org/x/text v0.3.6
 ## explicit
@@ -405,6 +410,7 @@ gopkg.in/warnings.v0
 ## explicit
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+## explicit
 gopkg.in/yaml.v3
 # sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 ## explicit
