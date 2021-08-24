@@ -1,7 +1,10 @@
 *.pem
 *.pem.pub
-.vscode/settings.json
 tmp/
 output/
 build/
 Pulumi.wireguard-ec2.yaml
+.vagrant
+.vscode
+
+.DS_Store
