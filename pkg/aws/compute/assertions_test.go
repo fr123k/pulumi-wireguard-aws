@@ -17,7 +17,6 @@ func assertTags(t *testing.T, infra *Infrastructure, wg *sync.WaitGroup, expecte
         urn := all[0].(pulumi.URN)
         tags := all[1].(map[string]string)
 
-        // assert.Containsf(t, tags, "Name", "missing a Name tag on server %v", urn)
         assertFnc(t, tags, expected, "missing a Name tag on server %v", urn)
         wg.Done()
         return nil
