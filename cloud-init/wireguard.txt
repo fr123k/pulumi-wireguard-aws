@@ -95,3 +95,85 @@ EOF
     -H 'Content-Type: application/json' \
     --data "@/tmp/wireguard.email"
 fi
+
+# Install https://github.com/ngoduykhanh/wireguard-ui
+
+cd /tmp
+wget https://github.com/ngoduykhanh/wireguard-ui/releases/download/v0.3.0/wireguard-ui-v0.3.0-linux-amd64.tar.gz
+tar xvfz wireguard-ui-v0.3.0-linux-amd64.tar.gz
+mv wireguard-ui /usr/local/bin/wireguard-ui
+rm wireguard-ui-v0.3.0-linux-amd64.tar.gz
+
+cat > /etc/systemd/system/wgui-restart-wg.service <<- EOF
+[Unit]
+Description=Restart WireGuard
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart wg-quick@wg0.service
+
+[Install]
+RequiredBy=wgui-restart-wg.path
+EOF
+
+cat > /etc/systemd/system/wgui-restart-wg.path <<- EOF
+[Unit]
+Description=Watch /etc/wireguard/wg0.conf for changes
+
+[Path]
+PathModified=/etc/wireguard/wg0.conf
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/wgui.service <<- EOF
+[Unit]
+Description=Start wireguard-ui
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+WorkingDirectory=/usr/local/bin
+ExecStart=/usr/local/bin/wireguard-ui --bind-address 0.0.0.0:80
+
+[Install]
+WantedBy=muli-user.target
+EOF
+
+pwgen 16 1 > /tmp/user_password
+
+mkdir -p /usr/local/bin/db/server/
+cat > /usr/local/bin/db/server/users.json <<- EOF
+{
+    "username":"admin",
+    "password":"$(cat /tmp/user_password)"
+}
+EOF
+
+cat > /usr/local/bin/db/server/keypair.json <<- EOF
+{
+	"private_key": "$(cat /tmp/server_privatekey)",
+	"public_key": "$(cat /tmp/server_publickey)",
+    "updated_at":"$(date --utc +%FT%T.%3NZ)"
+}
+EOF
+cat > /usr/local/bin/db/server/interfaces.json <<- EOF
+{
+	"addresses": [
+		"$MYV4IP/24"
+	],
+	"listen_port": "51820",
+	"updated_at": "$(date --utc +%FT%T.%3NZ)",
+	"post_up": "iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE",
+	"post_down": "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
+}
+EOF
+
+systemctl enable wgui-restart-wg.service
+systemctl start wgui-restart-wg.service
+systemctl enable wgui-restart-wg.path
+systemctl start wgui-restart-wg.path
+systemctl enable wgui.service
+systemctl start wgui.service
