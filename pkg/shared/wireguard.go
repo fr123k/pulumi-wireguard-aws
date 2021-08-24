@@ -47,3 +47,27 @@ func WireguardProvisioner(ctx *pulumi.Context, keyPair *model.KeyPairArgs) actor
         },
     )
 }
+
+func WireguardPasswordProvisioner(ctx *pulumi.Context, keyPair *model.KeyPairArgs) actors.SSHConnector {
+    return actors.NewSSHConnector(
+        actors.SSHConnectorArgs{
+            Port:       22,
+            Username:   keyPair.Username,
+            Timeout:    2 * time.Minute,
+            SSHKeyPair: *keyPair.SSHKeyPair,
+            Commands: []actors.SSHCommand{
+                {
+                    Command: "sudo cloud-init status --wait",
+                    Output:  false,
+                },
+                {
+                    Command: "sudo cat /tmp/user_password",
+                    Output:  true,
+                },
+            },
+        },
+        utility.Logger{
+            Ctx: ctx,
+        },
+    )
+}

@@ -69,6 +69,9 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, export ex
     serverArgs := hcloud.ServerArgs{
         //TODO handle multiple images like in the aws modul
         Image:      pulumi.String(computeArgs.Images[0].Name),
+        Labels:     pulumi.Map{
+            "Name":   pulumi.String(computeArgs.Name),
+        },
         Location:   pulumi.String("nbg1"),
         Name:       pulumi.String(computeArgs.Name),
         ServerType: pulumi.String(size),
@@ -158,7 +161,8 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 }
 
 func ProvisionVM(ctx *pulumi.Context, provisionArgs *model.ProvisionArgs, actor actors.Connector) error {
-    server, err := hcloud.GetServer(ctx, "wireguard2", provisionArgs.SourceCompute.ID(), &hcloud.ServerState{
+    name := fmt.Sprintf("wireguard-%s", utility.RandomSecret(12))
+    server, err := hcloud.GetServer(ctx, name, provisionArgs.SourceCompute.ID(), &hcloud.ServerState{
         Status: pulumi.String("running"),
     })
 
