@@ -24,13 +24,14 @@ go-init:
 	go mod vendor
 
 pulumi-init: build
-	pulumi plugin install resource aws 4.14.0
+	pulumi plugin install resource aws 4.17.0
+	pulumi plugin install resource hcloud 1.1.1
 	pulumi plugin ls
 	pulumi login --local
 	# pulumi login --cloud-url s3://s3-pulumi-state-d12f2f1
 	# pulumi stack rm -f ${STACK_NAME}
-	# pulumi stack select ${STACK_NAME}
-	pulumi stack select -c ${STACK_NAME}
+	pulumi stack init ${STACK_NAME} || echo ignore if stack ${STACK_NAME} already exists
+	pulumi stack select -c ${STACK_NAME} 
 	pulumi config set aws:region eu-west-1
 	pulumi config set vpn_enabled_ssh ${VPN_ENABLED_SSH}
 
