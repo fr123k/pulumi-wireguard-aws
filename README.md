@@ -364,3 +364,8 @@ To open a SSH shell just run the following command.
   only a restart of the wireguard systemd service would be needed.
 * use the pulumi log to print message on the terminal
 * generalize security rules implementation
+
+
+# Ackknowledge
+
+[Network Conflict k3s and wireguard](https://lists.zx2c4.com/pipermail/wireguard/2020-September/005849.html)
