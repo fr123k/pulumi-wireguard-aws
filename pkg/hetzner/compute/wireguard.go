@@ -13,6 +13,9 @@ import (
     "github.com/pulumi/pulumi-hcloud/sdk/go/hcloud"
 
     "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+
+    // Replace aws route refernce with a generic implementation
+    "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/route53"
 )
 
 const size = "cx11"
@@ -151,6 +154,29 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
     if err != nil {
         return nil, err
     }
+
+    opt0 := "fr123k.uk."
+    opt1 := false
+    selected, err := route53.LookupZone(ctx, &route53.LookupZoneArgs{
+        Name:        &opt0,
+        PrivateZone: &opt1,
+    }, nil)
+    if err != nil {
+        return nil, err
+    }
+
+    record, err := route53.NewRecord(ctx, "wireguard", &route53.RecordArgs{
+        ZoneId: pulumi.String(selected.ZoneId),
+        Name:   pulumi.String(fmt.Sprintf("%v%v", "wireguard.", selected.Name)),
+        Type:   pulumi.String("A"),
+        Ttl:    pulumi.Int(300),
+        Records: pulumi.StringArray{
+            infra.Server.Ipv4Address,
+        },
+    })
+
+    ctx.Export("DNS", record.Fqdn)
+
 
     //TODO hetzner cloud doesn't support security rules but the same can be achieved with local firewalls with in the VM
     //     Implement firewall provisioning based on userdata script or cloud-init.
