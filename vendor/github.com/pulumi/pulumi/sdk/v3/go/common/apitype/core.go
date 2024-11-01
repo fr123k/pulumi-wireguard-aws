@@ -16,27 +16,61 @@
 // boundaries, including service APIs, plugins, and file formats.  As a result, we must consider the versioning impacts
 // for each change we make to types within this package.  In general, this means the following:
 //
-//     1) DO NOT take anything away
-//     2) DO NOT change processing rules
-//     3) DO NOT make optional things required
-//     4) DO make anything new be optional
+//  1. DO NOT take anything away
+//  2. DO NOT change processing rules
+//  3. DO NOT make optional things required
+//  4. DO make anything new be optional
 //
 // In the event that this is not possible, a breaking change is implied.  The preferred approach is to never make
 // breaking changes.  If that isn't possible, the next best approach is to support both the old and new formats
 // side-by-side (for instance, by using a union type for the property in question).
 //
-// nolint: lll
+//nolint:lll
 package apitype
 
 import (
+	_ "embed" // for embedded schemas
 	"encoding/json"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+//go:embed deployments.json
+var deploymentSchema string
+
+// DeploymentSchemaID is the $id for the deployment schema.
+const DeploymentSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/deployments.json"
+
+// DeploymentSchema returns a JSON schema that can be used to validate serialized deployments (i.e. `UntypedDeployment`
+// objects).
+func DeploymentSchema() string {
+	return deploymentSchema
+}
+
+//go:embed resources.json
+var resourceSchema string
+
+// ResourceSchemaID is the $id for the deployment schema.
+const ResourceSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json"
+
+// ResourceSchema returns a JSON schema that can be used to validate serialized resource values (e.g. `ResourceV3`).
+func ResourceSchema() string {
+	return resourceSchema
+}
+
+//go:embed property-values.json
+var propertyValueSchema string
+
+// PropertyValueSchemaID is the $id for the property value schema.
+const PropertyValueSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json"
+
+// PropertyValueSchema returns a JSON schema that can be used to validate serialized property values.
+func PropertyValueSchema() string {
+	return propertyValueSchema
+}
 
 const (
 	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema.
@@ -114,11 +148,30 @@ type DeploymentV3 struct {
 	Resources []ResourceV3 `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// PendingOperations are all operations that were known by the engine to be currently executing.
 	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
+	// Metadata associated with the snapshot.
+	Metadata SnapshotMetadataV1 `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 
 type SecretsProvidersV1 struct {
 	Type  string          `json:"type"`
 	State json.RawMessage `json:"state,omitempty"`
+}
+
+// SnapshotMetadataV1 contains metadata about a deployment snapshot.
+type SnapshotMetadataV1 struct {
+	// Metadata associated with any integrity error affecting the snapshot.
+	IntegrityErrorMetadata *SnapshotIntegrityErrorMetadataV1 `json:"integrity_error,omitempty" yaml:"integrity_error,omitempty"`
+}
+
+// SnapshotIntegrityErrorMetadataV1 contains metadata about a snapshot integrity error, such as the version
+// and invocation of the Pulumi engine that caused it.
+type SnapshotIntegrityErrorMetadataV1 struct {
+	// The version of the Pulumi engine that caused the integrity error.
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	// The command/invocation of the Pulumi engine that caused the integrity error.
+	Command string `json:"command,omitempty" yaml:"command,omitempty"`
+	// The error message associated with the integrity error.
+	Error string `json:"error,omitempty" yaml:"error,omitempty"`
 }
 
 // OperationType is the type of an operation initiated by the engine. Its value indicates the type of operation
@@ -196,12 +249,12 @@ type ResourceV1 struct {
 }
 
 // ResourceV2 is the second version of the Resource API type. It absorbs a few breaking changes:
-//   1. The deprecated `Defaults` field is removed because it is not used anywhere,
-//   2. It adds an additional bool field, "External", which reflects whether or not this resource
-//      exists because of a call to `ReadResource`. This is motivated by a need to store
-//      resources that Pulumi does not own in the deployment.
-//   3. It adds an additional string field, "Provider", that is a reference to a first-class provider
-//      associated with this resource.
+//  1. The deprecated `Defaults` field is removed because it is not used anywhere,
+//  2. It adds an additional bool field, "External", which reflects whether or not this resource
+//     exists because of a call to `ReadResource`. This is motivated by a need to store
+//     resources that Pulumi does not own in the deployment.
+//  3. It adds an additional string field, "Provider", that is a reference to a first-class provider
+//     associated with this resource.
 //
 // Migrating from ResourceV1 to ResourceV2 involves:
 //  1. Dropping the `Defaults` field (it should be empty anyway)
@@ -240,14 +293,14 @@ type ResourceV2 struct {
 }
 
 // ResourceV3 is the third version of the Resource API type. It absorbs a few breaking changes:
-//   1. It adds a map from input property names to the dependencies that affect that input property. This is used to
-//      improve the precision of delete-before-create operations.
-//   2. It adds a new boolean field, `PendingReplacement`, that marks resources that have been deleted as part of a
-//      delete-before-create operation but have not yet been recreated.
+//  1. It adds a map from input property names to the dependencies that affect that input property. This is used to
+//     improve the precision of delete-before-create operations.
+//  2. It adds a new boolean field, `PendingReplacement`, that marks resources that have been deleted as part of a
+//     delete-before-create operation but have not yet been recreated.
 //
 // Migrating from ResourceV2 to ResourceV3 involves:
-//   1. Populating the map from input property names to dependencies by assuming that every dependency listed in
-//      `Dependencies` affects every input property.
+//  1. Populating the map from input property names to dependencies by assuming that every dependency listed in
+//     `Dependencies` affects every input property.
 type ResourceV3 struct {
 	// URN uniquely identifying this resource.
 	URN resource.URN `json:"urn" yaml:"urn"`
@@ -283,12 +336,25 @@ type ResourceV3 struct {
 	PendingReplacement bool `json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
 	// AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
-	// Aliases is a list of previous URNs that this resource may have had in previous deployments
+	// Aliases is a list of previous URNs that this resource may have had in previous deployments.
 	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
-	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations
+	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations.
 	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
 	// ImportID is the import input used for imported resources.
 	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
+	// If set to True, the providers Delete method will not be called for this resource. Pulumi simply stops tracking the deleted resource.
+	RetainOnDelete bool `json:"retainOnDelete,omitempty" yaml:"retainOnDelete,omitempty"`
+	// If set, the providers Delete method will not be called for this resource
+	// if specified resource is being deleted as well.
+	DeletedWith resource.URN `json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
+	// Created tracks when the remote resource was first added to state by pulumi. Checkpoints prior to early 2023 do not include this.
+	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
+	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.
+	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
+	// SourcePosition tracks the source location of this resource's registration
+	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+	// IgnoreChanges is a list of properties to ignore changes for.
+	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
@@ -305,10 +371,10 @@ type ManifestV1 struct {
 
 // PluginInfoV1 captures the version and information about a plugin.
 type PluginInfoV1 struct {
-	Name    string               `json:"name" yaml:"name"`
-	Path    string               `json:"path" yaml:"path"`
-	Type    workspace.PluginKind `json:"type" yaml:"type"`
-	Version string               `json:"version" yaml:"version"`
+	Name    string     `json:"name" yaml:"name"`
+	Path    string     `json:"path" yaml:"path"`
+	Type    PluginKind `json:"type" yaml:"type"`
+	Version string     `json:"version" yaml:"version"`
 }
 
 // SecretV1 captures the information that a particular value is secret and must be decrypted before use.
@@ -344,6 +410,8 @@ const (
 	ProjectRuntimeTag StackTagName = "pulumi:runtime"
 	// ProjectDescriptionTag is a tag that represents the description of a project (Pulumi.yaml's `description`).
 	ProjectDescriptionTag StackTagName = "pulumi:description"
+	// ProjectTemplateTag is a tag that represents the template that was used to create a project.
+	ProjectTemplateTag StackTagName = "pulumi:template"
 	// GitHubOwnerNameTag is a tag that represents the name of the owner on GitHub that this stack
 	// may be associated with (inferred by the CLI based on git remote info).
 	// TODO [pulumi/pulumi-service#2306] Once the UI is updated, we would no longer need the GitHub specific keys.
@@ -360,6 +428,15 @@ const (
 	// VCSRepositoryKindTag is a tag that represents the kind of the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on the git remote info).
 	VCSRepositoryKindTag StackTagName = "vcs:kind"
+	// VCSRepositoryRootTag is a tag that represents the root directory of the repository on the cloud VCS that
+	// this stack may be associated with (pulled from git by the CLI)
+	VCSRepositoryRootTag StackTagName = "vcs:root"
+)
+
+const (
+	// PulumiTagsConfigKey sets additional tags for a stack on a deployment. This is additive to any
+	// tags that are already set on the stack.
+	PulumiTagsConfigKey string = "pulumi:tags"
 )
 
 // Stack describes a Stack running on a Pulumi Cloud.

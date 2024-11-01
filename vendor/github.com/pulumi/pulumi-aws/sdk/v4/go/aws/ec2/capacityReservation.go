@@ -25,7 +25,7 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		_, err := ec2.NewCapacityReservation(ctx, "_default", &ec2.CapacityReservationArgs{
+// 		_, err := ec2.NewCapacityReservation(ctx, "default", &ec2.CapacityReservationArgs{
 // 			AvailabilityZone: pulumi.String("eu-west-1a"),
 // 			InstanceCount:    pulumi.Int(1),
 // 			InstancePlatform: pulumi.String("Linux/UNIX"),
@@ -41,7 +41,7 @@ import (
 //
 // ## Import
 //
-// Capacity Reservations can be imported using the `id`, e.g.
+// Capacity Reservations can be imported using the `id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/capacityReservation:CapacityReservation web cr-0123456789abcdef0
@@ -72,7 +72,8 @@ type CapacityReservation struct {
 	// The Amazon Resource Name (ARN) of the Outpost on which to create the Capacity Reservation.
 	OutpostArn pulumi.StringPtrOutput `pulumi:"outpostArn"`
 	// The ID of the AWS account that owns the Capacity Reservation.
-	OwnerId pulumi.StringOutput    `pulumi:"ownerId"`
+	OwnerId pulumi.StringOutput `pulumi:"ownerId"`
+	// A map of tags to assign to the resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags    pulumi.StringMapOutput `pulumi:"tags"`
 	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
 	// Indicates the tenancy of the Capacity Reservation. Specify either `default` or `dedicated`.
@@ -143,7 +144,8 @@ type capacityReservationState struct {
 	// The Amazon Resource Name (ARN) of the Outpost on which to create the Capacity Reservation.
 	OutpostArn *string `pulumi:"outpostArn"`
 	// The ID of the AWS account that owns the Capacity Reservation.
-	OwnerId *string           `pulumi:"ownerId"`
+	OwnerId *string `pulumi:"ownerId"`
+	// A map of tags to assign to the resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags    map[string]string `pulumi:"tags"`
 	TagsAll map[string]string `pulumi:"tagsAll"`
 	// Indicates the tenancy of the Capacity Reservation. Specify either `default` or `dedicated`.
@@ -175,6 +177,7 @@ type CapacityReservationState struct {
 	OutpostArn pulumi.StringPtrInput
 	// The ID of the AWS account that owns the Capacity Reservation.
 	OwnerId pulumi.StringPtrInput
+	// A map of tags to assign to the resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags    pulumi.StringMapInput
 	TagsAll pulumi.StringMapInput
 	// Indicates the tenancy of the Capacity Reservation. Specify either `default` or `dedicated`.
@@ -205,8 +208,9 @@ type capacityReservationArgs struct {
 	// The instance type for which to reserve capacity.
 	InstanceType string `pulumi:"instanceType"`
 	// The Amazon Resource Name (ARN) of the Outpost on which to create the Capacity Reservation.
-	OutpostArn *string           `pulumi:"outpostArn"`
-	Tags       map[string]string `pulumi:"tags"`
+	OutpostArn *string `pulumi:"outpostArn"`
+	// A map of tags to assign to the resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
 	// Indicates the tenancy of the Capacity Reservation. Specify either `default` or `dedicated`.
 	Tenancy *string `pulumi:"tenancy"`
 }
@@ -233,7 +237,8 @@ type CapacityReservationArgs struct {
 	InstanceType pulumi.StringInput
 	// The Amazon Resource Name (ARN) of the Outpost on which to create the Capacity Reservation.
 	OutpostArn pulumi.StringPtrInput
-	Tags       pulumi.StringMapInput
+	// A map of tags to assign to the resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
 	// Indicates the tenancy of the Capacity Reservation. Specify either `default` or `dedicated`.
 	Tenancy pulumi.StringPtrInput
 }
@@ -250,7 +255,7 @@ type CapacityReservationInput interface {
 }
 
 func (*CapacityReservation) ElementType() reflect.Type {
-	return reflect.TypeOf((*CapacityReservation)(nil))
+	return reflect.TypeOf((**CapacityReservation)(nil)).Elem()
 }
 
 func (i *CapacityReservation) ToCapacityReservationOutput() CapacityReservationOutput {
@@ -259,35 +264,6 @@ func (i *CapacityReservation) ToCapacityReservationOutput() CapacityReservationO
 
 func (i *CapacityReservation) ToCapacityReservationOutputWithContext(ctx context.Context) CapacityReservationOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(CapacityReservationOutput)
-}
-
-func (i *CapacityReservation) ToCapacityReservationPtrOutput() CapacityReservationPtrOutput {
-	return i.ToCapacityReservationPtrOutputWithContext(context.Background())
-}
-
-func (i *CapacityReservation) ToCapacityReservationPtrOutputWithContext(ctx context.Context) CapacityReservationPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(CapacityReservationPtrOutput)
-}
-
-type CapacityReservationPtrInput interface {
-	pulumi.Input
-
-	ToCapacityReservationPtrOutput() CapacityReservationPtrOutput
-	ToCapacityReservationPtrOutputWithContext(ctx context.Context) CapacityReservationPtrOutput
-}
-
-type capacityReservationPtrType CapacityReservationArgs
-
-func (*capacityReservationPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**CapacityReservation)(nil))
-}
-
-func (i *capacityReservationPtrType) ToCapacityReservationPtrOutput() CapacityReservationPtrOutput {
-	return i.ToCapacityReservationPtrOutputWithContext(context.Background())
-}
-
-func (i *capacityReservationPtrType) ToCapacityReservationPtrOutputWithContext(ctx context.Context) CapacityReservationPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(CapacityReservationPtrOutput)
 }
 
 // CapacityReservationArrayInput is an input type that accepts CapacityReservationArray and CapacityReservationArrayOutput values.
@@ -343,7 +319,7 @@ func (i CapacityReservationMap) ToCapacityReservationMapOutputWithContext(ctx co
 type CapacityReservationOutput struct{ *pulumi.OutputState }
 
 func (CapacityReservationOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*CapacityReservation)(nil))
+	return reflect.TypeOf((**CapacityReservation)(nil)).Elem()
 }
 
 func (o CapacityReservationOutput) ToCapacityReservationOutput() CapacityReservationOutput {
@@ -354,44 +330,10 @@ func (o CapacityReservationOutput) ToCapacityReservationOutputWithContext(ctx co
 	return o
 }
 
-func (o CapacityReservationOutput) ToCapacityReservationPtrOutput() CapacityReservationPtrOutput {
-	return o.ToCapacityReservationPtrOutputWithContext(context.Background())
-}
-
-func (o CapacityReservationOutput) ToCapacityReservationPtrOutputWithContext(ctx context.Context) CapacityReservationPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v CapacityReservation) *CapacityReservation {
-		return &v
-	}).(CapacityReservationPtrOutput)
-}
-
-type CapacityReservationPtrOutput struct{ *pulumi.OutputState }
-
-func (CapacityReservationPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**CapacityReservation)(nil))
-}
-
-func (o CapacityReservationPtrOutput) ToCapacityReservationPtrOutput() CapacityReservationPtrOutput {
-	return o
-}
-
-func (o CapacityReservationPtrOutput) ToCapacityReservationPtrOutputWithContext(ctx context.Context) CapacityReservationPtrOutput {
-	return o
-}
-
-func (o CapacityReservationPtrOutput) Elem() CapacityReservationOutput {
-	return o.ApplyT(func(v *CapacityReservation) CapacityReservation {
-		if v != nil {
-			return *v
-		}
-		var ret CapacityReservation
-		return ret
-	}).(CapacityReservationOutput)
-}
-
 type CapacityReservationArrayOutput struct{ *pulumi.OutputState }
 
 func (CapacityReservationArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]CapacityReservation)(nil))
+	return reflect.TypeOf((*[]*CapacityReservation)(nil)).Elem()
 }
 
 func (o CapacityReservationArrayOutput) ToCapacityReservationArrayOutput() CapacityReservationArrayOutput {
@@ -403,15 +345,15 @@ func (o CapacityReservationArrayOutput) ToCapacityReservationArrayOutputWithCont
 }
 
 func (o CapacityReservationArrayOutput) Index(i pulumi.IntInput) CapacityReservationOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) CapacityReservation {
-		return vs[0].([]CapacityReservation)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *CapacityReservation {
+		return vs[0].([]*CapacityReservation)[vs[1].(int)]
 	}).(CapacityReservationOutput)
 }
 
 type CapacityReservationMapOutput struct{ *pulumi.OutputState }
 
 func (CapacityReservationMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]CapacityReservation)(nil))
+	return reflect.TypeOf((*map[string]*CapacityReservation)(nil)).Elem()
 }
 
 func (o CapacityReservationMapOutput) ToCapacityReservationMapOutput() CapacityReservationMapOutput {
@@ -423,14 +365,16 @@ func (o CapacityReservationMapOutput) ToCapacityReservationMapOutputWithContext(
 }
 
 func (o CapacityReservationMapOutput) MapIndex(k pulumi.StringInput) CapacityReservationOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) CapacityReservation {
-		return vs[0].(map[string]CapacityReservation)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *CapacityReservation {
+		return vs[0].(map[string]*CapacityReservation)[vs[1].(string)]
 	}).(CapacityReservationOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*CapacityReservationInput)(nil)).Elem(), &CapacityReservation{})
+	pulumi.RegisterInputType(reflect.TypeOf((*CapacityReservationArrayInput)(nil)).Elem(), CapacityReservationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*CapacityReservationMapInput)(nil)).Elem(), CapacityReservationMap{})
 	pulumi.RegisterOutputType(CapacityReservationOutput{})
-	pulumi.RegisterOutputType(CapacityReservationPtrOutput{})
 	pulumi.RegisterOutputType(CapacityReservationArrayOutput{})
 	pulumi.RegisterOutputType(CapacityReservationMapOutput{})
 }

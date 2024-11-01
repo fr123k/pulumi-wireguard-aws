@@ -52,7 +52,7 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		_, err := ec2.NewNetworkInterface(ctx, "multi_ip", &ec2.NetworkInterfaceArgs{
+// 		_, err := ec2.NewNetworkInterface(ctx, "multi-ip", &ec2.NetworkInterfaceArgs{
 // 			SubnetId: pulumi.Any(aws_subnet.Main.Id),
 // 			PrivateIps: pulumi.StringArray{
 // 				pulumi.String("10.0.0.10"),
@@ -94,7 +94,7 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		_, err := ec2.NewVpc(ctx, "_default", &ec2.VpcArgs{
+// 		_, err := ec2.NewVpc(ctx, "default", &ec2.VpcArgs{
 // 			CidrBlock:          pulumi.String("10.0.0.0/16"),
 // 			EnableDnsHostnames: pulumi.Bool(true),
 // 		})
@@ -152,7 +152,7 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		_, err := ec2.NewEip(ctx, "byoip_ip", &ec2.EipArgs{
+// 		_, err := ec2.NewEip(ctx, "byoip-ip", &ec2.EipArgs{
 // 			PublicIpv4Pool: pulumi.String("ipv4pool-ec2-012345"),
 // 			Vpc:            pulumi.Bool(true),
 // 		})
@@ -166,13 +166,13 @@ import (
 //
 // ## Import
 //
-// EIPs in a VPC can be imported using their Allocation ID, e.g.
+// EIPs in a VPC can be imported using their Allocation ID, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/eip:Eip bar eipalloc-00a10e96
 // ```
 //
-//  EIPs in EC2 Classic can be imported using their Public IP, e.g.
+//  EIPs in EC2 Classic can be imported using their Public IP, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/eip:Eip bar 52.0.0.0
@@ -213,9 +213,11 @@ type Eip struct {
 	// Contains the public IP address.
 	PublicIp pulumi.StringOutput `pulumi:"publicIp"`
 	// EC2 IPv4 address pool identifier or `amazon`. This option is only available for VPC EIPs.
-	PublicIpv4Pool pulumi.StringOutput    `pulumi:"publicIpv4Pool"`
-	Tags           pulumi.StringMapOutput `pulumi:"tags"`
-	TagsAll        pulumi.StringMapOutput `pulumi:"tagsAll"`
+	PublicIpv4Pool pulumi.StringOutput `pulumi:"publicIpv4Pool"`
+	// Map of tags to assign to the resource. Tags can only be applied to EIPs in a VPC. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapOutput `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
 	// Boolean if the EIP is in a VPC or not.
 	Vpc pulumi.BoolOutput `pulumi:"vpc"`
 }
@@ -280,9 +282,11 @@ type eipState struct {
 	// Contains the public IP address.
 	PublicIp *string `pulumi:"publicIp"`
 	// EC2 IPv4 address pool identifier or `amazon`. This option is only available for VPC EIPs.
-	PublicIpv4Pool *string           `pulumi:"publicIpv4Pool"`
-	Tags           map[string]string `pulumi:"tags"`
-	TagsAll        map[string]string `pulumi:"tagsAll"`
+	PublicIpv4Pool *string `pulumi:"publicIpv4Pool"`
+	// Map of tags to assign to the resource. Tags can only be applied to EIPs in a VPC. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll map[string]string `pulumi:"tagsAll"`
 	// Boolean if the EIP is in a VPC or not.
 	Vpc *bool `pulumi:"vpc"`
 }
@@ -320,8 +324,10 @@ type EipState struct {
 	PublicIp pulumi.StringPtrInput
 	// EC2 IPv4 address pool identifier or `amazon`. This option is only available for VPC EIPs.
 	PublicIpv4Pool pulumi.StringPtrInput
-	Tags           pulumi.StringMapInput
-	TagsAll        pulumi.StringMapInput
+	// Map of tags to assign to the resource. Tags can only be applied to EIPs in a VPC. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapInput
 	// Boolean if the EIP is in a VPC or not.
 	Vpc pulumi.BoolPtrInput
 }
@@ -344,8 +350,9 @@ type eipArgs struct {
 	// Network interface ID to associate with.
 	NetworkInterface *string `pulumi:"networkInterface"`
 	// EC2 IPv4 address pool identifier or `amazon`. This option is only available for VPC EIPs.
-	PublicIpv4Pool *string           `pulumi:"publicIpv4Pool"`
-	Tags           map[string]string `pulumi:"tags"`
+	PublicIpv4Pool *string `pulumi:"publicIpv4Pool"`
+	// Map of tags to assign to the resource. Tags can only be applied to EIPs in a VPC. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
 	// Boolean if the EIP is in a VPC or not.
 	Vpc *bool `pulumi:"vpc"`
 }
@@ -366,7 +373,8 @@ type EipArgs struct {
 	NetworkInterface pulumi.StringPtrInput
 	// EC2 IPv4 address pool identifier or `amazon`. This option is only available for VPC EIPs.
 	PublicIpv4Pool pulumi.StringPtrInput
-	Tags           pulumi.StringMapInput
+	// Map of tags to assign to the resource. Tags can only be applied to EIPs in a VPC. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
 	// Boolean if the EIP is in a VPC or not.
 	Vpc pulumi.BoolPtrInput
 }
@@ -383,7 +391,7 @@ type EipInput interface {
 }
 
 func (*Eip) ElementType() reflect.Type {
-	return reflect.TypeOf((*Eip)(nil))
+	return reflect.TypeOf((**Eip)(nil)).Elem()
 }
 
 func (i *Eip) ToEipOutput() EipOutput {
@@ -392,35 +400,6 @@ func (i *Eip) ToEipOutput() EipOutput {
 
 func (i *Eip) ToEipOutputWithContext(ctx context.Context) EipOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(EipOutput)
-}
-
-func (i *Eip) ToEipPtrOutput() EipPtrOutput {
-	return i.ToEipPtrOutputWithContext(context.Background())
-}
-
-func (i *Eip) ToEipPtrOutputWithContext(ctx context.Context) EipPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(EipPtrOutput)
-}
-
-type EipPtrInput interface {
-	pulumi.Input
-
-	ToEipPtrOutput() EipPtrOutput
-	ToEipPtrOutputWithContext(ctx context.Context) EipPtrOutput
-}
-
-type eipPtrType EipArgs
-
-func (*eipPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Eip)(nil))
-}
-
-func (i *eipPtrType) ToEipPtrOutput() EipPtrOutput {
-	return i.ToEipPtrOutputWithContext(context.Background())
-}
-
-func (i *eipPtrType) ToEipPtrOutputWithContext(ctx context.Context) EipPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(EipPtrOutput)
 }
 
 // EipArrayInput is an input type that accepts EipArray and EipArrayOutput values.
@@ -476,7 +455,7 @@ func (i EipMap) ToEipMapOutputWithContext(ctx context.Context) EipMapOutput {
 type EipOutput struct{ *pulumi.OutputState }
 
 func (EipOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Eip)(nil))
+	return reflect.TypeOf((**Eip)(nil)).Elem()
 }
 
 func (o EipOutput) ToEipOutput() EipOutput {
@@ -487,44 +466,10 @@ func (o EipOutput) ToEipOutputWithContext(ctx context.Context) EipOutput {
 	return o
 }
 
-func (o EipOutput) ToEipPtrOutput() EipPtrOutput {
-	return o.ToEipPtrOutputWithContext(context.Background())
-}
-
-func (o EipOutput) ToEipPtrOutputWithContext(ctx context.Context) EipPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Eip) *Eip {
-		return &v
-	}).(EipPtrOutput)
-}
-
-type EipPtrOutput struct{ *pulumi.OutputState }
-
-func (EipPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Eip)(nil))
-}
-
-func (o EipPtrOutput) ToEipPtrOutput() EipPtrOutput {
-	return o
-}
-
-func (o EipPtrOutput) ToEipPtrOutputWithContext(ctx context.Context) EipPtrOutput {
-	return o
-}
-
-func (o EipPtrOutput) Elem() EipOutput {
-	return o.ApplyT(func(v *Eip) Eip {
-		if v != nil {
-			return *v
-		}
-		var ret Eip
-		return ret
-	}).(EipOutput)
-}
-
 type EipArrayOutput struct{ *pulumi.OutputState }
 
 func (EipArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Eip)(nil))
+	return reflect.TypeOf((*[]*Eip)(nil)).Elem()
 }
 
 func (o EipArrayOutput) ToEipArrayOutput() EipArrayOutput {
@@ -536,15 +481,15 @@ func (o EipArrayOutput) ToEipArrayOutputWithContext(ctx context.Context) EipArra
 }
 
 func (o EipArrayOutput) Index(i pulumi.IntInput) EipOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Eip {
-		return vs[0].([]Eip)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Eip {
+		return vs[0].([]*Eip)[vs[1].(int)]
 	}).(EipOutput)
 }
 
 type EipMapOutput struct{ *pulumi.OutputState }
 
 func (EipMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Eip)(nil))
+	return reflect.TypeOf((*map[string]*Eip)(nil)).Elem()
 }
 
 func (o EipMapOutput) ToEipMapOutput() EipMapOutput {
@@ -556,14 +501,16 @@ func (o EipMapOutput) ToEipMapOutputWithContext(ctx context.Context) EipMapOutpu
 }
 
 func (o EipMapOutput) MapIndex(k pulumi.StringInput) EipOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Eip {
-		return vs[0].(map[string]Eip)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Eip {
+		return vs[0].(map[string]*Eip)[vs[1].(string)]
 	}).(EipOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*EipInput)(nil)).Elem(), &Eip{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EipArrayInput)(nil)).Elem(), EipArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EipMapInput)(nil)).Elem(), EipMap{})
 	pulumi.RegisterOutputType(EipOutput{})
-	pulumi.RegisterOutputType(EipPtrOutput{})
 	pulumi.RegisterOutputType(EipArrayOutput{})
 	pulumi.RegisterOutputType(EipMapOutput{})
 }

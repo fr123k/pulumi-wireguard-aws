@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ type UpdateOptions struct {
 	LocalPolicyPackPaths []string            `json:"localPolicyPackPaths"`
 	Color                colors.Colorization `json:"color"`
 	DryRun               bool                `json:"dryRun"`
-	Parallel             int                 `json:"parallel"`
+	Parallel             int32               `json:"parallel"`
 	ShowConfig           bool                `json:"showConfig"`
 	ShowReplacementSteps bool                `json:"showReplacementSteps"`
 	ShowSames            bool                `json:"showNames"`
@@ -70,6 +70,26 @@ type UpdateMetadata struct {
 	Environment map[string]string `json:"environment"`
 }
 
+type MessageSeverity string
+
+const (
+	MessageSeverityWarning MessageSeverity = "warning"
+	MessageSeverityError   MessageSeverity = "error"
+	MessageSeverityInfo    MessageSeverity = "info"
+)
+
+// Message is a message from the backend to be displayed to the user.
+type Message struct {
+	// Severity is the severity of the message.
+	Severity MessageSeverity `json:"severity,omitempty"`
+	// Message is the message to display to the user.
+	Message string `json:"message"`
+}
+
+type AISettingsForUpdate struct {
+	CopilotIsEnabled bool `json:"copilotIsEnabled"`
+}
+
 // UpdateProgramResponse is the result of an update program request.
 type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
@@ -78,6 +98,11 @@ type UpdateProgramResponse struct {
 
 	// RequiredPolicies is a list of required Policy Packs to run during the update.
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
+
+	// Messages is a list of messages that should be displayed to the user.
+	Messages []Message `json:"messages,omitempty"`
+
+	AISettings AISettingsForUpdate `json:"aiSettings,omitempty"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.
@@ -95,6 +120,9 @@ type StartUpdateResponse struct {
 
 	// Token is the lease token (if any) to be used to authorize operations on this update.
 	Token string `json:"token,omitempty"`
+
+	// TokenExpiration is a UNIX timestamp by which the token will expire.
+	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
@@ -185,6 +213,9 @@ type RenewUpdateLeaseRequest struct {
 type RenewUpdateLeaseResponse struct {
 	// The renewed token.
 	Token string `json:"token"`
+
+	// TokenExpiration is a UNIX timestamp by which the token will expire.
+	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
 }
 
 const (
@@ -208,6 +239,38 @@ type PatchUpdateCheckpointRequest struct {
 	IsInvalid  bool            `json:"isInvalid"`
 	Version    int             `json:"version"`
 	Deployment json.RawMessage `json:"deployment,omitempty"`
+}
+
+// PatchUpdateVerbatimCheckpointRequest defines the body of a request to a patch update checkpoint endpoint of the
+// service API, where `UntypedDeloyment` is an `apitype.UntypedDeployment`. Whereas the PatchUpdateCheckpointRequest
+// API is subject to the service reformatting how a checkpoint is persisted, PatchUpdateVerbatimCheckpointRequest
+// enables the CLI to define the exact format.
+// Designed to be compatible with the PatchUpdateCheckpointDeltaRequest API, where formatting is critical in calculating
+// textual diffs.
+type PatchUpdateVerbatimCheckpointRequest struct {
+	Version           int             `json:"version"`
+	UntypedDeployment json.RawMessage `json:"untypedDeployment,omitempty"`
+
+	// Idempotency key incremented by the client on every PATCH call within the same update.
+	SequenceNumber int `json:"sequenceNumber"`
+}
+
+// PatchUpdateCheckpointDeltaRequest defines the body of a request to the bandwidth-optimized version of the patch
+// update checkpoint endpoint of the service API. It is semantically equivalent to the PatchUpdateCheckpointRequest, but
+// instead of transferring the entire Deployment as a JSON blob, it encodes it as a textual diff against the last-saved
+// deployment. This conserves bandwidth on large resources.
+type PatchUpdateCheckpointDeltaRequest struct {
+	// Protocol version.
+	Version int `json:"version"`
+
+	// SHA256 hash of the result of aplying the DeploymentDelta to the previously saved deployment.
+	CheckpointHash string `json:"checkpointHash"`
+
+	// Idempotency key incremented by the client on every PATCH call within the same update.
+	SequenceNumber int `json:"sequenceNumber"`
+
+	// Textual diff that recovers the desired deployment JSON when applied to the previously saved deployment JSON.
+	DeploymentDelta json.RawMessage `json:"deploymentDelta,omitempty"`
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.

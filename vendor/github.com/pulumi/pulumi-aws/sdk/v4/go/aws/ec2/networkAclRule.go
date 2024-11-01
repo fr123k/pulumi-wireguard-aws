@@ -79,9 +79,9 @@ type NetworkAclRule struct {
 	Egress pulumi.BoolPtrOutput `pulumi:"egress"`
 	// The from port to match.
 	FromPort pulumi.IntPtrOutput `pulumi:"fromPort"`
-	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocolE.g., -1
 	IcmpCode pulumi.StringPtrOutput `pulumi:"icmpCode"`
-	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocolE.g., -1
 	IcmpType pulumi.StringPtrOutput `pulumi:"icmpType"`
 	// The IPv6 CIDR block to allow or deny.
 	Ipv6CidrBlock pulumi.StringPtrOutput `pulumi:"ipv6CidrBlock"`
@@ -144,9 +144,9 @@ type networkAclRuleState struct {
 	Egress *bool `pulumi:"egress"`
 	// The from port to match.
 	FromPort *int `pulumi:"fromPort"`
-	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocolE.g., -1
 	IcmpCode *string `pulumi:"icmpCode"`
-	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocolE.g., -1
 	IcmpType *string `pulumi:"icmpType"`
 	// The IPv6 CIDR block to allow or deny.
 	Ipv6CidrBlock *string `pulumi:"ipv6CidrBlock"`
@@ -169,9 +169,9 @@ type NetworkAclRuleState struct {
 	Egress pulumi.BoolPtrInput
 	// The from port to match.
 	FromPort pulumi.IntPtrInput
-	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocolE.g., -1
 	IcmpCode pulumi.StringPtrInput
-	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocolE.g., -1
 	IcmpType pulumi.StringPtrInput
 	// The IPv6 CIDR block to allow or deny.
 	Ipv6CidrBlock pulumi.StringPtrInput
@@ -198,9 +198,9 @@ type networkAclRuleArgs struct {
 	Egress *bool `pulumi:"egress"`
 	// The from port to match.
 	FromPort *int `pulumi:"fromPort"`
-	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocolE.g., -1
 	IcmpCode *string `pulumi:"icmpCode"`
-	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocolE.g., -1
 	IcmpType *string `pulumi:"icmpType"`
 	// The IPv6 CIDR block to allow or deny.
 	Ipv6CidrBlock *string `pulumi:"ipv6CidrBlock"`
@@ -224,9 +224,9 @@ type NetworkAclRuleArgs struct {
 	Egress pulumi.BoolPtrInput
 	// The from port to match.
 	FromPort pulumi.IntPtrInput
-	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP code. Required if specifying ICMP for the protocolE.g., -1
 	IcmpCode pulumi.StringPtrInput
-	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocol. e.g. -1
+	// ICMP protocol: The ICMP type. Required if specifying ICMP for the protocolE.g., -1
 	IcmpType pulumi.StringPtrInput
 	// The IPv6 CIDR block to allow or deny.
 	Ipv6CidrBlock pulumi.StringPtrInput
@@ -254,7 +254,7 @@ type NetworkAclRuleInput interface {
 }
 
 func (*NetworkAclRule) ElementType() reflect.Type {
-	return reflect.TypeOf((*NetworkAclRule)(nil))
+	return reflect.TypeOf((**NetworkAclRule)(nil)).Elem()
 }
 
 func (i *NetworkAclRule) ToNetworkAclRuleOutput() NetworkAclRuleOutput {
@@ -263,35 +263,6 @@ func (i *NetworkAclRule) ToNetworkAclRuleOutput() NetworkAclRuleOutput {
 
 func (i *NetworkAclRule) ToNetworkAclRuleOutputWithContext(ctx context.Context) NetworkAclRuleOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(NetworkAclRuleOutput)
-}
-
-func (i *NetworkAclRule) ToNetworkAclRulePtrOutput() NetworkAclRulePtrOutput {
-	return i.ToNetworkAclRulePtrOutputWithContext(context.Background())
-}
-
-func (i *NetworkAclRule) ToNetworkAclRulePtrOutputWithContext(ctx context.Context) NetworkAclRulePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(NetworkAclRulePtrOutput)
-}
-
-type NetworkAclRulePtrInput interface {
-	pulumi.Input
-
-	ToNetworkAclRulePtrOutput() NetworkAclRulePtrOutput
-	ToNetworkAclRulePtrOutputWithContext(ctx context.Context) NetworkAclRulePtrOutput
-}
-
-type networkAclRulePtrType NetworkAclRuleArgs
-
-func (*networkAclRulePtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**NetworkAclRule)(nil))
-}
-
-func (i *networkAclRulePtrType) ToNetworkAclRulePtrOutput() NetworkAclRulePtrOutput {
-	return i.ToNetworkAclRulePtrOutputWithContext(context.Background())
-}
-
-func (i *networkAclRulePtrType) ToNetworkAclRulePtrOutputWithContext(ctx context.Context) NetworkAclRulePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(NetworkAclRulePtrOutput)
 }
 
 // NetworkAclRuleArrayInput is an input type that accepts NetworkAclRuleArray and NetworkAclRuleArrayOutput values.
@@ -347,7 +318,7 @@ func (i NetworkAclRuleMap) ToNetworkAclRuleMapOutputWithContext(ctx context.Cont
 type NetworkAclRuleOutput struct{ *pulumi.OutputState }
 
 func (NetworkAclRuleOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*NetworkAclRule)(nil))
+	return reflect.TypeOf((**NetworkAclRule)(nil)).Elem()
 }
 
 func (o NetworkAclRuleOutput) ToNetworkAclRuleOutput() NetworkAclRuleOutput {
@@ -358,44 +329,10 @@ func (o NetworkAclRuleOutput) ToNetworkAclRuleOutputWithContext(ctx context.Cont
 	return o
 }
 
-func (o NetworkAclRuleOutput) ToNetworkAclRulePtrOutput() NetworkAclRulePtrOutput {
-	return o.ToNetworkAclRulePtrOutputWithContext(context.Background())
-}
-
-func (o NetworkAclRuleOutput) ToNetworkAclRulePtrOutputWithContext(ctx context.Context) NetworkAclRulePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v NetworkAclRule) *NetworkAclRule {
-		return &v
-	}).(NetworkAclRulePtrOutput)
-}
-
-type NetworkAclRulePtrOutput struct{ *pulumi.OutputState }
-
-func (NetworkAclRulePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**NetworkAclRule)(nil))
-}
-
-func (o NetworkAclRulePtrOutput) ToNetworkAclRulePtrOutput() NetworkAclRulePtrOutput {
-	return o
-}
-
-func (o NetworkAclRulePtrOutput) ToNetworkAclRulePtrOutputWithContext(ctx context.Context) NetworkAclRulePtrOutput {
-	return o
-}
-
-func (o NetworkAclRulePtrOutput) Elem() NetworkAclRuleOutput {
-	return o.ApplyT(func(v *NetworkAclRule) NetworkAclRule {
-		if v != nil {
-			return *v
-		}
-		var ret NetworkAclRule
-		return ret
-	}).(NetworkAclRuleOutput)
-}
-
 type NetworkAclRuleArrayOutput struct{ *pulumi.OutputState }
 
 func (NetworkAclRuleArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]NetworkAclRule)(nil))
+	return reflect.TypeOf((*[]*NetworkAclRule)(nil)).Elem()
 }
 
 func (o NetworkAclRuleArrayOutput) ToNetworkAclRuleArrayOutput() NetworkAclRuleArrayOutput {
@@ -407,15 +344,15 @@ func (o NetworkAclRuleArrayOutput) ToNetworkAclRuleArrayOutputWithContext(ctx co
 }
 
 func (o NetworkAclRuleArrayOutput) Index(i pulumi.IntInput) NetworkAclRuleOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) NetworkAclRule {
-		return vs[0].([]NetworkAclRule)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *NetworkAclRule {
+		return vs[0].([]*NetworkAclRule)[vs[1].(int)]
 	}).(NetworkAclRuleOutput)
 }
 
 type NetworkAclRuleMapOutput struct{ *pulumi.OutputState }
 
 func (NetworkAclRuleMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]NetworkAclRule)(nil))
+	return reflect.TypeOf((*map[string]*NetworkAclRule)(nil)).Elem()
 }
 
 func (o NetworkAclRuleMapOutput) ToNetworkAclRuleMapOutput() NetworkAclRuleMapOutput {
@@ -427,14 +364,16 @@ func (o NetworkAclRuleMapOutput) ToNetworkAclRuleMapOutputWithContext(ctx contex
 }
 
 func (o NetworkAclRuleMapOutput) MapIndex(k pulumi.StringInput) NetworkAclRuleOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) NetworkAclRule {
-		return vs[0].(map[string]NetworkAclRule)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *NetworkAclRule {
+		return vs[0].(map[string]*NetworkAclRule)[vs[1].(string)]
 	}).(NetworkAclRuleOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkAclRuleInput)(nil)).Elem(), &NetworkAclRule{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkAclRuleArrayInput)(nil)).Elem(), NetworkAclRuleArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkAclRuleMapInput)(nil)).Elem(), NetworkAclRuleMap{})
 	pulumi.RegisterOutputType(NetworkAclRuleOutput{})
-	pulumi.RegisterOutputType(NetworkAclRulePtrOutput{})
 	pulumi.RegisterOutputType(NetworkAclRuleArrayOutput{})
 	pulumi.RegisterOutputType(NetworkAclRuleMapOutput{})
 }

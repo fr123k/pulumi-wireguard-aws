@@ -35,7 +35,7 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		_, err := ec2.NewDefaultVpc(ctx, "_default", &ec2.DefaultVpcArgs{
+// 		_, err := ec2.NewDefaultVpc(ctx, "default", &ec2.DefaultVpcArgs{
 // 			Tags: pulumi.StringMap{
 // 				"Name": pulumi.String("Default VPC"),
 // 			},
@@ -50,7 +50,7 @@ import (
 //
 // ## Import
 //
-// Default VPCs can be imported using the `vpc id`, e.g.
+// Default VPCs can be imported using the `vpc id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/defaultVpc:DefaultVpc default vpc-a01106c2
@@ -82,11 +82,16 @@ type DefaultVpc struct {
 	// A boolean flag to enable/disable DNS support in the VPC. Defaults true.
 	EnableDnsSupport pulumi.BoolPtrOutput `pulumi:"enableDnsSupport"`
 	// Tenancy of instances spin up within VPC.
-	InstanceTenancy pulumi.StringOutput `pulumi:"instanceTenancy"`
+	InstanceTenancy   pulumi.StringOutput    `pulumi:"instanceTenancy"`
+	Ipv4IpamPoolId    pulumi.StringPtrOutput `pulumi:"ipv4IpamPoolId"`
+	Ipv4NetmaskLength pulumi.IntPtrOutput    `pulumi:"ipv4NetmaskLength"`
 	// The association ID for the IPv6 CIDR block of the VPC
 	Ipv6AssociationId pulumi.StringOutput `pulumi:"ipv6AssociationId"`
 	// The IPv6 CIDR block of the VPC
-	Ipv6CidrBlock pulumi.StringOutput `pulumi:"ipv6CidrBlock"`
+	Ipv6CidrBlock                   pulumi.StringOutput    `pulumi:"ipv6CidrBlock"`
+	Ipv6CidrBlockNetworkBorderGroup pulumi.StringOutput    `pulumi:"ipv6CidrBlockNetworkBorderGroup"`
+	Ipv6IpamPoolId                  pulumi.StringPtrOutput `pulumi:"ipv6IpamPoolId"`
+	Ipv6NetmaskLength               pulumi.IntPtrOutput    `pulumi:"ipv6NetmaskLength"`
 	// The ID of the main route table associated with
 	// this VPC. Note that you can change a VPC's main route table by using an
 	// `ec2.MainRouteTableAssociation`
@@ -151,11 +156,16 @@ type defaultVpcState struct {
 	// A boolean flag to enable/disable DNS support in the VPC. Defaults true.
 	EnableDnsSupport *bool `pulumi:"enableDnsSupport"`
 	// Tenancy of instances spin up within VPC.
-	InstanceTenancy *string `pulumi:"instanceTenancy"`
+	InstanceTenancy   *string `pulumi:"instanceTenancy"`
+	Ipv4IpamPoolId    *string `pulumi:"ipv4IpamPoolId"`
+	Ipv4NetmaskLength *int    `pulumi:"ipv4NetmaskLength"`
 	// The association ID for the IPv6 CIDR block of the VPC
 	Ipv6AssociationId *string `pulumi:"ipv6AssociationId"`
 	// The IPv6 CIDR block of the VPC
-	Ipv6CidrBlock *string `pulumi:"ipv6CidrBlock"`
+	Ipv6CidrBlock                   *string `pulumi:"ipv6CidrBlock"`
+	Ipv6CidrBlockNetworkBorderGroup *string `pulumi:"ipv6CidrBlockNetworkBorderGroup"`
+	Ipv6IpamPoolId                  *string `pulumi:"ipv6IpamPoolId"`
+	Ipv6NetmaskLength               *int    `pulumi:"ipv6NetmaskLength"`
 	// The ID of the main route table associated with
 	// this VPC. Note that you can change a VPC's main route table by using an
 	// `ec2.MainRouteTableAssociation`
@@ -192,11 +202,16 @@ type DefaultVpcState struct {
 	// A boolean flag to enable/disable DNS support in the VPC. Defaults true.
 	EnableDnsSupport pulumi.BoolPtrInput
 	// Tenancy of instances spin up within VPC.
-	InstanceTenancy pulumi.StringPtrInput
+	InstanceTenancy   pulumi.StringPtrInput
+	Ipv4IpamPoolId    pulumi.StringPtrInput
+	Ipv4NetmaskLength pulumi.IntPtrInput
 	// The association ID for the IPv6 CIDR block of the VPC
 	Ipv6AssociationId pulumi.StringPtrInput
 	// The IPv6 CIDR block of the VPC
-	Ipv6CidrBlock pulumi.StringPtrInput
+	Ipv6CidrBlock                   pulumi.StringPtrInput
+	Ipv6CidrBlockNetworkBorderGroup pulumi.StringPtrInput
+	Ipv6IpamPoolId                  pulumi.StringPtrInput
+	Ipv6NetmaskLength               pulumi.IntPtrInput
 	// The ID of the main route table associated with
 	// this VPC. Note that you can change a VPC's main route table by using an
 	// `ec2.MainRouteTableAssociation`
@@ -221,7 +236,14 @@ type defaultVpcArgs struct {
 	// A boolean flag to enable/disable DNS hostnames in the VPC. Defaults false.
 	EnableDnsHostnames *bool `pulumi:"enableDnsHostnames"`
 	// A boolean flag to enable/disable DNS support in the VPC. Defaults true.
-	EnableDnsSupport *bool `pulumi:"enableDnsSupport"`
+	EnableDnsSupport  *bool   `pulumi:"enableDnsSupport"`
+	Ipv4IpamPoolId    *string `pulumi:"ipv4IpamPoolId"`
+	Ipv4NetmaskLength *int    `pulumi:"ipv4NetmaskLength"`
+	// The IPv6 CIDR block of the VPC
+	Ipv6CidrBlock                   *string `pulumi:"ipv6CidrBlock"`
+	Ipv6CidrBlockNetworkBorderGroup *string `pulumi:"ipv6CidrBlockNetworkBorderGroup"`
+	Ipv6IpamPoolId                  *string `pulumi:"ipv6IpamPoolId"`
+	Ipv6NetmaskLength               *int    `pulumi:"ipv6NetmaskLength"`
 	// A map of tags to assign to the resource.
 	Tags map[string]string `pulumi:"tags"`
 }
@@ -236,7 +258,14 @@ type DefaultVpcArgs struct {
 	// A boolean flag to enable/disable DNS hostnames in the VPC. Defaults false.
 	EnableDnsHostnames pulumi.BoolPtrInput
 	// A boolean flag to enable/disable DNS support in the VPC. Defaults true.
-	EnableDnsSupport pulumi.BoolPtrInput
+	EnableDnsSupport  pulumi.BoolPtrInput
+	Ipv4IpamPoolId    pulumi.StringPtrInput
+	Ipv4NetmaskLength pulumi.IntPtrInput
+	// The IPv6 CIDR block of the VPC
+	Ipv6CidrBlock                   pulumi.StringPtrInput
+	Ipv6CidrBlockNetworkBorderGroup pulumi.StringPtrInput
+	Ipv6IpamPoolId                  pulumi.StringPtrInput
+	Ipv6NetmaskLength               pulumi.IntPtrInput
 	// A map of tags to assign to the resource.
 	Tags pulumi.StringMapInput
 }
@@ -253,7 +282,7 @@ type DefaultVpcInput interface {
 }
 
 func (*DefaultVpc) ElementType() reflect.Type {
-	return reflect.TypeOf((*DefaultVpc)(nil))
+	return reflect.TypeOf((**DefaultVpc)(nil)).Elem()
 }
 
 func (i *DefaultVpc) ToDefaultVpcOutput() DefaultVpcOutput {
@@ -262,35 +291,6 @@ func (i *DefaultVpc) ToDefaultVpcOutput() DefaultVpcOutput {
 
 func (i *DefaultVpc) ToDefaultVpcOutputWithContext(ctx context.Context) DefaultVpcOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DefaultVpcOutput)
-}
-
-func (i *DefaultVpc) ToDefaultVpcPtrOutput() DefaultVpcPtrOutput {
-	return i.ToDefaultVpcPtrOutputWithContext(context.Background())
-}
-
-func (i *DefaultVpc) ToDefaultVpcPtrOutputWithContext(ctx context.Context) DefaultVpcPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(DefaultVpcPtrOutput)
-}
-
-type DefaultVpcPtrInput interface {
-	pulumi.Input
-
-	ToDefaultVpcPtrOutput() DefaultVpcPtrOutput
-	ToDefaultVpcPtrOutputWithContext(ctx context.Context) DefaultVpcPtrOutput
-}
-
-type defaultVpcPtrType DefaultVpcArgs
-
-func (*defaultVpcPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**DefaultVpc)(nil))
-}
-
-func (i *defaultVpcPtrType) ToDefaultVpcPtrOutput() DefaultVpcPtrOutput {
-	return i.ToDefaultVpcPtrOutputWithContext(context.Background())
-}
-
-func (i *defaultVpcPtrType) ToDefaultVpcPtrOutputWithContext(ctx context.Context) DefaultVpcPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(DefaultVpcPtrOutput)
 }
 
 // DefaultVpcArrayInput is an input type that accepts DefaultVpcArray and DefaultVpcArrayOutput values.
@@ -346,7 +346,7 @@ func (i DefaultVpcMap) ToDefaultVpcMapOutputWithContext(ctx context.Context) Def
 type DefaultVpcOutput struct{ *pulumi.OutputState }
 
 func (DefaultVpcOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*DefaultVpc)(nil))
+	return reflect.TypeOf((**DefaultVpc)(nil)).Elem()
 }
 
 func (o DefaultVpcOutput) ToDefaultVpcOutput() DefaultVpcOutput {
@@ -357,44 +357,10 @@ func (o DefaultVpcOutput) ToDefaultVpcOutputWithContext(ctx context.Context) Def
 	return o
 }
 
-func (o DefaultVpcOutput) ToDefaultVpcPtrOutput() DefaultVpcPtrOutput {
-	return o.ToDefaultVpcPtrOutputWithContext(context.Background())
-}
-
-func (o DefaultVpcOutput) ToDefaultVpcPtrOutputWithContext(ctx context.Context) DefaultVpcPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v DefaultVpc) *DefaultVpc {
-		return &v
-	}).(DefaultVpcPtrOutput)
-}
-
-type DefaultVpcPtrOutput struct{ *pulumi.OutputState }
-
-func (DefaultVpcPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**DefaultVpc)(nil))
-}
-
-func (o DefaultVpcPtrOutput) ToDefaultVpcPtrOutput() DefaultVpcPtrOutput {
-	return o
-}
-
-func (o DefaultVpcPtrOutput) ToDefaultVpcPtrOutputWithContext(ctx context.Context) DefaultVpcPtrOutput {
-	return o
-}
-
-func (o DefaultVpcPtrOutput) Elem() DefaultVpcOutput {
-	return o.ApplyT(func(v *DefaultVpc) DefaultVpc {
-		if v != nil {
-			return *v
-		}
-		var ret DefaultVpc
-		return ret
-	}).(DefaultVpcOutput)
-}
-
 type DefaultVpcArrayOutput struct{ *pulumi.OutputState }
 
 func (DefaultVpcArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]DefaultVpc)(nil))
+	return reflect.TypeOf((*[]*DefaultVpc)(nil)).Elem()
 }
 
 func (o DefaultVpcArrayOutput) ToDefaultVpcArrayOutput() DefaultVpcArrayOutput {
@@ -406,15 +372,15 @@ func (o DefaultVpcArrayOutput) ToDefaultVpcArrayOutputWithContext(ctx context.Co
 }
 
 func (o DefaultVpcArrayOutput) Index(i pulumi.IntInput) DefaultVpcOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DefaultVpc {
-		return vs[0].([]DefaultVpc)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *DefaultVpc {
+		return vs[0].([]*DefaultVpc)[vs[1].(int)]
 	}).(DefaultVpcOutput)
 }
 
 type DefaultVpcMapOutput struct{ *pulumi.OutputState }
 
 func (DefaultVpcMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]DefaultVpc)(nil))
+	return reflect.TypeOf((*map[string]*DefaultVpc)(nil)).Elem()
 }
 
 func (o DefaultVpcMapOutput) ToDefaultVpcMapOutput() DefaultVpcMapOutput {
@@ -426,14 +392,16 @@ func (o DefaultVpcMapOutput) ToDefaultVpcMapOutputWithContext(ctx context.Contex
 }
 
 func (o DefaultVpcMapOutput) MapIndex(k pulumi.StringInput) DefaultVpcOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) DefaultVpc {
-		return vs[0].(map[string]DefaultVpc)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *DefaultVpc {
+		return vs[0].(map[string]*DefaultVpc)[vs[1].(string)]
 	}).(DefaultVpcOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultVpcInput)(nil)).Elem(), &DefaultVpc{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultVpcArrayInput)(nil)).Elem(), DefaultVpcArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultVpcMapInput)(nil)).Elem(), DefaultVpcMap{})
 	pulumi.RegisterOutputType(DefaultVpcOutput{})
-	pulumi.RegisterOutputType(DefaultVpcPtrOutput{})
 	pulumi.RegisterOutputType(DefaultVpcArrayOutput{})
 	pulumi.RegisterOutputType(DefaultVpcMapOutput{})
 }

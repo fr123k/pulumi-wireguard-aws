@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Name is an identifier.  It conforms to the regex [A-Za-z_.][A-Za-z0-9_]*.
+// Name is an identifier.  It conforms to NameRegexpPattern.
 type Name string
 
 func (nm Name) String() string { return string(nm) }
@@ -29,22 +29,26 @@ func (nm Name) String() string { return string(nm) }
 // Q turns a Name into a qualified name; this is legal, since Name's is a proper subset of QName's grammar.
 func (nm Name) Q() QName { return QName(nm) }
 
-var NameRegexp = regexp.MustCompile(NameRegexpPattern)
-var NameRegexpPattern = "[A-Za-z_.][A-Za-z0-9_.]*"
+var (
+	NameRegexp          = regexp.MustCompile(NameRegexpPattern)
+	nameFirstCharRegexp = regexp.MustCompile("^" + nameFirstCharRegexpPattern + "$")
+	nameRestCharRegexp  = regexp.MustCompile("^" + nameRestCharRegexpPattern + "$")
+)
+
+var NameRegexpPattern = nameFirstCharRegexpPattern + nameRestCharRegexpPattern
+
+const (
+	nameFirstCharRegexpPattern = "[A-Za-z0-9_.-]"
+	nameRestCharRegexpPattern  = "[A-Za-z0-9_.-]*"
+)
 
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
 	return s != "" && NameRegexp.FindString(s) == s
 }
 
-// AsName converts a given string to a Name, asserting its validity.
-func AsName(s string) Name {
-	contract.Assertf(IsName(s), "Expected string '%v' to be a name (%v)", s, NameRegexpPattern)
-	return Name(s)
-}
-
 // QName is a qualified identifier.  The "/" character optionally delimits different pieces of the name.  Each element
-// conforms to the Name regex [A-Za-z_.][A-Za-z0-9_.]*.  For example, "pulumi/pulumi/stack".
+// conforms to NameRegexpPattern.  For example, "pulumi/pulumi/stack".
 type QName string
 
 func (nm QName) String() string { return string(nm) }
@@ -52,18 +56,40 @@ func (nm QName) String() string { return string(nm) }
 // QNameDelimiter is what delimits Namespace and Name parts.
 const QNameDelimiter = "/"
 
-var QNameRegexp = regexp.MustCompile(QNameRegexpPattern)
-var QNameRegexpPattern = "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" + NameRegexpPattern
+var (
+	QNameRegexp        = regexp.MustCompile(QNameRegexpPattern)
+	QNameRegexpPattern = "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" + NameRegexpPattern
+)
 
-// IsQName checks whether a string is a legal Name.
+// IsQName checks whether a string is a legal QName.
 func IsQName(s string) bool {
 	return s != "" && QNameRegexp.FindString(s) == s
 }
 
-// AsQName converts a given string to a QName, asserting its validity.
-func AsQName(s string) QName {
-	contract.Assertf(IsQName(s), "Expected string '%v' to be a name (%v)", s, QNameRegexpPattern)
-	return QName(s)
+// IntoQName converts an arbitrary string into a QName, converting the string to a valid QName if
+// necessary. The conversion is deterministic, but also lossy.
+func IntoQName(s string) QName {
+	output := []string{}
+	for _, s := range strings.Split(s, QNameDelimiter) {
+		if s == "" {
+			continue
+		}
+		segment := []byte(s)
+		if !nameFirstCharRegexp.Match([]byte{segment[0]}) {
+			segment[0] = '_'
+		}
+		for i := 1; i < len(s); i++ {
+			if !nameRestCharRegexp.Match([]byte{segment[i]}) {
+				segment[i] = '_'
+			}
+		}
+		output = append(output, string(segment))
+	}
+	result := strings.Join(output, QNameDelimiter)
+	if result == "" {
+		result = "_"
+	}
+	return QName(result)
 }
 
 // Name extracts the Name portion of a QName (dropping any namespace).
@@ -75,7 +101,7 @@ func (nm QName) Name() Name {
 	} else {
 		nmn = string(nm[ix+1:])
 	}
-	contract.Assert(IsName(nmn))
+	contract.Assertf(IsName(nmn), "QName %q has invalid name %q", nm, nmn)
 	return Name(nmn)
 }
 
@@ -88,24 +114,14 @@ func (nm QName) Namespace() QName {
 	} else {
 		qn = string(nm[:ix])
 	}
-	contract.Assert(IsQName(qn))
+	contract.Assertf(IsQName(qn), "QName %q has invalid namespace %q", nm, qn)
 	return QName(qn)
 }
 
-// PackageName is a qualified name referring to an imported package.  It is similar to a QName, except that it permits
-// dashes "-" as is commonplace with packages of various kinds.
-type PackageName string
+// PackageName is a qualified name referring to an imported package.
+type PackageName QName
 
 func (nm PackageName) String() string { return string(nm) }
-
-var PackageNameRegexp = regexp.MustCompile(PackageNameRegexpPattern)
-var PackagePartRegexpPattern = "[A-Za-z_.][A-Za-z0-9_.-]*"
-var PackageNameRegexpPattern = "(" + PackagePartRegexpPattern + "\\" + QNameDelimiter + ")*" + PackagePartRegexpPattern
-
-// IsPackageName checks whether a string is a legal Name.
-func IsPackageName(s string) bool {
-	return s != "" && PackageNameRegexp.FindString(s) == s
-}
 
 // ModuleName is a qualified name referring to an imported module from a package.
 type ModuleName QName

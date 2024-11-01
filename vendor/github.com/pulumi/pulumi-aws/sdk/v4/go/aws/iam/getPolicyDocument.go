@@ -4,6 +4,9 @@
 package iam
 
 import (
+	"context"
+	"reflect"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -29,7 +32,7 @@ import (
 // 		examplePolicyDocument, err := iam.GetPolicyDocument(ctx, &iam.GetPolicyDocumentArgs{
 // 			Statements: []iam.GetPolicyDocumentStatement{
 // 				iam.GetPolicyDocumentStatement{
-// 					Sid: "1",
+// 					Sid: pulumi.StringRef("1"),
 // 					Actions: []string{
 // 						"s3:ListAllMyBuckets",
 // 						"s3:GetBucketLocation",
@@ -105,7 +108,7 @@ import (
 // 					},
 // 				},
 // 				iam.GetPolicyDocumentStatement{
-// 					Sid: "SidToOverride",
+// 					Sid: pulumi.StringRef("SidToOverride"),
 // 					Actions: []string{
 // 						"s3:*",
 // 					},
@@ -118,12 +121,11 @@ import (
 // 		if err != nil {
 // 			return err
 // 		}
-// 		opt0 := source.Json
 // 		_, err = iam.GetPolicyDocument(ctx, &iam.GetPolicyDocumentArgs{
-// 			SourceJson: &opt0,
+// 			SourceJson: pulumi.StringRef(source.Json),
 // 			Statements: []iam.GetPolicyDocumentStatement{
 // 				iam.GetPolicyDocumentStatement{
-// 					Sid: "SidToOverride",
+// 					Sid: pulumi.StringRef("SidToOverride"),
 // 					Actions: []string{
 // 						"s3:*",
 // 					},
@@ -172,7 +174,7 @@ import (
 // 		override, err := iam.GetPolicyDocument(ctx, &iam.GetPolicyDocumentArgs{
 // 			Statements: []iam.GetPolicyDocumentStatement{
 // 				iam.GetPolicyDocumentStatement{
-// 					Sid: "SidToOverride",
+// 					Sid: pulumi.StringRef("SidToOverride"),
 // 					Actions: []string{
 // 						"s3:*",
 // 					},
@@ -185,9 +187,8 @@ import (
 // 		if err != nil {
 // 			return err
 // 		}
-// 		opt0 := override.Json
 // 		_, err = iam.GetPolicyDocument(ctx, &iam.GetPolicyDocumentArgs{
-// 			OverrideJson: &opt0,
+// 			OverrideJson: pulumi.StringRef(override.Json),
 // 			Statements: []iam.GetPolicyDocumentStatement{
 // 				iam.GetPolicyDocumentStatement{
 // 					Actions: []string{
@@ -198,7 +199,7 @@ import (
 // 					},
 // 				},
 // 				iam.GetPolicyDocumentStatement{
-// 					Sid: "SidToOverride",
+// 					Sid: pulumi.StringRef("SidToOverride"),
 // 					Actions: []string{
 // 						"s3:*",
 // 					},
@@ -249,7 +250,7 @@ import (
 // 		source, err := iam.GetPolicyDocument(ctx, &iam.GetPolicyDocumentArgs{
 // 			Statements: []iam.GetPolicyDocumentStatement{
 // 				iam.GetPolicyDocumentStatement{
-// 					Sid: "OverridePlaceholder",
+// 					Sid: pulumi.StringRef("OverridePlaceholder"),
 // 					Actions: []string{
 // 						"ec2:DescribeAccountAttributes",
 // 					},
@@ -265,7 +266,7 @@ import (
 // 		override, err := iam.GetPolicyDocument(ctx, &iam.GetPolicyDocumentArgs{
 // 			Statements: []iam.GetPolicyDocumentStatement{
 // 				iam.GetPolicyDocumentStatement{
-// 					Sid: "OverridePlaceholder",
+// 					Sid: pulumi.StringRef("OverridePlaceholder"),
 // 					Actions: []string{
 // 						"s3:GetObject",
 // 					},
@@ -278,11 +279,9 @@ import (
 // 		if err != nil {
 // 			return err
 // 		}
-// 		opt0 := source.Json
-// 		opt1 := override.Json
 // 		_, err = iam.GetPolicyDocument(ctx, &iam.GetPolicyDocumentArgs{
-// 			SourceJson:   &opt0,
-// 			OverrideJson: &opt1,
+// 			SourceJson:   pulumi.StringRef(source.Json),
+// 			OverrideJson: pulumi.StringRef(override.Json),
 // 		}, nil)
 // 		if err != nil {
 // 			return err
@@ -347,4 +346,92 @@ type GetPolicyDocumentResult struct {
 	SourcePolicyDocuments   []string                     `pulumi:"sourcePolicyDocuments"`
 	Statements              []GetPolicyDocumentStatement `pulumi:"statements"`
 	Version                 *string                      `pulumi:"version"`
+}
+
+func GetPolicyDocumentOutput(ctx *pulumi.Context, args GetPolicyDocumentOutputArgs, opts ...pulumi.InvokeOption) GetPolicyDocumentResultOutput {
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (GetPolicyDocumentResult, error) {
+			args := v.(GetPolicyDocumentArgs)
+			r, err := GetPolicyDocument(ctx, &args, opts...)
+			return *r, err
+		}).(GetPolicyDocumentResultOutput)
+}
+
+// A collection of arguments for invoking getPolicyDocument.
+type GetPolicyDocumentOutputArgs struct {
+	// IAM policy document whose statements with non-blank `sid`s will override statements with the same `sid` from documents assigned to the `sourceJson`, `sourcePolicyDocuments`, and `overridePolicyDocuments` arguments. Non-overriding statements will be added to the exported document.
+	OverrideJson pulumi.StringPtrInput `pulumi:"overrideJson"`
+	// List of IAM policy documents that are merged together into the exported document. In merging, statements with non-blank `sid`s will override statements with the same `sid` from earlier documents in the list. Statements with non-blank `sid`s will also override statements with the same `sid` from documents provided in the `sourceJson` and `sourcePolicyDocuments` arguments.  Non-overriding statements will be added to the exported document.
+	OverridePolicyDocuments pulumi.StringArrayInput `pulumi:"overridePolicyDocuments"`
+	// ID for the policy document.
+	PolicyId pulumi.StringPtrInput `pulumi:"policyId"`
+	// IAM policy document used as a base for the exported policy document. Statements with the same `sid` from documents assigned to the `overrideJson` and `overridePolicyDocuments` arguments will override source statements.
+	SourceJson pulumi.StringPtrInput `pulumi:"sourceJson"`
+	// List of IAM policy documents that are merged together into the exported document. Statements defined in `sourcePolicyDocuments` or `sourceJson` must have unique `sid`s. Statements with the same `sid` from documents assigned to the `overrideJson` and `overridePolicyDocuments` arguments will override source statements.
+	SourcePolicyDocuments pulumi.StringArrayInput `pulumi:"sourcePolicyDocuments"`
+	// Configuration block for a policy statement. Detailed below.
+	Statements GetPolicyDocumentStatementArrayInput `pulumi:"statements"`
+	// IAM policy document version. Valid values are `2008-10-17` and `2012-10-17`. Defaults to `2012-10-17`. For more information, see the [AWS IAM User Guide](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html).
+	Version pulumi.StringPtrInput `pulumi:"version"`
+}
+
+func (GetPolicyDocumentOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetPolicyDocumentArgs)(nil)).Elem()
+}
+
+// A collection of values returned by getPolicyDocument.
+type GetPolicyDocumentResultOutput struct{ *pulumi.OutputState }
+
+func (GetPolicyDocumentResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetPolicyDocumentResult)(nil)).Elem()
+}
+
+func (o GetPolicyDocumentResultOutput) ToGetPolicyDocumentResultOutput() GetPolicyDocumentResultOutput {
+	return o
+}
+
+func (o GetPolicyDocumentResultOutput) ToGetPolicyDocumentResultOutputWithContext(ctx context.Context) GetPolicyDocumentResultOutput {
+	return o
+}
+
+// The provider-assigned unique ID for this managed resource.
+func (o GetPolicyDocumentResultOutput) Id() pulumi.StringOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) string { return v.Id }).(pulumi.StringOutput)
+}
+
+// Standard JSON policy document rendered based on the arguments above.
+func (o GetPolicyDocumentResultOutput) Json() pulumi.StringOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) string { return v.Json }).(pulumi.StringOutput)
+}
+
+func (o GetPolicyDocumentResultOutput) OverrideJson() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) *string { return v.OverrideJson }).(pulumi.StringPtrOutput)
+}
+
+func (o GetPolicyDocumentResultOutput) OverridePolicyDocuments() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) []string { return v.OverridePolicyDocuments }).(pulumi.StringArrayOutput)
+}
+
+func (o GetPolicyDocumentResultOutput) PolicyId() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) *string { return v.PolicyId }).(pulumi.StringPtrOutput)
+}
+
+func (o GetPolicyDocumentResultOutput) SourceJson() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) *string { return v.SourceJson }).(pulumi.StringPtrOutput)
+}
+
+func (o GetPolicyDocumentResultOutput) SourcePolicyDocuments() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) []string { return v.SourcePolicyDocuments }).(pulumi.StringArrayOutput)
+}
+
+func (o GetPolicyDocumentResultOutput) Statements() GetPolicyDocumentStatementArrayOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) []GetPolicyDocumentStatement { return v.Statements }).(GetPolicyDocumentStatementArrayOutput)
+}
+
+func (o GetPolicyDocumentResultOutput) Version() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v GetPolicyDocumentResult) *string { return v.Version }).(pulumi.StringPtrOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(GetPolicyDocumentResultOutput{})
 }

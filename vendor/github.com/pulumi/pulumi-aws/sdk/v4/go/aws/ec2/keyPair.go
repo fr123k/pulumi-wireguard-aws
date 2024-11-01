@@ -46,7 +46,7 @@ import (
 //
 // ## Import
 //
-// Key Pairs can be imported using the `key_name`, e.g.
+// Key Pairs can be imported using the `key_name`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/keyPair:KeyPair deployer deployer-key
@@ -61,13 +61,15 @@ type KeyPair struct {
 	// The name for the key pair.
 	KeyName pulumi.StringOutput `pulumi:"keyName"`
 	// Creates a unique name beginning with the specified prefix. Conflicts with `keyName`.
-	KeyNamePrefix pulumi.StringPtrOutput `pulumi:"keyNamePrefix"`
+	KeyNamePrefix pulumi.StringOutput `pulumi:"keyNamePrefix"`
 	// The key pair ID.
 	KeyPairId pulumi.StringOutput `pulumi:"keyPairId"`
 	// The public key material.
-	PublicKey pulumi.StringOutput    `pulumi:"publicKey"`
-	Tags      pulumi.StringMapOutput `pulumi:"tags"`
-	TagsAll   pulumi.StringMapOutput `pulumi:"tagsAll"`
+	PublicKey pulumi.StringOutput `pulumi:"publicKey"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapOutput `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
 }
 
 // NewKeyPair registers a new resource with the given unique name, arguments, and options.
@@ -113,9 +115,11 @@ type keyPairState struct {
 	// The key pair ID.
 	KeyPairId *string `pulumi:"keyPairId"`
 	// The public key material.
-	PublicKey *string           `pulumi:"publicKey"`
-	Tags      map[string]string `pulumi:"tags"`
-	TagsAll   map[string]string `pulumi:"tagsAll"`
+	PublicKey *string `pulumi:"publicKey"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll map[string]string `pulumi:"tagsAll"`
 }
 
 type KeyPairState struct {
@@ -131,8 +135,10 @@ type KeyPairState struct {
 	KeyPairId pulumi.StringPtrInput
 	// The public key material.
 	PublicKey pulumi.StringPtrInput
-	Tags      pulumi.StringMapInput
-	TagsAll   pulumi.StringMapInput
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapInput
 }
 
 func (KeyPairState) ElementType() reflect.Type {
@@ -145,8 +151,9 @@ type keyPairArgs struct {
 	// Creates a unique name beginning with the specified prefix. Conflicts with `keyName`.
 	KeyNamePrefix *string `pulumi:"keyNamePrefix"`
 	// The public key material.
-	PublicKey string            `pulumi:"publicKey"`
-	Tags      map[string]string `pulumi:"tags"`
+	PublicKey string `pulumi:"publicKey"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
 }
 
 // The set of arguments for constructing a KeyPair resource.
@@ -157,7 +164,8 @@ type KeyPairArgs struct {
 	KeyNamePrefix pulumi.StringPtrInput
 	// The public key material.
 	PublicKey pulumi.StringInput
-	Tags      pulumi.StringMapInput
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
 }
 
 func (KeyPairArgs) ElementType() reflect.Type {
@@ -172,7 +180,7 @@ type KeyPairInput interface {
 }
 
 func (*KeyPair) ElementType() reflect.Type {
-	return reflect.TypeOf((*KeyPair)(nil))
+	return reflect.TypeOf((**KeyPair)(nil)).Elem()
 }
 
 func (i *KeyPair) ToKeyPairOutput() KeyPairOutput {
@@ -181,35 +189,6 @@ func (i *KeyPair) ToKeyPairOutput() KeyPairOutput {
 
 func (i *KeyPair) ToKeyPairOutputWithContext(ctx context.Context) KeyPairOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(KeyPairOutput)
-}
-
-func (i *KeyPair) ToKeyPairPtrOutput() KeyPairPtrOutput {
-	return i.ToKeyPairPtrOutputWithContext(context.Background())
-}
-
-func (i *KeyPair) ToKeyPairPtrOutputWithContext(ctx context.Context) KeyPairPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(KeyPairPtrOutput)
-}
-
-type KeyPairPtrInput interface {
-	pulumi.Input
-
-	ToKeyPairPtrOutput() KeyPairPtrOutput
-	ToKeyPairPtrOutputWithContext(ctx context.Context) KeyPairPtrOutput
-}
-
-type keyPairPtrType KeyPairArgs
-
-func (*keyPairPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**KeyPair)(nil))
-}
-
-func (i *keyPairPtrType) ToKeyPairPtrOutput() KeyPairPtrOutput {
-	return i.ToKeyPairPtrOutputWithContext(context.Background())
-}
-
-func (i *keyPairPtrType) ToKeyPairPtrOutputWithContext(ctx context.Context) KeyPairPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(KeyPairPtrOutput)
 }
 
 // KeyPairArrayInput is an input type that accepts KeyPairArray and KeyPairArrayOutput values.
@@ -265,7 +244,7 @@ func (i KeyPairMap) ToKeyPairMapOutputWithContext(ctx context.Context) KeyPairMa
 type KeyPairOutput struct{ *pulumi.OutputState }
 
 func (KeyPairOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*KeyPair)(nil))
+	return reflect.TypeOf((**KeyPair)(nil)).Elem()
 }
 
 func (o KeyPairOutput) ToKeyPairOutput() KeyPairOutput {
@@ -276,44 +255,10 @@ func (o KeyPairOutput) ToKeyPairOutputWithContext(ctx context.Context) KeyPairOu
 	return o
 }
 
-func (o KeyPairOutput) ToKeyPairPtrOutput() KeyPairPtrOutput {
-	return o.ToKeyPairPtrOutputWithContext(context.Background())
-}
-
-func (o KeyPairOutput) ToKeyPairPtrOutputWithContext(ctx context.Context) KeyPairPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v KeyPair) *KeyPair {
-		return &v
-	}).(KeyPairPtrOutput)
-}
-
-type KeyPairPtrOutput struct{ *pulumi.OutputState }
-
-func (KeyPairPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**KeyPair)(nil))
-}
-
-func (o KeyPairPtrOutput) ToKeyPairPtrOutput() KeyPairPtrOutput {
-	return o
-}
-
-func (o KeyPairPtrOutput) ToKeyPairPtrOutputWithContext(ctx context.Context) KeyPairPtrOutput {
-	return o
-}
-
-func (o KeyPairPtrOutput) Elem() KeyPairOutput {
-	return o.ApplyT(func(v *KeyPair) KeyPair {
-		if v != nil {
-			return *v
-		}
-		var ret KeyPair
-		return ret
-	}).(KeyPairOutput)
-}
-
 type KeyPairArrayOutput struct{ *pulumi.OutputState }
 
 func (KeyPairArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]KeyPair)(nil))
+	return reflect.TypeOf((*[]*KeyPair)(nil)).Elem()
 }
 
 func (o KeyPairArrayOutput) ToKeyPairArrayOutput() KeyPairArrayOutput {
@@ -325,15 +270,15 @@ func (o KeyPairArrayOutput) ToKeyPairArrayOutputWithContext(ctx context.Context)
 }
 
 func (o KeyPairArrayOutput) Index(i pulumi.IntInput) KeyPairOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) KeyPair {
-		return vs[0].([]KeyPair)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *KeyPair {
+		return vs[0].([]*KeyPair)[vs[1].(int)]
 	}).(KeyPairOutput)
 }
 
 type KeyPairMapOutput struct{ *pulumi.OutputState }
 
 func (KeyPairMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]KeyPair)(nil))
+	return reflect.TypeOf((*map[string]*KeyPair)(nil)).Elem()
 }
 
 func (o KeyPairMapOutput) ToKeyPairMapOutput() KeyPairMapOutput {
@@ -345,14 +290,16 @@ func (o KeyPairMapOutput) ToKeyPairMapOutputWithContext(ctx context.Context) Key
 }
 
 func (o KeyPairMapOutput) MapIndex(k pulumi.StringInput) KeyPairOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) KeyPair {
-		return vs[0].(map[string]KeyPair)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *KeyPair {
+		return vs[0].(map[string]*KeyPair)[vs[1].(string)]
 	}).(KeyPairOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*KeyPairInput)(nil)).Elem(), &KeyPair{})
+	pulumi.RegisterInputType(reflect.TypeOf((*KeyPairArrayInput)(nil)).Elem(), KeyPairArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*KeyPairMapInput)(nil)).Elem(), KeyPairMap{})
 	pulumi.RegisterOutputType(KeyPairOutput{})
-	pulumi.RegisterOutputType(KeyPairPtrOutput{})
 	pulumi.RegisterOutputType(KeyPairArrayOutput{})
 	pulumi.RegisterOutputType(KeyPairMapOutput{})
 }

@@ -15,10 +15,12 @@
 package resource
 
 import (
+	"crypto"
 	cryptorand "crypto/rand"
 	"encoding/hex"
+	"fmt"
 
-	"github.com/pkg/errors"
+	"lukechampine.com/frand"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -67,14 +69,14 @@ func NewUniqueHex(prefix string, randlen, maxlen int) (string, error) {
 		randlen = 8
 	}
 	if maxlen > 0 && len(prefix)+randlen > maxlen {
-		return "", errors.Errorf(
+		return "", fmt.Errorf(
 			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
 	}
 
-	bs := make([]byte, randlen+1/2)
+	bs := make([]byte, (randlen+1)/2)
 	n, err := cryptorand.Read(bs)
-	contract.AssertNoError(err)
-	contract.Assert(n == len(bs))
+	contract.AssertNoErrorf(err, "error generating random bytes")
+	contract.Assertf(n == len(bs), "generated fewer bytes (%d) than requested (%d)", n, len(bs))
 
 	return prefix + hex.EncodeToString(bs)[:randlen], nil
 }
@@ -85,4 +87,45 @@ func NewUniqueHex(prefix string, randlen, maxlen int) (string, error) {
 func NewUniqueHexID(prefix string, randlen, maxlen int) (ID, error) {
 	u, err := NewUniqueHex(prefix, randlen, maxlen)
 	return ID(u), err
+}
+
+// NewUniqueName generates a new "random" string primarily intended for use by resource providers for
+// autonames. It will take the optional prefix and append randlen random characters (defaulting to 8 if not >
+// 0). The result must not exceed maxlen total characters (if > 0). The characters that make up the random
+// suffix can be set via charset, and will default to [a-f0-9]. Note that capping to maxlen necessarily
+// increases the risk of collisions. The randomness for this method is a function of randomSeed if given, else
+// it falls back to a non-deterministic source of randomness.
+func NewUniqueName(randomSeed []byte, prefix string, randlen, maxlen int, charset []rune) (string, error) {
+	if randlen <= 0 {
+		randlen = 8
+	}
+	if maxlen > 0 && len(prefix)+randlen > maxlen {
+		return "", fmt.Errorf(
+			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
+	}
+
+	if charset == nil {
+		charset = []rune("0123456789abcdef")
+	}
+
+	var random *frand.RNG
+	if len(randomSeed) == 0 {
+		random = frand.New()
+	} else {
+		// frand.NewCustom needs a 32 byte seed. Take the SHA256 hash of whatever bytes we've been given as a
+		// seed and pass the 32 byte result of that to frand.
+		hash := crypto.SHA256.New()
+		hash.Write(randomSeed)
+		seed := hash.Sum(nil)
+		bufsize := 1024 // Same bufsize as used by frand.New.
+		rounds := 12    // Same rounds as used by frand.New.
+		random = frand.NewCustom(seed, bufsize, rounds)
+	}
+
+	randomSuffix := make([]rune, randlen)
+	for i := range randomSuffix {
+		randomSuffix[i] = charset[random.Intn(len(charset))]
+	}
+
+	return prefix + string(randomSuffix), nil
 }

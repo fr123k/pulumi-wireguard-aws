@@ -19,6 +19,9 @@ type Provider struct {
 
 	// The access key for API operations. You can retrieve this from the 'Security & Credentials' section of the AWS console.
 	AccessKey pulumi.StringPtrOutput `pulumi:"accessKey"`
+	// The address of an HTTP proxy to use when accessing the AWS API. Can also be configured using the `HTTP_PROXY` or
+	// `HTTPS_PROXY` environment variables.
+	HttpProxy pulumi.StringPtrOutput `pulumi:"httpProxy"`
 	// The profile for API operations. If not set, the default profile created with `aws configure` will be used.
 	Profile pulumi.StringPtrOutput `pulumi:"profile"`
 	// The region where AWS operations will take place. Examples are us-east-1, us-west-2, etc.
@@ -38,22 +41,22 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
-	if args.Profile == nil {
+	if isZero(args.Profile) {
 		args.Profile = pulumi.StringPtr(getEnvOrDefault("", nil, "AWS_PROFILE").(string))
 	}
-	if args.Region == nil {
+	if isZero(args.Region) {
 		args.Region = pulumi.StringPtr(getEnvOrDefault("", nil, "AWS_REGION", "AWS_DEFAULT_REGION").(string))
 	}
-	if args.SkipCredentialsValidation == nil {
+	if isZero(args.SkipCredentialsValidation) {
 		args.SkipCredentialsValidation = pulumi.BoolPtr(true)
 	}
-	if args.SkipGetEc2Platforms == nil {
+	if isZero(args.SkipGetEc2Platforms) {
 		args.SkipGetEc2Platforms = pulumi.BoolPtr(true)
 	}
-	if args.SkipMetadataApiCheck == nil {
+	if isZero(args.SkipMetadataApiCheck) {
 		args.SkipMetadataApiCheck = pulumi.BoolPtr(true)
 	}
-	if args.SkipRegionValidation == nil {
+	if isZero(args.SkipRegionValidation) {
 		args.SkipRegionValidation = pulumi.BoolPtr(true)
 	}
 	var resource Provider
@@ -73,9 +76,12 @@ type providerArgs struct {
 	DefaultTags         *ProviderDefaultTags `pulumi:"defaultTags"`
 	Endpoints           []ProviderEndpoint   `pulumi:"endpoints"`
 	ForbiddenAccountIds []string             `pulumi:"forbiddenAccountIds"`
+	// The address of an HTTP proxy to use when accessing the AWS API. Can also be configured using the `HTTP_PROXY` or
+	// `HTTPS_PROXY` environment variables.
+	HttpProxy *string `pulumi:"httpProxy"`
 	// Configuration block with settings to ignore resource tags across all resources.
 	IgnoreTags *ProviderIgnoreTags `pulumi:"ignoreTags"`
-	// Explicitly allow the provider to perform "insecure" SSL requests. If omitted,default value is `false`
+	// Explicitly allow the provider to perform "insecure" SSL requests. If omitted, default value is `false`
 	Insecure *bool `pulumi:"insecure"`
 	// The maximum number of times an AWS API request is being executed. If the API request still fails, an error is thrown.
 	MaxRetries *int `pulumi:"maxRetries"`
@@ -116,9 +122,12 @@ type ProviderArgs struct {
 	DefaultTags         ProviderDefaultTagsPtrInput
 	Endpoints           ProviderEndpointArrayInput
 	ForbiddenAccountIds pulumi.StringArrayInput
+	// The address of an HTTP proxy to use when accessing the AWS API. Can also be configured using the `HTTP_PROXY` or
+	// `HTTPS_PROXY` environment variables.
+	HttpProxy pulumi.StringPtrInput
 	// Configuration block with settings to ignore resource tags across all resources.
 	IgnoreTags ProviderIgnoreTagsPtrInput
-	// Explicitly allow the provider to perform "insecure" SSL requests. If omitted,default value is `false`
+	// Explicitly allow the provider to perform "insecure" SSL requests. If omitted, default value is `false`
 	Insecure pulumi.BoolPtrInput
 	// The maximum number of times an AWS API request is being executed. If the API request still fails, an error is thrown.
 	MaxRetries pulumi.IntPtrInput
@@ -161,7 +170,7 @@ type ProviderInput interface {
 }
 
 func (*Provider) ElementType() reflect.Type {
-	return reflect.TypeOf((*Provider)(nil))
+	return reflect.TypeOf((**Provider)(nil)).Elem()
 }
 
 func (i *Provider) ToProviderOutput() ProviderOutput {
@@ -172,39 +181,10 @@ func (i *Provider) ToProviderOutputWithContext(ctx context.Context) ProviderOutp
 	return pulumi.ToOutputWithContext(ctx, i).(ProviderOutput)
 }
 
-func (i *Provider) ToProviderPtrOutput() ProviderPtrOutput {
-	return i.ToProviderPtrOutputWithContext(context.Background())
-}
-
-func (i *Provider) ToProviderPtrOutputWithContext(ctx context.Context) ProviderPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ProviderPtrOutput)
-}
-
-type ProviderPtrInput interface {
-	pulumi.Input
-
-	ToProviderPtrOutput() ProviderPtrOutput
-	ToProviderPtrOutputWithContext(ctx context.Context) ProviderPtrOutput
-}
-
-type providerPtrType ProviderArgs
-
-func (*providerPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Provider)(nil))
-}
-
-func (i *providerPtrType) ToProviderPtrOutput() ProviderPtrOutput {
-	return i.ToProviderPtrOutputWithContext(context.Background())
-}
-
-func (i *providerPtrType) ToProviderPtrOutputWithContext(ctx context.Context) ProviderPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ProviderPtrOutput)
-}
-
 type ProviderOutput struct{ *pulumi.OutputState }
 
 func (ProviderOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Provider)(nil))
+	return reflect.TypeOf((**Provider)(nil)).Elem()
 }
 
 func (o ProviderOutput) ToProviderOutput() ProviderOutput {
@@ -215,41 +195,7 @@ func (o ProviderOutput) ToProviderOutputWithContext(ctx context.Context) Provide
 	return o
 }
 
-func (o ProviderOutput) ToProviderPtrOutput() ProviderPtrOutput {
-	return o.ToProviderPtrOutputWithContext(context.Background())
-}
-
-func (o ProviderOutput) ToProviderPtrOutputWithContext(ctx context.Context) ProviderPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Provider) *Provider {
-		return &v
-	}).(ProviderPtrOutput)
-}
-
-type ProviderPtrOutput struct{ *pulumi.OutputState }
-
-func (ProviderPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Provider)(nil))
-}
-
-func (o ProviderPtrOutput) ToProviderPtrOutput() ProviderPtrOutput {
-	return o
-}
-
-func (o ProviderPtrOutput) ToProviderPtrOutputWithContext(ctx context.Context) ProviderPtrOutput {
-	return o
-}
-
-func (o ProviderPtrOutput) Elem() ProviderOutput {
-	return o.ApplyT(func(v *Provider) Provider {
-		if v != nil {
-			return *v
-		}
-		var ret Provider
-		return ret
-	}).(ProviderOutput)
-}
-
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ProviderInput)(nil)).Elem(), &Provider{})
 	pulumi.RegisterOutputType(ProviderOutput{})
-	pulumi.RegisterOutputType(ProviderPtrOutput{})
 }

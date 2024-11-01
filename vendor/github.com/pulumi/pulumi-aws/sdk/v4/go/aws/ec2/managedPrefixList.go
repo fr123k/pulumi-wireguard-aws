@@ -11,14 +11,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Provides a managed prefix list resource.
-//
-// > **NOTE on `maxEntries`:** When you reference a Prefix List in a resource,
-// the maximum number of entries for the prefix lists counts as the same number of rules
-// or entries for the resource. For example, if you create a prefix list with a maximum
-// of 20 entries and you reference that prefix list in a security group rule, this counts
-// as 20 rules for the security group.
-//
 // ## Example Usage
 //
 // Basic usage
@@ -60,7 +52,7 @@ import (
 //
 // ## Import
 //
-// Prefix Lists can be imported using the `id`, e.g.
+// Prefix Lists can be imported using the `id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/managedPrefixList:ManagedPrefixList default pl-0570a1d2d725c16be
@@ -73,13 +65,14 @@ type ManagedPrefixList struct {
 	// ARN of the prefix list.
 	Arn pulumi.StringOutput `pulumi:"arn"`
 	// Configuration block for prefix list entry. Detailed below. Different entries may have overlapping CIDR blocks, but a particular CIDR should not be duplicated.
-	Entries ManagedPrefixListEntryArrayOutput `pulumi:"entries"`
+	Entries ManagedPrefixListEntryTypeArrayOutput `pulumi:"entries"`
 	// Maximum number of entries that this prefix list can contain.
 	MaxEntries pulumi.IntOutput `pulumi:"maxEntries"`
 	// Name of this resource. The name must not start with `com.amazonaws`.
 	Name pulumi.StringOutput `pulumi:"name"`
 	// ID of the AWS account that owns this prefix list.
-	OwnerId pulumi.StringOutput    `pulumi:"ownerId"`
+	OwnerId pulumi.StringOutput `pulumi:"ownerId"`
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags    pulumi.StringMapOutput `pulumi:"tags"`
 	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
 	// Latest version of this prefix list.
@@ -126,13 +119,14 @@ type managedPrefixListState struct {
 	// ARN of the prefix list.
 	Arn *string `pulumi:"arn"`
 	// Configuration block for prefix list entry. Detailed below. Different entries may have overlapping CIDR blocks, but a particular CIDR should not be duplicated.
-	Entries []ManagedPrefixListEntry `pulumi:"entries"`
+	Entries []ManagedPrefixListEntryType `pulumi:"entries"`
 	// Maximum number of entries that this prefix list can contain.
 	MaxEntries *int `pulumi:"maxEntries"`
 	// Name of this resource. The name must not start with `com.amazonaws`.
 	Name *string `pulumi:"name"`
 	// ID of the AWS account that owns this prefix list.
-	OwnerId *string           `pulumi:"ownerId"`
+	OwnerId *string `pulumi:"ownerId"`
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags    map[string]string `pulumi:"tags"`
 	TagsAll map[string]string `pulumi:"tagsAll"`
 	// Latest version of this prefix list.
@@ -145,13 +139,14 @@ type ManagedPrefixListState struct {
 	// ARN of the prefix list.
 	Arn pulumi.StringPtrInput
 	// Configuration block for prefix list entry. Detailed below. Different entries may have overlapping CIDR blocks, but a particular CIDR should not be duplicated.
-	Entries ManagedPrefixListEntryArrayInput
+	Entries ManagedPrefixListEntryTypeArrayInput
 	// Maximum number of entries that this prefix list can contain.
 	MaxEntries pulumi.IntPtrInput
 	// Name of this resource. The name must not start with `com.amazonaws`.
 	Name pulumi.StringPtrInput
 	// ID of the AWS account that owns this prefix list.
 	OwnerId pulumi.StringPtrInput
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags    pulumi.StringMapInput
 	TagsAll pulumi.StringMapInput
 	// Latest version of this prefix list.
@@ -166,11 +161,12 @@ type managedPrefixListArgs struct {
 	// Address family (`IPv4` or `IPv6`) of this prefix list.
 	AddressFamily string `pulumi:"addressFamily"`
 	// Configuration block for prefix list entry. Detailed below. Different entries may have overlapping CIDR blocks, but a particular CIDR should not be duplicated.
-	Entries []ManagedPrefixListEntry `pulumi:"entries"`
+	Entries []ManagedPrefixListEntryType `pulumi:"entries"`
 	// Maximum number of entries that this prefix list can contain.
 	MaxEntries int `pulumi:"maxEntries"`
 	// Name of this resource. The name must not start with `com.amazonaws`.
-	Name *string           `pulumi:"name"`
+	Name *string `pulumi:"name"`
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags map[string]string `pulumi:"tags"`
 }
 
@@ -179,11 +175,12 @@ type ManagedPrefixListArgs struct {
 	// Address family (`IPv4` or `IPv6`) of this prefix list.
 	AddressFamily pulumi.StringInput
 	// Configuration block for prefix list entry. Detailed below. Different entries may have overlapping CIDR blocks, but a particular CIDR should not be duplicated.
-	Entries ManagedPrefixListEntryArrayInput
+	Entries ManagedPrefixListEntryTypeArrayInput
 	// Maximum number of entries that this prefix list can contain.
 	MaxEntries pulumi.IntInput
 	// Name of this resource. The name must not start with `com.amazonaws`.
 	Name pulumi.StringPtrInput
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapInput
 }
 
@@ -199,7 +196,7 @@ type ManagedPrefixListInput interface {
 }
 
 func (*ManagedPrefixList) ElementType() reflect.Type {
-	return reflect.TypeOf((*ManagedPrefixList)(nil))
+	return reflect.TypeOf((**ManagedPrefixList)(nil)).Elem()
 }
 
 func (i *ManagedPrefixList) ToManagedPrefixListOutput() ManagedPrefixListOutput {
@@ -208,35 +205,6 @@ func (i *ManagedPrefixList) ToManagedPrefixListOutput() ManagedPrefixListOutput 
 
 func (i *ManagedPrefixList) ToManagedPrefixListOutputWithContext(ctx context.Context) ManagedPrefixListOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ManagedPrefixListOutput)
-}
-
-func (i *ManagedPrefixList) ToManagedPrefixListPtrOutput() ManagedPrefixListPtrOutput {
-	return i.ToManagedPrefixListPtrOutputWithContext(context.Background())
-}
-
-func (i *ManagedPrefixList) ToManagedPrefixListPtrOutputWithContext(ctx context.Context) ManagedPrefixListPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ManagedPrefixListPtrOutput)
-}
-
-type ManagedPrefixListPtrInput interface {
-	pulumi.Input
-
-	ToManagedPrefixListPtrOutput() ManagedPrefixListPtrOutput
-	ToManagedPrefixListPtrOutputWithContext(ctx context.Context) ManagedPrefixListPtrOutput
-}
-
-type managedPrefixListPtrType ManagedPrefixListArgs
-
-func (*managedPrefixListPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**ManagedPrefixList)(nil))
-}
-
-func (i *managedPrefixListPtrType) ToManagedPrefixListPtrOutput() ManagedPrefixListPtrOutput {
-	return i.ToManagedPrefixListPtrOutputWithContext(context.Background())
-}
-
-func (i *managedPrefixListPtrType) ToManagedPrefixListPtrOutputWithContext(ctx context.Context) ManagedPrefixListPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ManagedPrefixListPtrOutput)
 }
 
 // ManagedPrefixListArrayInput is an input type that accepts ManagedPrefixListArray and ManagedPrefixListArrayOutput values.
@@ -292,7 +260,7 @@ func (i ManagedPrefixListMap) ToManagedPrefixListMapOutputWithContext(ctx contex
 type ManagedPrefixListOutput struct{ *pulumi.OutputState }
 
 func (ManagedPrefixListOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ManagedPrefixList)(nil))
+	return reflect.TypeOf((**ManagedPrefixList)(nil)).Elem()
 }
 
 func (o ManagedPrefixListOutput) ToManagedPrefixListOutput() ManagedPrefixListOutput {
@@ -303,44 +271,10 @@ func (o ManagedPrefixListOutput) ToManagedPrefixListOutputWithContext(ctx contex
 	return o
 }
 
-func (o ManagedPrefixListOutput) ToManagedPrefixListPtrOutput() ManagedPrefixListPtrOutput {
-	return o.ToManagedPrefixListPtrOutputWithContext(context.Background())
-}
-
-func (o ManagedPrefixListOutput) ToManagedPrefixListPtrOutputWithContext(ctx context.Context) ManagedPrefixListPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v ManagedPrefixList) *ManagedPrefixList {
-		return &v
-	}).(ManagedPrefixListPtrOutput)
-}
-
-type ManagedPrefixListPtrOutput struct{ *pulumi.OutputState }
-
-func (ManagedPrefixListPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**ManagedPrefixList)(nil))
-}
-
-func (o ManagedPrefixListPtrOutput) ToManagedPrefixListPtrOutput() ManagedPrefixListPtrOutput {
-	return o
-}
-
-func (o ManagedPrefixListPtrOutput) ToManagedPrefixListPtrOutputWithContext(ctx context.Context) ManagedPrefixListPtrOutput {
-	return o
-}
-
-func (o ManagedPrefixListPtrOutput) Elem() ManagedPrefixListOutput {
-	return o.ApplyT(func(v *ManagedPrefixList) ManagedPrefixList {
-		if v != nil {
-			return *v
-		}
-		var ret ManagedPrefixList
-		return ret
-	}).(ManagedPrefixListOutput)
-}
-
 type ManagedPrefixListArrayOutput struct{ *pulumi.OutputState }
 
 func (ManagedPrefixListArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]ManagedPrefixList)(nil))
+	return reflect.TypeOf((*[]*ManagedPrefixList)(nil)).Elem()
 }
 
 func (o ManagedPrefixListArrayOutput) ToManagedPrefixListArrayOutput() ManagedPrefixListArrayOutput {
@@ -352,15 +286,15 @@ func (o ManagedPrefixListArrayOutput) ToManagedPrefixListArrayOutputWithContext(
 }
 
 func (o ManagedPrefixListArrayOutput) Index(i pulumi.IntInput) ManagedPrefixListOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) ManagedPrefixList {
-		return vs[0].([]ManagedPrefixList)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *ManagedPrefixList {
+		return vs[0].([]*ManagedPrefixList)[vs[1].(int)]
 	}).(ManagedPrefixListOutput)
 }
 
 type ManagedPrefixListMapOutput struct{ *pulumi.OutputState }
 
 func (ManagedPrefixListMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]ManagedPrefixList)(nil))
+	return reflect.TypeOf((*map[string]*ManagedPrefixList)(nil)).Elem()
 }
 
 func (o ManagedPrefixListMapOutput) ToManagedPrefixListMapOutput() ManagedPrefixListMapOutput {
@@ -372,14 +306,16 @@ func (o ManagedPrefixListMapOutput) ToManagedPrefixListMapOutputWithContext(ctx 
 }
 
 func (o ManagedPrefixListMapOutput) MapIndex(k pulumi.StringInput) ManagedPrefixListOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) ManagedPrefixList {
-		return vs[0].(map[string]ManagedPrefixList)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *ManagedPrefixList {
+		return vs[0].(map[string]*ManagedPrefixList)[vs[1].(string)]
 	}).(ManagedPrefixListOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ManagedPrefixListInput)(nil)).Elem(), &ManagedPrefixList{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ManagedPrefixListArrayInput)(nil)).Elem(), ManagedPrefixListArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ManagedPrefixListMapInput)(nil)).Elem(), ManagedPrefixListMap{})
 	pulumi.RegisterOutputType(ManagedPrefixListOutput{})
-	pulumi.RegisterOutputType(ManagedPrefixListPtrOutput{})
 	pulumi.RegisterOutputType(ManagedPrefixListArrayOutput{})
 	pulumi.RegisterOutputType(ManagedPrefixListMapOutput{})
 }

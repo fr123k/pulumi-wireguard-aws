@@ -47,7 +47,7 @@ import (
 //
 // ## Import
 //
-// `aws_ec2_fleet` can be imported by using the Fleet identifier, e.g.
+// `aws_ec2_fleet` can be imported by using the Fleet identifier, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/fleet:Fleet example fleet-b9b55d27-c5fc-41ac-a6f3-48fcc91f080c
@@ -65,8 +65,10 @@ type Fleet struct {
 	ReplaceUnhealthyInstances pulumi.BoolPtrOutput `pulumi:"replaceUnhealthyInstances"`
 	// Nested argument containing Spot configurations. Defined below.
 	SpotOptions FleetSpotOptionsPtrOutput `pulumi:"spotOptions"`
-	Tags        pulumi.StringMapOutput    `pulumi:"tags"`
-	TagsAll     pulumi.StringMapOutput    `pulumi:"tagsAll"`
+	// Map of Fleet tags. To tag instances at launch, specify the tags in the Launch Template. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapOutput `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
 	// Nested argument containing target capacity configurations. Defined below.
 	TargetCapacitySpecification FleetTargetCapacitySpecificationOutput `pulumi:"targetCapacitySpecification"`
 	// Whether to terminate instances for an EC2 Fleet if it is deleted successfully. Defaults to `false`.
@@ -122,8 +124,10 @@ type fleetState struct {
 	ReplaceUnhealthyInstances *bool `pulumi:"replaceUnhealthyInstances"`
 	// Nested argument containing Spot configurations. Defined below.
 	SpotOptions *FleetSpotOptions `pulumi:"spotOptions"`
-	Tags        map[string]string `pulumi:"tags"`
-	TagsAll     map[string]string `pulumi:"tagsAll"`
+	// Map of Fleet tags. To tag instances at launch, specify the tags in the Launch Template. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll map[string]string `pulumi:"tagsAll"`
 	// Nested argument containing target capacity configurations. Defined below.
 	TargetCapacitySpecification *FleetTargetCapacitySpecification `pulumi:"targetCapacitySpecification"`
 	// Whether to terminate instances for an EC2 Fleet if it is deleted successfully. Defaults to `false`.
@@ -145,8 +149,10 @@ type FleetState struct {
 	ReplaceUnhealthyInstances pulumi.BoolPtrInput
 	// Nested argument containing Spot configurations. Defined below.
 	SpotOptions FleetSpotOptionsPtrInput
-	Tags        pulumi.StringMapInput
-	TagsAll     pulumi.StringMapInput
+	// Map of Fleet tags. To tag instances at launch, specify the tags in the Launch Template. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapInput
 	// Nested argument containing target capacity configurations. Defined below.
 	TargetCapacitySpecification FleetTargetCapacitySpecificationPtrInput
 	// Whether to terminate instances for an EC2 Fleet if it is deleted successfully. Defaults to `false`.
@@ -172,7 +178,8 @@ type fleetArgs struct {
 	ReplaceUnhealthyInstances *bool `pulumi:"replaceUnhealthyInstances"`
 	// Nested argument containing Spot configurations. Defined below.
 	SpotOptions *FleetSpotOptions `pulumi:"spotOptions"`
-	Tags        map[string]string `pulumi:"tags"`
+	// Map of Fleet tags. To tag instances at launch, specify the tags in the Launch Template. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
 	// Nested argument containing target capacity configurations. Defined below.
 	TargetCapacitySpecification FleetTargetCapacitySpecification `pulumi:"targetCapacitySpecification"`
 	// Whether to terminate instances for an EC2 Fleet if it is deleted successfully. Defaults to `false`.
@@ -195,7 +202,8 @@ type FleetArgs struct {
 	ReplaceUnhealthyInstances pulumi.BoolPtrInput
 	// Nested argument containing Spot configurations. Defined below.
 	SpotOptions FleetSpotOptionsPtrInput
-	Tags        pulumi.StringMapInput
+	// Map of Fleet tags. To tag instances at launch, specify the tags in the Launch Template. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
 	// Nested argument containing target capacity configurations. Defined below.
 	TargetCapacitySpecification FleetTargetCapacitySpecificationInput
 	// Whether to terminate instances for an EC2 Fleet if it is deleted successfully. Defaults to `false`.
@@ -218,7 +226,7 @@ type FleetInput interface {
 }
 
 func (*Fleet) ElementType() reflect.Type {
-	return reflect.TypeOf((*Fleet)(nil))
+	return reflect.TypeOf((**Fleet)(nil)).Elem()
 }
 
 func (i *Fleet) ToFleetOutput() FleetOutput {
@@ -227,35 +235,6 @@ func (i *Fleet) ToFleetOutput() FleetOutput {
 
 func (i *Fleet) ToFleetOutputWithContext(ctx context.Context) FleetOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FleetOutput)
-}
-
-func (i *Fleet) ToFleetPtrOutput() FleetPtrOutput {
-	return i.ToFleetPtrOutputWithContext(context.Background())
-}
-
-func (i *Fleet) ToFleetPtrOutputWithContext(ctx context.Context) FleetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(FleetPtrOutput)
-}
-
-type FleetPtrInput interface {
-	pulumi.Input
-
-	ToFleetPtrOutput() FleetPtrOutput
-	ToFleetPtrOutputWithContext(ctx context.Context) FleetPtrOutput
-}
-
-type fleetPtrType FleetArgs
-
-func (*fleetPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Fleet)(nil))
-}
-
-func (i *fleetPtrType) ToFleetPtrOutput() FleetPtrOutput {
-	return i.ToFleetPtrOutputWithContext(context.Background())
-}
-
-func (i *fleetPtrType) ToFleetPtrOutputWithContext(ctx context.Context) FleetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(FleetPtrOutput)
 }
 
 // FleetArrayInput is an input type that accepts FleetArray and FleetArrayOutput values.
@@ -311,7 +290,7 @@ func (i FleetMap) ToFleetMapOutputWithContext(ctx context.Context) FleetMapOutpu
 type FleetOutput struct{ *pulumi.OutputState }
 
 func (FleetOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Fleet)(nil))
+	return reflect.TypeOf((**Fleet)(nil)).Elem()
 }
 
 func (o FleetOutput) ToFleetOutput() FleetOutput {
@@ -322,44 +301,10 @@ func (o FleetOutput) ToFleetOutputWithContext(ctx context.Context) FleetOutput {
 	return o
 }
 
-func (o FleetOutput) ToFleetPtrOutput() FleetPtrOutput {
-	return o.ToFleetPtrOutputWithContext(context.Background())
-}
-
-func (o FleetOutput) ToFleetPtrOutputWithContext(ctx context.Context) FleetPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Fleet) *Fleet {
-		return &v
-	}).(FleetPtrOutput)
-}
-
-type FleetPtrOutput struct{ *pulumi.OutputState }
-
-func (FleetPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Fleet)(nil))
-}
-
-func (o FleetPtrOutput) ToFleetPtrOutput() FleetPtrOutput {
-	return o
-}
-
-func (o FleetPtrOutput) ToFleetPtrOutputWithContext(ctx context.Context) FleetPtrOutput {
-	return o
-}
-
-func (o FleetPtrOutput) Elem() FleetOutput {
-	return o.ApplyT(func(v *Fleet) Fleet {
-		if v != nil {
-			return *v
-		}
-		var ret Fleet
-		return ret
-	}).(FleetOutput)
-}
-
 type FleetArrayOutput struct{ *pulumi.OutputState }
 
 func (FleetArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Fleet)(nil))
+	return reflect.TypeOf((*[]*Fleet)(nil)).Elem()
 }
 
 func (o FleetArrayOutput) ToFleetArrayOutput() FleetArrayOutput {
@@ -371,15 +316,15 @@ func (o FleetArrayOutput) ToFleetArrayOutputWithContext(ctx context.Context) Fle
 }
 
 func (o FleetArrayOutput) Index(i pulumi.IntInput) FleetOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Fleet {
-		return vs[0].([]Fleet)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Fleet {
+		return vs[0].([]*Fleet)[vs[1].(int)]
 	}).(FleetOutput)
 }
 
 type FleetMapOutput struct{ *pulumi.OutputState }
 
 func (FleetMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Fleet)(nil))
+	return reflect.TypeOf((*map[string]*Fleet)(nil)).Elem()
 }
 
 func (o FleetMapOutput) ToFleetMapOutput() FleetMapOutput {
@@ -391,14 +336,16 @@ func (o FleetMapOutput) ToFleetMapOutputWithContext(ctx context.Context) FleetMa
 }
 
 func (o FleetMapOutput) MapIndex(k pulumi.StringInput) FleetOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Fleet {
-		return vs[0].(map[string]Fleet)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Fleet {
+		return vs[0].(map[string]*Fleet)[vs[1].(string)]
 	}).(FleetOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetInput)(nil)).Elem(), &Fleet{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetArrayInput)(nil)).Elem(), FleetArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetMapInput)(nil)).Elem(), FleetMap{})
 	pulumi.RegisterOutputType(FleetOutput{})
-	pulumi.RegisterOutputType(FleetPtrOutput{})
 	pulumi.RegisterOutputType(FleetArrayOutput{})
 	pulumi.RegisterOutputType(FleetMapOutput{})
 }

@@ -24,8 +24,8 @@ go-init:
 	go mod vendor
 
 pulumi-init: build
-	pulumi plugin install resource aws 4.17.0
-	pulumi plugin install resource hcloud 1.1.1
+	pulumi plugin install resource aws 4.38.1
+	pulumi plugin install resource hcloud 1.20.5
 	pulumi plugin ls
 	pulumi login --local
 	# pulumi login --cloud-url s3://s3-pulumi-state-d12f2f1
