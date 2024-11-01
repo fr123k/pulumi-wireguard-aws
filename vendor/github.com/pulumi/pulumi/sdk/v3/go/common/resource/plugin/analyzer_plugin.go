@@ -16,24 +16,29 @@ package plugin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -54,19 +59,18 @@ var _ Analyzer = (*analyzer)(nil)
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
-	_, path, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1), nil)
+	path, err := workspace.GetPluginPath(ctx.Diag,
+		apitype.AnalyzerPlugin, strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
+		nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind: workspace.AnalyzerPlugin,
-			Name: string(name),
-		})
 	}
+	contract.Assertf(path != "", "unexpected empty path for analyzer plugin %s", name)
+
+	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), ctx.Pwd}, nil /*env*/)
+		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil /*env*/, dialOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -82,31 +86,33 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 // NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
 func NewPolicyAnalyzer(
-	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
-
+	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
+) (Analyzer, error) {
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load Pulumi policy project located at %q", policyPackPath)
+		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
 	}
 
 	// For historical reasons, the Node.js plugin name is just "policy".
 	// All other languages have the runtime appended, e.g. "policy-<runtime>".
 	policyAnalyzerName := "policy"
 	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
+		policyAnalyzerName = "policy-" + proj.Runtime.Name()
 	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
-	_, pluginPath, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, policyAnalyzerName, nil)
-	if err != nil {
-		return nil, rpcerror.Convert(err)
-	} else if pluginPath == "" {
+	pluginPath, err := workspace.GetPluginPath(ctx.Diag,
+		apitype.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
+
+	var e *workspace.MissingError
+	if errors.As(err, &e) {
 		return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
 			"plugin that runs policy plugins is missing. This might occur when the plugin "+
 			"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
 			"does not support resource policies", string(name))
+	} else if err != nil {
+		return nil, err
 	}
 
 	// Create the environment variables from the options.
@@ -129,18 +135,20 @@ func NewPolicyAnalyzer(
 		}
 	}
 
-	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name), args, env)
+	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		apitype.AnalyzerPlugin, args, env, analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
-		if errors.Cause(err) == errRunPolicyModuleNotFound {
+
+		if errors.Is(err, errRunPolicyModuleNotFound) {
 			return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
 				"try running npm install or yarn install in %q", policyPackPath)
 		}
-		if errors.Cause(err) == errPluginNotFound {
+		if errors.Is(err, errPluginNotFound) {
 			return nil, fmt.Errorf("policy pack not found at %q", name)
 		}
-		return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
+		return nil, fmt.Errorf("policy pack %q failed to start: %w", string(name), err)
 	}
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
@@ -180,7 +188,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 	resp, err := a.client.Analyze(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
 		Urn:        string(urn),
 		Type:       string(t),
-		Name:       string(name),
+		Name:       name,
 		Properties: mprops,
 		Options:    marshalResourceOptions(r.Options),
 		Provider:   provider,
@@ -196,7 +204,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) ([]AnalyzeDiagnostic, error) {
 
 	diags, err := convertDiagnostics(failures, a.version)
 	if err != nil {
-		return nil, errors.Wrap(err, "converting analysis results")
+		return nil, fmt.Errorf("converting analysis results: %w", err)
 	}
 	return diags, nil
 }
@@ -210,7 +218,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		props, err := MarshalProperties(resource.Properties,
 			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
-			return nil, errors.Wrap(err, "marshalling properties")
+			return nil, fmt.Errorf("marshalling properties: %w", err)
 		}
 
 		provider, err := marshalProvider(resource.Provider)
@@ -225,7 +233,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 				continue
 			}
 
-			pdeps := []string{}
+			pdeps := slice.Prealloc[string](1)
 			for _, d := range pd {
 				pdeps = append(pdeps, string(d))
 			}
@@ -237,7 +245,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 		protoResources[idx] = &pulumirpc.AnalyzerResource{
 			Urn:                  string(resource.URN),
 			Type:                 string(resource.Type),
-			Name:                 string(resource.Name),
+			Name:                 resource.Name,
 			Properties:           props,
 			Options:              marshalResourceOptions(resource.Options),
 			Provider:             provider,
@@ -269,16 +277,77 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 
 	diags, err := convertDiagnostics(failures, a.version)
 	if err != nil {
-		return nil, errors.Wrap(err, "converting analysis results")
+		return nil, fmt.Errorf("converting analysis results: %w", err)
 	}
 	return diags, nil
 }
 
+// Remediate is given the opportunity to transform a single resource, and returns its new properties.
+func (a *analyzer) Remediate(r AnalyzerResource) ([]Remediation, error) {
+	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
+
+	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
+	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	mprops, err := MarshalProperties(props,
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+	if err != nil {
+		return nil, err
+	}
+
+	provider, err := marshalProvider(r.Provider)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := a.client.Remediate(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
+		Urn:        string(urn),
+		Type:       string(t),
+		Name:       name,
+		Properties: mprops,
+		Options:    marshalResourceOptions(r.Options),
+		Provider:   provider,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+
+		// Handle the case where we the policy pack doesn't implement a recent enough to implement Transform.
+		if rpcError.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s.Transform(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
+			return nil, nil
+		}
+
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return nil, rpcError
+	}
+
+	remediations := resp.GetRemediations()
+	results := make([]Remediation, len(remediations))
+	for i, r := range remediations {
+		tprops, err := UnmarshalProperties(r.GetProperties(),
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+		if err != nil {
+			return nil, err
+		}
+
+		results[i] = Remediation{
+			PolicyName:        r.GetPolicyName(),
+			Description:       r.GetDescription(),
+			PolicyPackName:    r.GetPolicyPackName(),
+			PolicyPackVersion: r.GetPolicyPackVersion(),
+			Properties:        tprops,
+			Diagnostic:        r.GetDiagnostic(),
+		}
+	}
+
+	logging.V(7).Infof("%s success: #remediations=%d", label, len(results))
+	return results, nil
+}
+
 // GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
 func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
-	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())
+	label := a.label() + ".GetAnalyzerInfo()"
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &pbempty.Empty{})
+	resp, err := a.client.GetAnalyzerInfo(a.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -306,7 +375,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 			}
 			schema.Properties["enforcementLevel"] = JSONSchema{
 				"type": "string",
-				"enum": []string{"advisory", "mandatory", "disabled"},
+				"enum": []string{"advisory", "mandatory", "remediate", "disabled"},
 			}
 		}
 
@@ -354,9 +423,9 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 
 // GetPluginInfo returns this plugin's information.
 func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
-	label := fmt.Sprintf("%s.GetPluginInfo()", a.label())
+	label := a.label() + ".GetPluginInfo()"
 	logging.V(7).Infof("%s executing", label)
-	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &pbempty.Empty{})
+	resp, err := a.client.GetPluginInfo(a.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
@@ -375,13 +444,13 @@ func (a *analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Name:    string(a.name),
 		Path:    a.plug.Bin,
-		Kind:    workspace.AnalyzerPlugin,
+		Kind:    apitype.AnalyzerPlugin,
 		Version: version,
 	}, nil
 }
 
 func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
-	label := fmt.Sprintf("%s.Configure(...)", a.label())
+	label := a.label() + ".Configure(...)"
 	logging.V(7).Infof("%s executing", label)
 
 	if len(policyConfig) == 0 {
@@ -393,7 +462,7 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 
 	for k, v := range policyConfig {
 		if !v.EnforcementLevel.IsValid() {
-			return errors.Errorf("invalid enforcement level %q", v.EnforcementLevel)
+			return fmt.Errorf("invalid enforcement level %q", v.EnforcementLevel)
 		}
 		c[k] = &pulumirpc.PolicyConfig{
 			EnforcementLevel: marshalEnforcementLevel(v.EnforcementLevel),
@@ -417,6 +486,27 @@ func (a *analyzer) Close() error {
 	return a.plug.Close()
 }
 
+func analyzerPluginDialOptions(ctx *Context, name string) []grpc.DialOption {
+	dialOpts := append(
+		rpcutil.OpenTracingInterceptorDialOptions(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+
+	if ctx.DialOptions != nil {
+		metadata := map[string]interface{}{
+			"mode": "client",
+			"kind": "analyzer",
+		}
+		if name != "" {
+			metadata["name"] = name
+		}
+		dialOpts = append(dialOpts, ctx.DialOptions(metadata)...)
+	}
+
+	return dialOpts
+}
+
 func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
 	secs := make([]string, len(opts.AdditionalSecretOutputs))
 	for idx := range opts.AdditionalSecretOutputs {
@@ -434,7 +524,7 @@ func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerRes
 		DeleteBeforeReplace:        deleteBeforeReplace,
 		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
 		AdditionalSecretOutputs:    secs,
-		Aliases:                    convertURNs(opts.Aliases),
+		Aliases:                    convertAliases(opts.Aliases, opts.AliasURNs),
 		CustomTimeouts: &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
 			Create: opts.CustomTimeouts.Create,
 			Update: opts.CustomTimeouts.Update,
@@ -452,13 +542,13 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 	props, err := MarshalProperties(provider.Properties,
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
-		return nil, errors.Wrap(err, "marshalling properties")
+		return nil, fmt.Errorf("marshalling properties: %w", err)
 	}
 
 	return &pulumirpc.AnalyzerProviderResource{
 		Urn:        string(provider.URN),
 		Type:       string(provider.Type),
-		Name:       string(provider.Name),
+		Name:       provider.Name,
 		Properties: props,
 	}, nil
 }
@@ -469,6 +559,8 @@ func marshalEnforcementLevel(el apitype.EnforcementLevel) pulumirpc.EnforcementL
 		return pulumirpc.EnforcementLevel_ADVISORY
 	case apitype.Mandatory:
 		return pulumirpc.EnforcementLevel_MANDATORY
+	case apitype.Remediate:
+		return pulumirpc.EnforcementLevel_REMEDIATE
 	case apitype.Disabled:
 		return pulumirpc.EnforcementLevel_DISABLED
 	}
@@ -582,17 +674,34 @@ func convertURNs(urns []resource.URN) []string {
 	return result
 }
 
+func convertAlias(alias resource.Alias) string {
+	return string(alias.GetURN())
+}
+
+func convertAliases(aliases []resource.Alias, aliasURNs []resource.URN) []string {
+	result := make([]string, len(aliases)+len(aliasURNs))
+	for idx, alias := range aliases {
+		result[idx] = convertAlias(alias)
+	}
+	for idx, aliasURN := range aliasURNs {
+		result[idx+len(aliases)] = convertAlias(resource.Alias{URN: aliasURN})
+	}
+	return result
+}
+
 func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.EnforcementLevel, error) {
 	switch el {
 	case pulumirpc.EnforcementLevel_ADVISORY:
 		return apitype.Advisory, nil
 	case pulumirpc.EnforcementLevel_MANDATORY:
 		return apitype.Mandatory, nil
+	case pulumirpc.EnforcementLevel_REMEDIATE:
+		return apitype.Remediate, nil
 	case pulumirpc.EnforcementLevel_DISABLED:
 		return apitype.Disabled, nil
 
 	default:
-		return "", fmt.Errorf("Invalid enforcement level %d", el)
+		return "", fmt.Errorf("invalid enforcement level %d", el)
 	}
 }
 
@@ -668,14 +777,16 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 		// using the more general PULUMI_* variants for all languages to avoid special casing
 		// like this, and setting the PULUMI_* variants for Node.js is the first step.
 		if runtime == "nodejs" {
+			maybeAppendEnv("PULUMI_NODEJS_ORGANIZATION", opts.Organization)
 			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
 			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
-			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", strconv.FormatBool(opts.DryRun))
 		}
 
+		maybeAppendEnv("PULUMI_ORGANIZATION", opts.Organization)
 		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
-		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
+		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
 	}
 
 	return env, nil

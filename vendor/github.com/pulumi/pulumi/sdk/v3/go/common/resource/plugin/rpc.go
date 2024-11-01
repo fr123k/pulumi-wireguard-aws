@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,29 +15,34 @@
 package plugin
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	Label              string // an optional label for debugging.
-	SkipNulls          bool   // true to skip nulls altogether in the resulting map.
-	KeepUnknowns       bool   // true if we are keeping unknown values (otherwise we skip them).
-	RejectUnknowns     bool   // true if we should return errors on unknown values. Takes precedence over KeepUnknowns.
-	ElideAssetContents bool   // true if we are eliding the contents of assets.
-	ComputeAssetHashes bool   // true if we are computing missing asset hashes on the fly.
-	KeepSecrets        bool   // true if we are keeping secrets (otherwise we replace them with their underlying value).
-	RejectAssets       bool   // true if we should return errors on Asset and Archive values.
-	KeepResources      bool   // true if we are keeping resoures (otherwise we return raw urn).
-	SkipInternalKeys   bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
+	Label                 string // an optional label for debugging.
+	SkipNulls             bool   // true to skip nulls altogether in the resulting map.
+	KeepUnknowns          bool   // true if we are keeping unknown values (otherwise we skip them).
+	RejectUnknowns        bool   // true if we should return errors on unknown values. Takes precedence over KeepUnknowns.
+	ElideAssetContents    bool   // true if we are eliding the contents of assets.
+	ComputeAssetHashes    bool   // true if we are computing missing asset hashes on the fly.
+	KeepSecrets           bool   // true if we are keeping secrets (otherwise we replace them with their underlying value).
+	RejectAssets          bool   // true if we should return errors on Asset and Archive values.
+	KeepResources         bool   // true if we are keeping resoures (otherwise we return raw urn).
+	SkipInternalKeys      bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
+	KeepOutputValues      bool   // true if we are keeping output values.
+	UpgradeToOutputValues bool   // true if secrets and unknowns should be upgraded to output values.
+	WorkingDirectory      string // the optional working directory to use when serializing assets & archives.
 }
 
 const (
@@ -70,14 +75,12 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	for _, key := range props.StableKeys() {
 		v := props[key]
 		logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
-		if v.IsOutput() {
-			logging.V(9).Infof("Skipping output property for RPC[%s]: %v", opts.Label, key)
-		} else if opts.SkipNulls && v.IsNull() {
+		if opts.SkipNulls && v.IsNull() {
 			logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
 		} else if opts.SkipInternalKeys && resource.IsInternalPropertyKey(key) {
 			logging.V(9).Infof("Skipping internal property for RPC[%s]: %s (as requested)", opts.Label, key)
 		} else {
-			m, err := MarshalPropertyValue(v, opts)
+			m, err := MarshalPropertyValue(key, v, opts)
 			if err != nil {
 				return nil, err
 			} else if m != nil {
@@ -91,7 +94,9 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 }
 
 // MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.
-func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*structpb.Value, error) {
+func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
+	opts MarshalOptions,
+) (*structpb.Value, error) {
 	if v.IsNull() {
 		return MarshalNull(opts), nil
 	} else if v.IsBool() {
@@ -111,7 +116,7 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 	} else if v.IsArray() {
 		var elems []*structpb.Value
 		for _, elem := range v.ArrayValue() {
-			e, err := MarshalPropertyValue(elem, opts)
+			e, err := MarshalPropertyValue(key, elem, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -126,12 +131,12 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		}, nil
 	} else if v.IsAsset() {
 		if opts.RejectAssets {
-			return nil, errors.New("unexpected Asset property value")
+			return nil, fmt.Errorf("unexpected Asset property value for %q", key)
 		}
 		return MarshalAsset(v.AssetValue(), opts)
 	} else if v.IsArchive() {
 		if opts.RejectAssets {
-			return nil, errors.New("unexpected Asset Archive property value")
+			return nil, fmt.Errorf("unexpected Asset Archive property value for %q", key)
 		}
 		return MarshalArchive(v.ArchiveValue(), opts)
 	} else if v.IsObject() {
@@ -142,34 +147,71 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		return MarshalStruct(obj, opts), nil
 	} else if v.IsComputed() {
 		if opts.RejectUnknowns {
-			return nil, errors.New("unexpected unknown property value")
+			return nil, fmt.Errorf("unexpected unknown property value for %q", key)
 		} else if opts.KeepUnknowns {
+			if opts.KeepOutputValues && opts.UpgradeToOutputValues {
+				output := resource.NewObjectProperty(resource.PropertyMap{
+					resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
+				})
+				return MarshalPropertyValue(key, output, opts)
+			}
 			return marshalUnknownProperty(v.Input().Element, opts), nil
 		}
 		return nil, nil // return nil and the caller will ignore it.
 	} else if v.IsOutput() {
-		// Note that at the moment we don't differentiate between computed and output properties on the wire.  As
-		// a result, they will show up as computed on the other end.  This distinction isn't currently interesting.
-		if opts.KeepUnknowns {
-			return marshalUnknownProperty(v.OutputValue().Element, opts), nil
+		if !opts.KeepOutputValues {
+			result := v.OutputValue().Element
+			if !v.OutputValue().Known {
+				// Unknown outputs are marshaled the same as Computed.
+				result = resource.MakeComputed(resource.NewStringProperty(""))
+			}
+			if v.OutputValue().Secret {
+				result = resource.MakeSecret(result)
+			}
+			return MarshalPropertyValue(key, result, opts)
 		}
-		return nil, nil // return nil and the caller will ignore it.
+		obj := resource.PropertyMap{
+			resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
+		}
+		if v.OutputValue().Known {
+			obj["value"] = v.OutputValue().Element
+		}
+		if v.OutputValue().Secret {
+			obj["secret"] = resource.NewBoolProperty(v.OutputValue().Secret)
+		}
+		if len(v.OutputValue().Dependencies) > 0 {
+			deps := make([]resource.PropertyValue, len(v.OutputValue().Dependencies))
+			for i, dep := range v.OutputValue().Dependencies {
+				deps[i] = resource.NewStringProperty(string(dep))
+			}
+			obj["dependencies"] = resource.NewArrayProperty(deps)
+		}
+		output := resource.NewObjectProperty(obj)
+		return MarshalPropertyValue(key, output, opts)
 	} else if v.IsSecret() {
 		if !opts.KeepSecrets {
 			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
-			return MarshalPropertyValue(v.SecretValue().Element, opts)
+			return MarshalPropertyValue(key, v.SecretValue().Element, opts)
+		}
+		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
+			output := resource.NewObjectProperty(resource.PropertyMap{
+				resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
+				"secret":        resource.NewBoolProperty(true),
+				"value":         v.SecretValue().Element,
+			})
+			return MarshalPropertyValue(key, output, opts)
 		}
 		secret := resource.NewObjectProperty(resource.PropertyMap{
 			resource.SigKey: resource.NewStringProperty(resource.SecretSig),
 			"value":         v.SecretValue().Element,
 		})
-		return MarshalPropertyValue(secret, opts)
+		return MarshalPropertyValue(key, secret, opts)
 	} else if v.IsResourceReference() {
 		ref := v.ResourceReferenceValue()
 		if !opts.KeepResources {
 			val := string(ref.URN)
 			if !ref.ID.IsNull() {
-				return MarshalPropertyValue(ref.ID, opts)
+				return MarshalPropertyValue(key, ref.ID, opts)
 			}
 			logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
 			return MarshalString(val, opts), nil
@@ -184,10 +226,11 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		if ref.PackageVersion != "" {
 			m["packageVersion"] = resource.NewStringProperty(ref.PackageVersion)
 		}
-		return MarshalPropertyValue(resource.NewObjectProperty(m), opts)
+		return MarshalPropertyValue(key, resource.NewObjectProperty(m), opts)
 	}
 
-	contract.Failf("Unrecognized property value in RPC[%s]: %v (type=%v)", opts.Label, v.V, reflect.TypeOf(v.V))
+	contract.Failf("Unrecognized property value in RPC[%s] for %q: %v (type=%v)",
+		opts.Label, key, v.V, reflect.TypeOf(v.V))
 	return nil, nil
 }
 
@@ -242,7 +285,7 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 	// And now unmarshal every field it into the map.
 	for _, key := range keys {
 		pk := resource.PropertyKey(key)
-		v, err := UnmarshalPropertyValue(props.Fields[key], opts)
+		v, err := UnmarshalPropertyValue(pk, props.Fields[key], opts)
 		if err != nil {
 			return nil, err
 		} else if v != nil {
@@ -261,8 +304,10 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 }
 
 // UnmarshalPropertyValue unmarshals a single "JSON-like" value into a new property value.
-func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.PropertyValue, error) {
-	contract.Assert(v != nil)
+func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
+	opts MarshalOptions,
+) (*resource.PropertyValue, error) {
+	contract.Assertf(v != nil, "a value is required")
 
 	switch v.Kind.(type) {
 	case *structpb.Value_NullValue:
@@ -279,7 +324,7 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		s := v.GetStringValue()
 		if unk, isunk := unmarshalUnknownPropertyValue(s, opts); isunk {
 			if opts.RejectUnknowns {
-				return nil, errors.New("unexpected unknown property value")
+				return nil, fmt.Errorf("unexpected unknown property value for %q", key)
 			} else if opts.KeepUnknowns {
 				return &unk, nil
 			}
@@ -291,7 +336,7 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		lst := v.GetListValue()
 		elems := make([]resource.PropertyValue, len(lst.GetValues()))
 		for i, elem := range lst.GetValues() {
-			e, err := UnmarshalPropertyValue(elem, opts)
+			e, err := UnmarshalPropertyValue(key, elem, opts)
 			if err != nil {
 				return nil, err
 			} else if e != nil {
@@ -321,38 +366,50 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		}
 
 		switch sig {
-		case resource.AssetSig:
+		case asset.AssetSig:
 			if opts.RejectAssets {
-				return nil, errors.New("unexpected Asset property value")
+				return nil, fmt.Errorf("unexpected Asset property value for %q", key)
 			}
-			asset, isasset, err := resource.DeserializeAsset(objmap)
+			asset, isasset, err := asset.Deserialize(objmap)
 			if err != nil {
 				return nil, err
 			}
 			// This can only be false with a non-nil error if there is a signature match. We've already verified the
 			// signature.
-			contract.Assert(isasset)
+			contract.Assertf(isasset, "value must be an asset")
 			if opts.ComputeAssetHashes {
-				if err = asset.EnsureHash(); err != nil {
-					return nil, errors.Wrapf(err, "failed to compute asset hash")
+				if opts.WorkingDirectory == "" {
+					if err = asset.EnsureHash(); err != nil {
+						return nil, fmt.Errorf("failed to compute asset hash for %q: %w", key, err)
+					}
+				} else {
+					if err = asset.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
+						return nil, fmt.Errorf("failed to compute asset hash for %q: %w", key, err)
+					}
 				}
 			}
 			m := resource.NewAssetProperty(asset)
 			return &m, nil
-		case resource.ArchiveSig:
+		case archive.ArchiveSig:
 			if opts.RejectAssets {
-				return nil, errors.New("unexpected Asset Archive property value")
+				return nil, fmt.Errorf("unexpected Asset Archive property value for %q", key)
 			}
-			archive, isarchive, err := resource.DeserializeArchive(objmap)
+			archive, isarchive, err := archive.Deserialize(objmap)
 			if err != nil {
 				return nil, err
 			}
 			// This can only be false with a non-nil error if there is a signature match. We've already verified the
 			// signature.
-			contract.Assert(isarchive)
+			contract.Assertf(isarchive, "value must be an archive")
 			if opts.ComputeAssetHashes {
-				if err = archive.EnsureHash(); err != nil {
-					return nil, errors.Wrapf(err, "failed to compute archive hash")
+				if opts.WorkingDirectory == "" {
+					if err = archive.EnsureHash(); err != nil {
+						return nil, fmt.Errorf("failed to compute archive hash for %q: %w", key, err)
+					}
+				} else {
+					if err = archive.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
+						return nil, fmt.Errorf("failed to compute archive hash for %q: %w", key, err)
+					}
 				}
 			}
 			m := resource.NewArchiveProperty(archive)
@@ -360,21 +417,16 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		case resource.SecretSig:
 			value, ok := obj["value"]
 			if !ok {
-				return nil, errors.New("malformed RPC secret: missing value")
+				return nil, fmt.Errorf("malformed RPC secret: missing value for %q", key)
 			}
-			if !opts.KeepSecrets {
-				logging.V(5).Infof("unmarshalling secret as raw value, as opts.KeepSecrets is false")
-				return &value, nil
-			}
-			s := resource.MakeSecret(value)
-			return &s, nil
+			return unmarshalSecretPropertyValue(value, opts), nil
 		case resource.ResourceReferenceSig:
 			urn, ok := obj["urn"]
 			if !ok {
-				return nil, errors.New("malformed resource reference: missing urn")
+				return nil, fmt.Errorf("malformed resource reference for %q: missing urn", key)
 			}
 			if !urn.IsString() {
-				return nil, errors.New("malformed resource reference: urn not a string")
+				return nil, fmt.Errorf("malformed resource reference for %q: urn not a string", key)
 			}
 
 			id, hasID := "", false
@@ -385,15 +437,22 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 					id = idProp.StringValue()
 				case idProp.IsComputed():
 					// Leave the ID empty to indicate that it is unknown.
+				case idProp.IsOutput():
+					if idProp.OutputValue().Known {
+						if !idProp.OutputValue().Element.IsString() {
+							return nil, fmt.Errorf("malformed resource reference for %q: id not a string", key)
+						}
+						id = idProp.OutputValue().Element.StringValue()
+					}
 				default:
-					return nil, errors.New("malformed resource reference: id not a string")
+					return nil, fmt.Errorf("malformed resource reference for %q: id not a string", key)
 				}
 			}
 
 			var packageVersion string
 			if packageVersionProp, ok := obj["packageVersion"]; ok {
 				if !packageVersionProp.IsString() {
-					return nil, errors.New("malformed resource reference: packageVersion not a string")
+					return nil, fmt.Errorf("malformed resource reference for %q: packageVersion not a string", key)
 				}
 				packageVersion = packageVersionProp.StringValue()
 			}
@@ -406,7 +465,7 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 						v := structpb.Value{
 							Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
 						}
-						return UnmarshalPropertyValue(&v, opts)
+						return UnmarshalPropertyValue(key, &v, opts)
 					}
 					value = id
 				}
@@ -421,12 +480,61 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 				ref = resource.MakeComponentResourceReference(resource.URN(urn.StringValue()), packageVersion)
 			}
 			return &ref, nil
+		case resource.OutputValueSig:
+			value, known := obj["value"]
+
+			var secret bool
+			if secretProp, ok := obj["secret"]; ok {
+				if !secretProp.IsBool() {
+					return nil, fmt.Errorf("malformed output value for %q: secret not a bool", key)
+				}
+				secret = secretProp.BoolValue()
+			}
+
+			if !opts.KeepOutputValues {
+				result := &value
+				if !known {
+					result, err = UnmarshalPropertyValue(key, &structpb.Value{
+						Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+					}, opts)
+					if err != nil {
+						return nil, err
+					}
+				}
+				if secret && result != nil {
+					result = unmarshalSecretPropertyValue(*result, opts)
+				}
+				return result, nil
+			}
+
+			var dependencies []resource.URN
+			if dependenciesProp, ok := obj["dependencies"]; ok {
+				if !dependenciesProp.IsArray() {
+					return nil, fmt.Errorf("malformed output value for %q: dependencies not an array", key)
+				}
+				dependencies = make([]resource.URN, len(dependenciesProp.ArrayValue()))
+				for i, dep := range dependenciesProp.ArrayValue() {
+					if !dep.IsString() {
+						return nil, fmt.Errorf(
+							"malformed output value for %q: element in dependencies not a string", key)
+					}
+					dependencies[i] = resource.URN(dep.StringValue())
+				}
+			}
+
+			output := resource.NewOutputProperty(resource.Output{
+				Element:      value,
+				Known:        known,
+				Secret:       secret,
+				Dependencies: dependencies,
+			})
+			return &output, nil
 		default:
-			return nil, errors.Errorf("unrecognized signature '%v' in property map", sig)
+			return nil, fmt.Errorf("unrecognized signature '%v' in property map for %q", sig, key)
 		}
 
 	default:
-		contract.Failf("Unrecognized structpb value kind in RPC[%s]: %v", opts.Label, reflect.TypeOf(v.Kind))
+		contract.Failf("Unrecognized structpb value kind in RPC[%s] for %q: %v", opts.Label, key, reflect.TypeOf(v.Kind))
 		return nil, nil
 	}
 }
@@ -444,17 +552,40 @@ func unmarshalUnknownPropertyValue(s string, opts MarshalOptions) (resource.Prop
 	case UnknownArrayValue:
 		elem, unknown = resource.NewArrayProperty([]resource.PropertyValue{}), true
 	case UnknownAssetValue:
-		elem, unknown = resource.NewAssetProperty(&resource.Asset{}), true
+		elem, unknown = resource.NewAssetProperty(&asset.Asset{}), true
 	case UnknownArchiveValue:
-		elem, unknown = resource.NewArchiveProperty(&resource.Archive{}), true
+		elem, unknown = resource.NewArchiveProperty(&archive.Archive{}), true
 	case UnknownObjectValue:
 		elem, unknown = resource.NewObjectProperty(make(resource.PropertyMap)), true
 	}
 	if unknown {
+		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
+			return resource.NewOutputProperty(resource.Output{
+				Element: elem,
+			}), true
+		}
 		comp := resource.Computed{Element: elem}
 		return resource.NewComputedProperty(comp), true
 	}
 	return resource.PropertyValue{}, false
+}
+
+func unmarshalSecretPropertyValue(v resource.PropertyValue, opts MarshalOptions) *resource.PropertyValue {
+	if !opts.KeepSecrets {
+		logging.V(5).Infof("unmarshalling secret as raw value, as opts.KeepSecrets is false")
+		return &v
+	}
+	var s resource.PropertyValue
+	if opts.KeepOutputValues && opts.UpgradeToOutputValues {
+		s = resource.NewOutputProperty(resource.Output{
+			Element: v,
+			Secret:  true,
+			Known:   true,
+		})
+	} else {
+		s = resource.MakeSecret(v)
+	}
+	return &s
 }
 
 // MarshalNull marshals a nil to its protobuf form.
@@ -485,16 +616,22 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 }
 
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
-func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, error) {
+func MarshalAsset(v *asset.Asset, opts MarshalOptions) (*structpb.Value, error) {
 	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed.
 	// Serialize the asset with only its hash (if present).
 	if opts.ElideAssetContents {
-		v = &resource.Asset{Hash: v.Hash}
+		v = &asset.Asset{Hash: v.Hash}
 	} else {
 		// Ensure a hash is present if needed.
 		if v.Hash == "" && opts.ComputeAssetHashes {
-			if err := v.EnsureHash(); err != nil {
-				return nil, errors.Wrapf(err, "failed to compute asset hash")
+			if opts.WorkingDirectory == "" {
+				if err := v.EnsureHash(); err != nil {
+					return nil, fmt.Errorf("failed to compute asset hash: %w", err)
+				}
+			} else {
+				if err := v.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
+					return nil, fmt.Errorf("failed to compute asset hash: %w", err)
+				}
 			}
 		}
 	}
@@ -502,20 +639,27 @@ func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, erro
 	// To marshal an asset, we need to first serialize it, and then marshal that.
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)
-	return MarshalPropertyValue(resource.NewObjectProperty(serap), opts)
+	pk := resource.PropertyKey(v.URI)
+	return MarshalPropertyValue(pk, resource.NewObjectProperty(serap), opts)
 }
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
-func MarshalArchive(v *resource.Archive, opts MarshalOptions) (*structpb.Value, error) {
+func MarshalArchive(v *archive.Archive, opts MarshalOptions) (*structpb.Value, error) {
 	// If we are not providing access to an asset's contents, we simply need to record the fact that this asset existed.
 	// Serialize the asset with only its hash (if present).
 	if opts.ElideAssetContents {
-		v = &resource.Archive{Hash: v.Hash}
+		v = &archive.Archive{Hash: v.Hash}
 	} else {
 		// Ensure a hash is present if needed.
 		if v.Hash == "" && opts.ComputeAssetHashes {
-			if err := v.EnsureHash(); err != nil {
-				return nil, errors.Wrapf(err, "failed to compute archive hash")
+			if opts.WorkingDirectory == "" {
+				if err := v.EnsureHash(); err != nil {
+					return nil, fmt.Errorf("failed to compute archive hash: %w", err)
+				}
+			} else {
+				if err := v.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
+					return nil, fmt.Errorf("failed to compute archive hash: %w", err)
+				}
 			}
 		}
 	}
@@ -523,5 +667,6 @@ func MarshalArchive(v *resource.Archive, opts MarshalOptions) (*structpb.Value, 
 	// To marshal an archive, we need to first serialize it, and then marshal that.
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)
-	return MarshalPropertyValue(resource.NewObjectProperty(serap), opts)
+	pk := resource.PropertyKey(v.URI)
+	return MarshalPropertyValue(pk, resource.NewObjectProperty(serap), opts)
 }

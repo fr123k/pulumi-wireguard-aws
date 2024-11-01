@@ -16,13 +16,17 @@ package cmdutil
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 
-	"golang.org/x/crypto/ssh/terminal"
+	"github.com/rivo/uniseg"
+	"golang.org/x/term"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 )
 
@@ -58,12 +62,42 @@ func InteractiveTerminal() bool {
 	// if we're piping in stdin, we're clearly not interactive, as there's no way for a user to
 	// provide input.  If we're piping stdout, we also can't be interactive as there's no way for
 	// users to see prompts to interact with them.
-	return terminal.IsTerminal(int(os.Stdin.Fd())) &&
-		terminal.IsTerminal(int(os.Stdout.Fd()))
+	//nolint:gosec // os.Stdin.Fd() == 0 && os.Stdout.Fd() == 1: uintptr -> int conversion is always safe
+	return term.IsTerminal(int(os.Stdin.Fd())) &&
+		term.IsTerminal(int(os.Stdout.Fd()))
 }
 
 // ReadConsole reads the console with the given prompt text.
 func ReadConsole(prompt string) (string, error) {
+	//nolint:gosec // os.Stdin.Fd() == 0: uintptr -> int conversion is always safe
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return readConsolePlain(os.Stdout, os.Stdin, prompt)
+	}
+
+	return readConsoleFancy(os.Stdout, os.Stdin, prompt, false /* secret */)
+}
+
+// ReadConsoleWithDefault reads the console with the given prompt text with support for a default value.
+func ReadConsoleWithDefault(prompt string, defaultValue string) (string, error) {
+	promptMessage := fmt.Sprintf("%s [%s]", prompt, defaultValue)
+	value, err := ReadConsole(promptMessage)
+	if err != nil {
+		return "", err
+	}
+
+	if value == "" {
+		value = defaultValue
+	}
+
+	return value, nil
+}
+
+// readConsolePlain prints the given prompt (if any),
+// and reads the user's response from stdin.
+//
+// It does so without altering the terminal's state in any way,
+// and will work even if stdin is not a terminal.
+func readConsolePlain(stdout io.Writer, stdin io.Reader, prompt string) (string, error) {
 	if prompt != "" {
 		fmt.Print(prompt + ": ")
 	}
@@ -122,16 +156,96 @@ type TableRow struct {
 	AdditionalInfo string   // an optional line of information to print after the row
 }
 
-// PrintTable prints a grid of rows and columns.  Width of columns is automatically determined by
+// FprintTable prints a grid of rows and columns.  Width of columns is automatically determined by
 // the max length of the items in each column.  A default gap of two spaces is printed between each
 // column.
+func FprintTable(w io.Writer, table Table) error {
+	_, err := fmt.Fprint(w, table)
+	return err
+}
+
+// PrintTable prints the table to stdout.
+// See [FprintTable] for details.
 func PrintTable(table Table) {
-	PrintTableWithGap(table, "  ")
+	_ = FprintTable(os.Stdout, table)
+	// Ignore error for stdout.
 }
 
 // PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
 // by the max length of the items in each column.  A gap can be specified between the columns.
 func PrintTableWithGap(table Table, columnGap string) {
+	fmt.Print(table.ToStringWithGap(columnGap))
+}
+
+func (table Table) String() string {
+	return table.ToStringWithGap("  ")
+}
+
+// 7-bit C1 ANSI sequences
+var ansiEscape = regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
+
+// MeasureText returns the number of glyphs in a string.
+// Importantly this also ignores ANSI escape sequences, so can be used to calculate layout of colorized strings.
+func MeasureText(text string) int {
+	// Strip ansi escape sequences
+	clean := ansiEscape.ReplaceAllString(text, "")
+	// Need to count graphemes not runes or bytes
+	return uniseg.StringWidth(clean)
+}
+
+// normalizedRows returns the rows of a table in normalized form.
+//
+// A row is considered normalized if and only if it has no new lines in any of its fields.
+func (table Table) normalizedRows() []TableRow {
+	rows := slice.Prealloc[TableRow](len(table.Rows))
+	for _, row := range table.Rows {
+		info := row.AdditionalInfo
+		buckets := make([][]string, len(row.Columns))
+		maxLines := 0
+		for i, column := range row.Columns {
+			buckets[i] = strings.Split(column, "\n")
+			maxLines = max(maxLines, len(buckets[i]))
+		}
+		row := []TableRow{}
+		for i := 0; i < maxLines; i++ {
+			part := TableRow{}
+			for _, b := range buckets {
+				if i < len(b) {
+					part.Columns = append(part.Columns, b[i])
+				} else {
+					part.Columns = append(part.Columns, "")
+				}
+			}
+			row = append(row, part)
+		}
+		row[len(row)-1].AdditionalInfo = info
+		rows = append(rows, row...)
+	}
+	return rows
+}
+
+func (table Table) ToStringWithGap(columnGap string) string {
+	return table.Render(&TableRenderOptions{ColumnGap: columnGap})
+}
+
+type TableRenderOptions struct {
+	ColumnGap   string
+	HeaderStyle []colors.Color
+	ColumnStyle []colors.Color
+	Color       colors.Colorization
+}
+
+func (table Table) Render(opts *TableRenderOptions) string {
+	if opts == nil {
+		opts = &TableRenderOptions{}
+	}
+	if opts.ColumnGap == "" {
+		opts.ColumnGap = "  "
+	}
+	if opts.Color == "" {
+		opts.Color = colors.Never
+	}
+
 	columnCount := len(table.Headers)
 
 	// Figure out the preferred column width for each column.  It will be set to the max length of
@@ -142,7 +256,7 @@ func PrintTableWithGap(table Table, columnGap string) {
 		Columns: table.Headers,
 	}}
 
-	allRows = append(allRows, table.Rows...)
+	allRows = append(allRows, table.normalizedRows()...)
 
 	for rowIndex, row := range allRows {
 		columns := row.Columns
@@ -153,38 +267,52 @@ func PrintTableWithGap(table Table, columnGap string) {
 		}
 
 		for columnIndex, val := range columns {
-			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], len(val))
+			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], MeasureText(val))
 		}
 	}
 
-	format := ""
-	for i, maxWidth := range preferredColumnWidths {
-		if i < len(preferredColumnWidths)-1 {
-			format += "%-" + strconv.Itoa(maxWidth+len(columnGap)) + "s"
-		} else {
-			// do not want whitespace appended to the last column.  It would cause wrapping on lines
-			// that were not actually long if some other line was very long.
-			format += "%s"
-		}
-	}
-	format += "\n"
+	var result strings.Builder
+	for rowIndex, row := range allRows {
+		result.WriteString(table.Prefix)
 
-	columns := make([]interface{}, columnCount)
-	for _, row := range allRows {
-		for columnIndex, value := range row.Columns {
-			// Now, ensure we have the requested gap between columns as well.
-			if columnIndex < columnCount-1 {
-				value += columnGap
+		for columnIndex, val := range row.Columns {
+			style := opts.HeaderStyle
+			if rowIndex != 0 {
+				style = opts.ColumnStyle
 			}
 
-			columns[columnIndex] = value
+			if len(style) != 0 {
+				result.WriteString(opts.Color.Colorize(style[columnIndex]))
+			}
+
+			result.WriteString(val)
+
+			if len(style) != 0 {
+				result.WriteString(opts.Color.Colorize(colors.Reset))
+			}
+
+			if columnIndex < columnCount-1 {
+				// Work out how much whitespace we need to add to this string to bring it up to the
+				// preferredColumnWidth for this column.
+
+				maxWidth := preferredColumnWidths[columnIndex]
+				padding := maxWidth - MeasureText(val)
+				result.WriteString(strings.Repeat(" ", padding))
+
+				// Now, ensure we have the requested gap between columns as well.
+				result.WriteString(opts.ColumnGap)
+			}
+			// do not want whitespace appended to the last column.  It would cause wrapping on lines
+			// that were not actually long if some other line was very long.
 		}
 
-		fmt.Printf(table.Prefix+format, columns...)
+		result.WriteByte('\n')
+
 		if row.AdditionalInfo != "" {
-			fmt.Print(row.AdditionalInfo)
+			result.WriteString(row.AdditionalInfo)
 		}
 	}
+	return result.String()
 }
 
 func max(a, b int) int {

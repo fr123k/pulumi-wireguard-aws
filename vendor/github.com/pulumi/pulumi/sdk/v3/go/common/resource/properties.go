@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/mapper"
@@ -27,9 +31,6 @@ import (
 
 // PropertyKey is the name of a property.
 type PropertyKey tokens.Name
-
-// PropertySet is a simple set keyed by property name.
-type PropertySet map[PropertyKey]bool
 
 // PropertyMap is a simple map keyed by property name with "JSON-like" values.
 type PropertyMap map[PropertyKey]PropertyValue
@@ -42,7 +43,8 @@ func NewPropertyMap(s interface{}) PropertyMap {
 // NewPropertyMapRepl turns a struct into a property map, using any JSON tags inside to determine naming.  If non-nil
 // replk or replv function(s) are provided, key and/or value transformations are performed during the mapping.
 func NewPropertyMapRepl(s interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyMap {
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+) PropertyMap {
 	m, err := mapper.Unmap(s)
 	contract.Assertf(err == nil, "Struct of properties failed to map correctly: %v", err)
 	return NewPropertyMapFromMapRepl(m, replk, replv)
@@ -55,7 +57,8 @@ func NewPropertyMapFromMap(m map[string]interface{}) PropertyMap {
 
 // NewPropertyMapFromMapRepl optionally replaces keys/values in an existing map while creating a new resource map.
 func NewPropertyMapFromMapRepl(m map[string]interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyMap {
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+) PropertyMap {
 	result := make(PropertyMap)
 	for k, v := range m {
 		key := PropertyKey(k)
@@ -84,7 +87,10 @@ type Computed struct {
 // encountered, it means the resource has not yet been created, and so the output value is unavailable.  Note that an
 // output property is a special case of computed, but carries additional semantic meaning.
 type Output struct {
-	Element PropertyValue // the eventual value (type) of the output property.
+	Element      PropertyValue // the value of this output if it is resolved.
+	Known        bool          `json:"-"` // true if this output's value is known.
+	Secret       bool          `json:"-"` // true if this output's value is secret.
+	Dependencies []URN         `json:"-"` // the dependencies associated with this output.
 }
 
 // Secret indicates that the underlying value should be persisted securely.
@@ -100,12 +106,12 @@ type Secret struct {
 // resource's URN, ID, and the version of its containing package. Note that there are several cases to consider with
 // respect to the ID:
 //
-// - The reference may not contain an ID if the referenced resource is a component resource. In this case, the ID will
-//   be null.
-// - The ID may be unknown (in which case it will be the unknown property value)
-// - Otherwise, the ID must be a string.
+//   - The reference may not contain an ID if the referenced resource is a component resource. In this case, the ID will
+//     be null.
+//   - The ID may be unknown (in which case it will be the unknown property value)
+//   - Otherwise, the ID must be a string.
 //
-//nolint: golint
+//nolint:revive
 type ResourceReference struct {
 	URN            URN
 	ID             PropertyValue
@@ -121,6 +127,18 @@ func (ref ResourceReference) IDString() (value string, hasID bool) {
 	default:
 		return "", false
 	}
+}
+
+func (ref ResourceReference) Equal(other ResourceReference) bool {
+	if ref.URN != other.URN {
+		return false
+	}
+
+	vid, oid := ref.ID, other.ID
+	if vid.IsComputed() && oid.IsComputed() {
+		return true
+	}
+	return vid.DeepEquals(oid)
 }
 
 type ReqError struct {
@@ -139,14 +157,14 @@ func (err *ReqError) Error() string {
 // HasValue returns true if the slot associated with the given property key contains a real value.  It returns false
 // if a value is null or an output property that is awaiting a value to be assigned.  That is to say, HasValue indicates
 // a semantically meaningful value is present (even if it's a computed one whose concrete value isn't yet evaluated).
-func (m PropertyMap) HasValue(k PropertyKey) bool {
-	v, has := m[k]
+func (props PropertyMap) HasValue(k PropertyKey) bool {
+	v, has := props[k]
 	return has && v.HasValue()
 }
 
 // ContainsUnknowns returns true if the property map contains at least one unknown value.
-func (m PropertyMap) ContainsUnknowns() bool {
-	for _, v := range m {
+func (props PropertyMap) ContainsUnknowns() bool {
+	for _, v := range props {
 		if v.ContainsUnknowns() {
 			return true
 		}
@@ -155,8 +173,8 @@ func (m PropertyMap) ContainsUnknowns() bool {
 }
 
 // ContainsSecrets returns true if the property map contains at least one secret value.
-func (m PropertyMap) ContainsSecrets() bool {
-	for _, v := range m {
+func (props PropertyMap) ContainsSecrets() bool {
+	for _, v := range props {
 		if v.ContainsSecrets() {
 			return true
 		}
@@ -165,44 +183,57 @@ func (m PropertyMap) ContainsSecrets() bool {
 }
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
-func (m PropertyMap) Mappable() map[string]interface{} {
-	return m.MapRepl(nil, nil)
+func (props PropertyMap) Mappable() map[string]interface{} {
+	return props.MapRepl(nil, nil)
 }
 
 // MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
 // replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
-func (m PropertyMap) MapRepl(replk func(string) (string, bool),
-	replv func(PropertyValue) (interface{}, bool)) map[string]interface{} {
+func (props PropertyMap) MapRepl(replk func(string) (string, bool),
+	replv func(PropertyValue) (interface{}, bool),
+) map[string]interface{} {
 	obj := make(map[string]interface{})
-	for _, k := range m.StableKeys() {
+	for _, k := range props.StableKeys() {
 		key := string(k)
 		if replk != nil {
 			if rk, repk := replk(key); repk {
 				key = rk
 			}
 		}
-		obj[key] = m[k].MapRepl(replk, replv)
+		obj[key] = props[k].MapRepl(replk, replv)
 	}
 	return obj
 }
 
 // Copy makes a shallow copy of the map.
-func (m PropertyMap) Copy() PropertyMap {
+func (props PropertyMap) Copy() PropertyMap {
 	new := make(PropertyMap)
-	for k, v := range m {
+	for k, v := range props {
 		new[k] = v
 	}
 	return new
 }
 
 // StableKeys returns all of the map's keys in a stable order.
-func (m PropertyMap) StableKeys() []PropertyKey {
-	sorted := make([]PropertyKey, 0, len(m))
-	for k := range m {
+func (props PropertyMap) StableKeys() []PropertyKey {
+	sorted := slice.Prealloc[PropertyKey](len(props))
+	for k := range props {
 		sorted = append(sorted, k)
 	}
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 	return sorted
+}
+
+// PropertyValueType enumerates the actual types that may be stored in a PropertyValue.
+//
+//nolint:lll
+type PropertyValueType interface {
+	bool | float64 | string | *asset.Asset | *archive.Archive | Computed | Output | *Secret | ResourceReference | []PropertyValue | PropertyMap
+}
+
+// NewProperty creates a new PropertyValue.
+func NewProperty[T PropertyValueType](v T) PropertyValue {
+	return PropertyValue{v}
 }
 
 func NewNullProperty() PropertyValue                                 { return PropertyValue{nil} }
@@ -210,8 +241,8 @@ func NewBoolProperty(v bool) PropertyValue                           { return Pr
 func NewNumberProperty(v float64) PropertyValue                      { return PropertyValue{v} }
 func NewStringProperty(v string) PropertyValue                       { return PropertyValue{v} }
 func NewArrayProperty(v []PropertyValue) PropertyValue               { return PropertyValue{v} }
-func NewAssetProperty(v *Asset) PropertyValue                        { return PropertyValue{v} }
-func NewArchiveProperty(v *Archive) PropertyValue                    { return PropertyValue{v} }
+func NewAssetProperty(v *asset.Asset) PropertyValue                  { return PropertyValue{v} }
+func NewArchiveProperty(v *archive.Archive) PropertyValue            { return PropertyValue{v} }
 func NewObjectProperty(v PropertyMap) PropertyValue                  { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue                   { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue                       { return PropertyValue{v} }
@@ -219,20 +250,20 @@ func NewSecretProperty(v *Secret) PropertyValue                      { return Pr
 func NewResourceReferenceProperty(v ResourceReference) PropertyValue { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
-	return NewComputedProperty(Computed{Element: v})
+	return NewProperty(Computed{Element: v})
 }
 
 func MakeOutput(v PropertyValue) PropertyValue {
-	return NewOutputProperty(Output{Element: v})
+	return NewProperty(Output{Element: v})
 }
 
 func MakeSecret(v PropertyValue) PropertyValue {
-	return NewSecretProperty(&Secret{Element: v})
+	return NewProperty(&Secret{Element: v})
 }
 
 // MakeComponentResourceReference creates a reference to a component resource.
 func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValue {
-	return NewResourceReferenceProperty(ResourceReference{
+	return NewProperty(ResourceReference{
 		URN:            urn,
 		PackageVersion: packageVersion,
 	})
@@ -241,12 +272,12 @@ func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValu
 // MakeCustomResourceReference creates a reference to a custom resource. If the resource's ID is the empty string, it
 // will be treated as unknown.
 func MakeCustomResourceReference(urn URN, id ID, packageVersion string) PropertyValue {
-	idProp := NewStringProperty(string(id))
+	idProp := NewProperty(string(id))
 	if id == "" {
-		idProp = MakeComputed(NewStringProperty(""))
+		idProp = MakeComputed(NewProperty(""))
 	}
 
-	return NewResourceReferenceProperty(ResourceReference{
+	return NewProperty(ResourceReference{
 		ID:             idProp,
 		URN:            urn,
 		PackageVersion: packageVersion,
@@ -261,7 +292,8 @@ func NewPropertyValue(v interface{}) PropertyValue {
 // NewPropertyValueRepl turns a value into a property value, provided it is of a legal "JSON-like" kind.  The
 // replacement functions, replk and replv, may be supplied to transform keys and/or values as the mapping takes place.
 func NewPropertyValueRepl(v interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyValue {
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+) PropertyValue {
 	// If a replacement routine is supplied, use that.
 	if replv != nil {
 		if rv, repl := replv(v); repl {
@@ -277,41 +309,44 @@ func NewPropertyValueRepl(v interface{},
 	// Else, check for some known primitive types.
 	switch t := v.(type) {
 	case bool:
-		return NewBoolProperty(t)
+		return NewProperty(t)
 	case int:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case int32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case int64:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case uint64:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case float32:
-		return NewNumberProperty(float64(t))
+		return NewProperty(float64(t))
 	case float64:
-		return NewNumberProperty(t)
+		return NewProperty(t)
 	case string:
-		return NewStringProperty(t)
-	case *Asset:
-		return NewAssetProperty(t)
-	case *Archive:
-		return NewArchiveProperty(t)
+		return NewProperty(t)
+	case *asset.Asset:
+		return NewProperty(t)
+	case *archive.Archive:
+		return NewProperty(t)
 	case Computed:
-		return NewComputedProperty(t)
+		return NewProperty(t)
 	case Output:
-		return NewOutputProperty(t)
+		return NewProperty(t)
 	case *Secret:
-		return NewSecretProperty(t)
+		return NewProperty(t)
 	case ResourceReference:
-		return NewResourceReferenceProperty(t)
+		return NewProperty(t)
+	case PropertyValue:
+		return t
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
 	rv := reflect.ValueOf(v)
+	//nolint:exhaustive // We intentionally only handle some types here.
 	switch rk := rv.Type().Kind(); rk {
 	case reflect.Array, reflect.Slice:
 		// If an array or slice, just create an array out of it.
@@ -320,7 +355,7 @@ func NewPropertyValueRepl(v interface{},
 			elem := rv.Index(i)
 			arr = append(arr, NewPropertyValueRepl(elem.Interface(), replk, replv))
 		}
-		return NewArrayProperty(arr)
+		return NewProperty(arr)
 	case reflect.Ptr:
 		// If a pointer, recurse and return the underlying value.
 		if rv.IsNil() {
@@ -330,46 +365,46 @@ func NewPropertyValueRepl(v interface{},
 	case reflect.Map:
 		// If a map, create a new property map, provided the keys and values are okay.
 		obj := PropertyMap{}
-		for _, key := range rv.MapKeys() {
-			var pk PropertyKey
-			switch k := key.Interface().(type) {
-			case string:
-				pk = PropertyKey(k)
-			case PropertyKey:
-				pk = k
-			default:
-				contract.Failf("Unrecognized PropertyMap key type: %v", reflect.TypeOf(key))
+		for iter := rv.MapRange(); iter.Next(); {
+			key := iter.Key()
+			if key.Kind() != reflect.String {
+				contract.Failf("Unrecognized PropertyMap key type %v", key.Type())
 			}
+
+			pk := PropertyKey(key.String())
 			if replk != nil {
 				if rk, repl := replk(string(pk)); repl {
 					pk = rk
 				}
 			}
-			val := rv.MapIndex(key)
-			pv := NewPropertyValueRepl(val.Interface(), replk, replv)
+
+			val := iter.Value().Interface()
+			pv := NewPropertyValueRepl(val, replk, replv)
 			obj[pk] = pv
 		}
-		return NewObjectProperty(obj)
+		return NewProperty(obj)
 	case reflect.String:
-		return NewStringProperty(rv.String())
+		return NewProperty(rv.String())
 	case reflect.Struct:
 		obj := NewPropertyMapRepl(v, replk, replv)
-		return NewObjectProperty(obj)
+		return NewProperty(obj)
 	default:
 		contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
+		return NewNullProperty()
 	}
-
-	return NewNullProperty()
 }
 
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
-	return !v.IsNull() && !v.IsOutput()
+	if v.IsOutput() {
+		return v.OutputValue().Known
+	}
+	return !v.IsNull()
 }
 
 // ContainsUnknowns returns true if the property value contains at least one unknown (deeply).
 func (v PropertyValue) ContainsUnknowns() bool {
-	if v.IsComputed() || v.IsOutput() {
+	if v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
 		return true
 	} else if v.IsArray() {
 		for _, e := range v.ArrayValue() {
@@ -392,7 +427,7 @@ func (v PropertyValue) ContainsSecrets() bool {
 	} else if v.IsComputed() {
 		return v.Input().Element.ContainsSecrets()
 	} else if v.IsOutput() {
-		return v.OutputValue().Element.ContainsSecrets()
+		return v.OutputValue().Secret || v.OutputValue().Element.ContainsSecrets()
 	} else if v.IsArray() {
 		for _, e := range v.ArrayValue() {
 			if e.ContainsSecrets() {
@@ -418,10 +453,10 @@ func (v PropertyValue) StringValue() string { return v.V.(string) }
 func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
 
 // AssetValue fetches the underlying asset value (panicking if it isn't an asset).
-func (v PropertyValue) AssetValue() *Asset { return v.V.(*Asset) }
+func (v PropertyValue) AssetValue() *asset.Asset { return v.V.(*asset.Asset) }
 
 // ArchiveValue fetches the underlying archive value (panicking if it isn't an archive).
-func (v PropertyValue) ArchiveValue() *Archive { return v.V.(*Archive) }
+func (v PropertyValue) ArchiveValue() *archive.Archive { return v.V.(*archive.Archive) }
 
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
 func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
@@ -469,13 +504,13 @@ func (v PropertyValue) IsArray() bool {
 
 // IsAsset returns true if the underlying value is an object.
 func (v PropertyValue) IsAsset() bool {
-	_, is := v.V.(*Asset)
+	_, is := v.V.(*asset.Asset)
 	return is
 }
 
 // IsArchive returns true if the underlying value is an object.
 func (v PropertyValue) IsArchive() bool {
-	_, is := v.V.(*Archive)
+	_, is := v.V.(*archive.Archive)
 	return is
 }
 
@@ -530,7 +565,12 @@ func (v PropertyValue) TypeString() string {
 	} else if v.IsComputed() {
 		return "output<" + v.Input().Element.TypeString() + ">"
 	} else if v.IsOutput() {
-		return "output<" + v.OutputValue().Element.TypeString() + ">"
+		if !v.OutputValue().Known {
+			return MakeComputed(v.OutputValue().Element).TypeString()
+		} else if v.OutputValue().Secret {
+			return MakeSecret(v.OutputValue().Element).TypeString()
+		}
+		return v.OutputValue().Element.TypeString()
 	} else if v.IsSecret() {
 		return "secret<" + v.SecretValue().Element.TypeString() + ">"
 	} else if v.IsResourceReference() {
@@ -549,7 +589,8 @@ func (v PropertyValue) Mappable() interface{} {
 // MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
 // replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
 func (v PropertyValue) MapRepl(replk func(string) (string, bool),
-	replv func(PropertyValue) (interface{}, bool)) interface{} {
+	replv func(PropertyValue) (interface{}, bool),
+) interface{} {
 	if replv != nil {
 		if rv, repv := replv(v); repv {
 			return rv
@@ -588,9 +629,16 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 
 // String implements the fmt.Stringer interface to add slightly more information to the output.
 func (v PropertyValue) String() string {
-	if v.IsComputed() || v.IsOutput() {
-		// For computed and output properties, show their type followed by an empty object string.
+	if v.IsComputed() {
+		// For computed properties, show the type followed by an empty object string.
 		return fmt.Sprintf("%v{}", v.TypeString())
+	} else if v.IsOutput() {
+		if !v.OutputValue().Known {
+			return MakeComputed(v.OutputValue().Element).String()
+		} else if v.OutputValue().Secret {
+			return MakeSecret(v.OutputValue().Element).String()
+		}
+		return v.OutputValue().Element.String()
 	}
 	// For all others, just display the underlying property value.
 	return fmt.Sprintf("{%v}", v.V)
@@ -604,7 +652,7 @@ type Property struct {
 
 // SigKey is sometimes used to encode type identity inside of a map.  This is required when flattening into ordinary
 // maps, like we do when performing serialization, to ensure recoverability of type identities later on.
-const SigKey = "4dabf18193072939515e22adb298388d"
+const SigKey = sig.Key
 
 // HasSig checks to see if the given property map contains the specific signature match.
 func HasSig(obj PropertyMap, match string) bool {
@@ -615,10 +663,13 @@ func HasSig(obj PropertyMap, match string) bool {
 }
 
 // SecretSig is the unique secret signature.
-const SecretSig = "1b47061264138c4ac30d75fd1eb44270"
+const SecretSig = sig.Secret
 
 // ResourceReferenceSig is the unique resource reference signature.
-const ResourceReferenceSig = "5cf8f73096256a8f31e491e813e4eb8e"
+const ResourceReferenceSig = sig.ResourceReference
+
+// OutputValueSig is the unique output value signature.
+const OutputValueSig = sig.OutputValue
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.

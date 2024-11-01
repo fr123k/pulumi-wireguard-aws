@@ -60,7 +60,7 @@ import (
 //
 // ## Import
 //
-// Traffic mirror sessions can be imported using the `id`, e.g.
+// Traffic mirror sessions can be imported using the `id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/trafficMirrorSession:TrafficMirrorSession session tms-0d8aa3ca35897b82e
@@ -79,9 +79,11 @@ type TrafficMirrorSession struct {
 	// The number of bytes in each packet to mirror. These are bytes after the VXLAN header. Do not specify this parameter when you want to mirror the entire packet. To mirror a subset of the packet, set this to the length (in bytes) that you want to mirror.
 	PacketLength pulumi.IntPtrOutput `pulumi:"packetLength"`
 	// - The session number determines the order in which sessions are evaluated when an interface is used by multiple sessions. The first session with a matching filter is the one that mirrors the packets.
-	SessionNumber pulumi.IntOutput       `pulumi:"sessionNumber"`
-	Tags          pulumi.StringMapOutput `pulumi:"tags"`
-	TagsAll       pulumi.StringMapOutput `pulumi:"tagsAll"`
+	SessionNumber pulumi.IntOutput `pulumi:"sessionNumber"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapOutput `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
 	// ID of the traffic mirror filter to be used
 	TrafficMirrorFilterId pulumi.StringOutput `pulumi:"trafficMirrorFilterId"`
 	// ID of the traffic mirror target to be used
@@ -142,9 +144,11 @@ type trafficMirrorSessionState struct {
 	// The number of bytes in each packet to mirror. These are bytes after the VXLAN header. Do not specify this parameter when you want to mirror the entire packet. To mirror a subset of the packet, set this to the length (in bytes) that you want to mirror.
 	PacketLength *int `pulumi:"packetLength"`
 	// - The session number determines the order in which sessions are evaluated when an interface is used by multiple sessions. The first session with a matching filter is the one that mirrors the packets.
-	SessionNumber *int              `pulumi:"sessionNumber"`
-	Tags          map[string]string `pulumi:"tags"`
-	TagsAll       map[string]string `pulumi:"tagsAll"`
+	SessionNumber *int `pulumi:"sessionNumber"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll map[string]string `pulumi:"tagsAll"`
 	// ID of the traffic mirror filter to be used
 	TrafficMirrorFilterId *string `pulumi:"trafficMirrorFilterId"`
 	// ID of the traffic mirror target to be used
@@ -166,8 +170,10 @@ type TrafficMirrorSessionState struct {
 	PacketLength pulumi.IntPtrInput
 	// - The session number determines the order in which sessions are evaluated when an interface is used by multiple sessions. The first session with a matching filter is the one that mirrors the packets.
 	SessionNumber pulumi.IntPtrInput
-	Tags          pulumi.StringMapInput
-	TagsAll       pulumi.StringMapInput
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapInput
 	// ID of the traffic mirror filter to be used
 	TrafficMirrorFilterId pulumi.StringPtrInput
 	// ID of the traffic mirror target to be used
@@ -188,8 +194,9 @@ type trafficMirrorSessionArgs struct {
 	// The number of bytes in each packet to mirror. These are bytes after the VXLAN header. Do not specify this parameter when you want to mirror the entire packet. To mirror a subset of the packet, set this to the length (in bytes) that you want to mirror.
 	PacketLength *int `pulumi:"packetLength"`
 	// - The session number determines the order in which sessions are evaluated when an interface is used by multiple sessions. The first session with a matching filter is the one that mirrors the packets.
-	SessionNumber int               `pulumi:"sessionNumber"`
-	Tags          map[string]string `pulumi:"tags"`
+	SessionNumber int `pulumi:"sessionNumber"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
 	// ID of the traffic mirror filter to be used
 	TrafficMirrorFilterId string `pulumi:"trafficMirrorFilterId"`
 	// ID of the traffic mirror target to be used
@@ -208,7 +215,8 @@ type TrafficMirrorSessionArgs struct {
 	PacketLength pulumi.IntPtrInput
 	// - The session number determines the order in which sessions are evaluated when an interface is used by multiple sessions. The first session with a matching filter is the one that mirrors the packets.
 	SessionNumber pulumi.IntInput
-	Tags          pulumi.StringMapInput
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
 	// ID of the traffic mirror filter to be used
 	TrafficMirrorFilterId pulumi.StringInput
 	// ID of the traffic mirror target to be used
@@ -229,7 +237,7 @@ type TrafficMirrorSessionInput interface {
 }
 
 func (*TrafficMirrorSession) ElementType() reflect.Type {
-	return reflect.TypeOf((*TrafficMirrorSession)(nil))
+	return reflect.TypeOf((**TrafficMirrorSession)(nil)).Elem()
 }
 
 func (i *TrafficMirrorSession) ToTrafficMirrorSessionOutput() TrafficMirrorSessionOutput {
@@ -238,35 +246,6 @@ func (i *TrafficMirrorSession) ToTrafficMirrorSessionOutput() TrafficMirrorSessi
 
 func (i *TrafficMirrorSession) ToTrafficMirrorSessionOutputWithContext(ctx context.Context) TrafficMirrorSessionOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(TrafficMirrorSessionOutput)
-}
-
-func (i *TrafficMirrorSession) ToTrafficMirrorSessionPtrOutput() TrafficMirrorSessionPtrOutput {
-	return i.ToTrafficMirrorSessionPtrOutputWithContext(context.Background())
-}
-
-func (i *TrafficMirrorSession) ToTrafficMirrorSessionPtrOutputWithContext(ctx context.Context) TrafficMirrorSessionPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(TrafficMirrorSessionPtrOutput)
-}
-
-type TrafficMirrorSessionPtrInput interface {
-	pulumi.Input
-
-	ToTrafficMirrorSessionPtrOutput() TrafficMirrorSessionPtrOutput
-	ToTrafficMirrorSessionPtrOutputWithContext(ctx context.Context) TrafficMirrorSessionPtrOutput
-}
-
-type trafficMirrorSessionPtrType TrafficMirrorSessionArgs
-
-func (*trafficMirrorSessionPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**TrafficMirrorSession)(nil))
-}
-
-func (i *trafficMirrorSessionPtrType) ToTrafficMirrorSessionPtrOutput() TrafficMirrorSessionPtrOutput {
-	return i.ToTrafficMirrorSessionPtrOutputWithContext(context.Background())
-}
-
-func (i *trafficMirrorSessionPtrType) ToTrafficMirrorSessionPtrOutputWithContext(ctx context.Context) TrafficMirrorSessionPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(TrafficMirrorSessionPtrOutput)
 }
 
 // TrafficMirrorSessionArrayInput is an input type that accepts TrafficMirrorSessionArray and TrafficMirrorSessionArrayOutput values.
@@ -322,7 +301,7 @@ func (i TrafficMirrorSessionMap) ToTrafficMirrorSessionMapOutputWithContext(ctx 
 type TrafficMirrorSessionOutput struct{ *pulumi.OutputState }
 
 func (TrafficMirrorSessionOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*TrafficMirrorSession)(nil))
+	return reflect.TypeOf((**TrafficMirrorSession)(nil)).Elem()
 }
 
 func (o TrafficMirrorSessionOutput) ToTrafficMirrorSessionOutput() TrafficMirrorSessionOutput {
@@ -333,44 +312,10 @@ func (o TrafficMirrorSessionOutput) ToTrafficMirrorSessionOutputWithContext(ctx 
 	return o
 }
 
-func (o TrafficMirrorSessionOutput) ToTrafficMirrorSessionPtrOutput() TrafficMirrorSessionPtrOutput {
-	return o.ToTrafficMirrorSessionPtrOutputWithContext(context.Background())
-}
-
-func (o TrafficMirrorSessionOutput) ToTrafficMirrorSessionPtrOutputWithContext(ctx context.Context) TrafficMirrorSessionPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficMirrorSession) *TrafficMirrorSession {
-		return &v
-	}).(TrafficMirrorSessionPtrOutput)
-}
-
-type TrafficMirrorSessionPtrOutput struct{ *pulumi.OutputState }
-
-func (TrafficMirrorSessionPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**TrafficMirrorSession)(nil))
-}
-
-func (o TrafficMirrorSessionPtrOutput) ToTrafficMirrorSessionPtrOutput() TrafficMirrorSessionPtrOutput {
-	return o
-}
-
-func (o TrafficMirrorSessionPtrOutput) ToTrafficMirrorSessionPtrOutputWithContext(ctx context.Context) TrafficMirrorSessionPtrOutput {
-	return o
-}
-
-func (o TrafficMirrorSessionPtrOutput) Elem() TrafficMirrorSessionOutput {
-	return o.ApplyT(func(v *TrafficMirrorSession) TrafficMirrorSession {
-		if v != nil {
-			return *v
-		}
-		var ret TrafficMirrorSession
-		return ret
-	}).(TrafficMirrorSessionOutput)
-}
-
 type TrafficMirrorSessionArrayOutput struct{ *pulumi.OutputState }
 
 func (TrafficMirrorSessionArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]TrafficMirrorSession)(nil))
+	return reflect.TypeOf((*[]*TrafficMirrorSession)(nil)).Elem()
 }
 
 func (o TrafficMirrorSessionArrayOutput) ToTrafficMirrorSessionArrayOutput() TrafficMirrorSessionArrayOutput {
@@ -382,15 +327,15 @@ func (o TrafficMirrorSessionArrayOutput) ToTrafficMirrorSessionArrayOutputWithCo
 }
 
 func (o TrafficMirrorSessionArrayOutput) Index(i pulumi.IntInput) TrafficMirrorSessionOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficMirrorSession {
-		return vs[0].([]TrafficMirrorSession)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *TrafficMirrorSession {
+		return vs[0].([]*TrafficMirrorSession)[vs[1].(int)]
 	}).(TrafficMirrorSessionOutput)
 }
 
 type TrafficMirrorSessionMapOutput struct{ *pulumi.OutputState }
 
 func (TrafficMirrorSessionMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]TrafficMirrorSession)(nil))
+	return reflect.TypeOf((*map[string]*TrafficMirrorSession)(nil)).Elem()
 }
 
 func (o TrafficMirrorSessionMapOutput) ToTrafficMirrorSessionMapOutput() TrafficMirrorSessionMapOutput {
@@ -402,14 +347,16 @@ func (o TrafficMirrorSessionMapOutput) ToTrafficMirrorSessionMapOutputWithContex
 }
 
 func (o TrafficMirrorSessionMapOutput) MapIndex(k pulumi.StringInput) TrafficMirrorSessionOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) TrafficMirrorSession {
-		return vs[0].(map[string]TrafficMirrorSession)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *TrafficMirrorSession {
+		return vs[0].(map[string]*TrafficMirrorSession)[vs[1].(string)]
 	}).(TrafficMirrorSessionOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorSessionInput)(nil)).Elem(), &TrafficMirrorSession{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorSessionArrayInput)(nil)).Elem(), TrafficMirrorSessionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorSessionMapInput)(nil)).Elem(), TrafficMirrorSessionMap{})
 	pulumi.RegisterOutputType(TrafficMirrorSessionOutput{})
-	pulumi.RegisterOutputType(TrafficMirrorSessionPtrOutput{})
 	pulumi.RegisterOutputType(TrafficMirrorSessionArrayOutput{})
 	pulumi.RegisterOutputType(TrafficMirrorSessionMapOutput{})
 }

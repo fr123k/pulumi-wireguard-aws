@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,15 +15,230 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"io"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type GetSchemaRequest struct {
+	// Version is the version of the schema to return. If omitted, the latest version of the schema should be returned.
+	Version int32
+	// Subpackage name to get the schema for.
+	SubpackageName string
+	// Subpackage version to get the schema for.
+	SubpackageVersion *semver.Version
+}
+
+type ParameterizeParameters interface {
+	isParameterizeParameters()
+}
+
+type (
+	ParameterizeArgs struct {
+		Args []string
+	}
+
+	ParameterizeValue struct {
+		Name    string
+		Version semver.Version
+		Value   []byte
+	}
+)
+
+func (*ParameterizeArgs) isParameterizeParameters()  {}
+func (*ParameterizeValue) isParameterizeParameters() {}
+
+type ParameterizeRequest struct {
+	Parameters ParameterizeParameters
+}
+
+type ParameterizeResponse struct {
+	Name    string
+	Version semver.Version
+}
+
+type GetSchemaResponse struct {
+	Schema []byte
+}
+
+type CheckConfigRequest struct {
+	URN           resource.URN
+	Name          string
+	Type          tokens.Type
+	Olds, News    resource.PropertyMap
+	AllowUnknowns bool
+}
+
+type CheckConfigResponse struct {
+	Properties resource.PropertyMap
+	Failures   []CheckFailure
+}
+
+type DiffConfigRequest struct {
+	URN                              resource.URN
+	Name                             string
+	Type                             tokens.Type
+	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	AllowUnknowns                    bool
+	IgnoreChanges                    []string
+}
+
+type DiffConfigResponse = DiffResult
+
+type ConfigureRequest struct {
+	Inputs resource.PropertyMap
+}
+
+type ConfigureResponse struct{}
+
+type CheckRequest struct {
+	URN  resource.URN
+	Name string
+	Type tokens.Type
+	// TODO Change to (State, Input)
+	Olds, News    resource.PropertyMap
+	AllowUnknowns bool
+	RandomSeed    []byte
+}
+
+type CheckResponse struct {
+	Properties resource.PropertyMap
+	Failures   []CheckFailure
+}
+
+type DiffRequest struct {
+	URN  resource.URN
+	Name string
+	Type tokens.Type
+	ID   resource.ID
+	// TODO Change to (OldInputs, OldState, NewInputs)
+	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	AllowUnknowns                    bool
+	IgnoreChanges                    []string
+}
+
+type DiffResponse = DiffResult
+
+type CreateRequest struct {
+	URN        resource.URN
+	Name       string
+	Type       tokens.Type
+	Properties resource.PropertyMap
+	Timeout    float64
+	Preview    bool
+}
+
+type CreateResponse struct {
+	ID         resource.ID
+	Properties resource.PropertyMap
+	Status     resource.Status
+}
+
+type ReadRequest struct {
+	URN           resource.URN
+	Name          string
+	Type          tokens.Type
+	ID            resource.ID
+	Inputs, State resource.PropertyMap
+}
+
+type ReadResponse struct {
+	ReadResult
+	Status resource.Status
+}
+
+type UpdateRequest struct {
+	URN                              resource.URN
+	Name                             string
+	Type                             tokens.Type
+	ID                               resource.ID
+	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	Timeout                          float64
+	IgnoreChanges                    []string
+	Preview                          bool
+}
+
+type UpdateResponse struct {
+	Properties resource.PropertyMap
+	Status     resource.Status
+}
+
+type DeleteRequest struct {
+	URN             resource.URN
+	Name            string
+	Type            tokens.Type
+	ID              resource.ID
+	Inputs, Outputs resource.PropertyMap
+	Timeout         float64
+}
+
+type DeleteResponse struct {
+	Status resource.Status
+}
+
+type ConstructRequest struct {
+	Info    ConstructInfo
+	Type    tokens.Type
+	Name    string
+	Parent  resource.URN
+	Inputs  resource.PropertyMap
+	Options ConstructOptions
+}
+
+type ConstructResponse = ConstructResult
+
+type InvokeRequest struct {
+	Tok  tokens.ModuleMember
+	Args resource.PropertyMap
+}
+
+type InvokeResponse struct {
+	Properties resource.PropertyMap
+	Failures   []CheckFailure
+}
+
+type StreamInvokeRequest struct {
+	Tok    tokens.ModuleMember
+	Args   resource.PropertyMap
+	OnNext func(resource.PropertyMap) error
+}
+
+type StreamInvokeResponse struct {
+	Failures []CheckFailure
+}
+
+type CallRequest struct {
+	Tok     tokens.ModuleMember
+	Args    resource.PropertyMap
+	Info    CallInfo
+	Options CallOptions
+}
+
+type CallResponse = CallResult
+
+type GetMappingRequest struct {
+	Key, Provider string
+}
+
+type GetMappingResponse struct {
+	Data     []byte
+	Provider string
+}
+
+type GetMappingsRequest struct {
+	Key string
+}
+
+type GetMappingsResponse struct {
+	Keys []string
+}
 
 // Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
 // provider understands how to handle all of the resource types within a single package.
@@ -36,70 +251,95 @@ import (
 // best effort to ensure catastrophes do not occur.  The errors returned from mutating operations indicate both the
 // underlying error condition in addition to a bit indicating whether the operation was successfully rolled back.
 type Provider interface {
+	// When adding new methods:
+	//
+	// To ensure maximum backwards compatibility, each method should be of the form:
+	//
+	//	MyMethod(ctx context.Context, request MyMethodRequest) (MyMethodResponse, error)
+	//
+	// This intentionally mimics the style of gRPC methods and is required to ensure that adding a new input or
+	// output field doesn't break existing call sites.
+
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
+
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 
+	// Parameterize adds a sub-package to this provider instance.
+	Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
+
 	// GetSchema returns the schema for the provider.
-	GetSchema(version int) ([]byte, error)
+	GetSchema(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
 
 	// CheckConfig validates the configuration for this resource provider.
-	CheckConfig(urn resource.URN, olds, news resource.PropertyMap,
-		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
+	CheckConfig(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
 	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-	DiffConfig(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-		ignoreChanges []string) (DiffResult, error)
+	DiffConfig(context.Context, DiffConfigRequest) (DiffConfigResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
-	Configure(inputs resource.PropertyMap) error
+	Configure(context.Context, ConfigureRequest) (ConfigureResponse, error)
 
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
-	Check(urn resource.URN, olds, news resource.PropertyMap,
-		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
+	Check(context.Context, CheckRequest) (CheckResponse, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
-	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
-		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)
+	Diff(context.Context, DiffRequest) (DiffResponse, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-	Create(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool) (resource.ID,
-		resource.PropertyMap, resource.Status, error)
+	Create(context.Context, CreateRequest) (CreateResponse, error)
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
 	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
-	Read(urn resource.URN, id resource.ID,
-		inputs, state resource.PropertyMap) (ReadResult, resource.Status, error)
+	Read(context.Context, ReadRequest) (ReadResponse, error)
 	// Update updates an existing resource with new values.
-	Update(urn resource.URN, id resource.ID,
-		olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
-	// Delete tears down an existing resource.
-	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
+	Update(context.Context, UpdateRequest) (UpdateResponse, error)
+	// Delete tears down an existing resource. The inputs and outputs are the last recorded ones from state.
+	Delete(context.Context, DeleteRequest) (DeleteResponse, error)
 
 	// Construct creates a new component resource.
-	Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap,
-		options ConstructOptions) (ConstructResult, error)
+	Construct(context.Context, ConstructRequest) (ConstructResponse, error)
 
 	// Invoke dynamically executes a built-in function in the provider.
-	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+	Invoke(context.Context, InvokeRequest) (InvokeResponse, error)
 	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
 	// of responses.
-	StreamInvoke(
-		tok tokens.ModuleMember,
-		args resource.PropertyMap,
-		onNext func(resource.PropertyMap) error) ([]CheckFailure, error)
+	StreamInvoke(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error)
 	// Call dynamically executes a method in the provider associated with a component resource.
-	Call(tok tokens.ModuleMember, args resource.PropertyMap, info CallInfo,
-		options CallOptions) (CallResult, error)
+	Call(context.Context, CallRequest) (CallResponse, error)
 
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo(context.Context) (workspace.PluginInfo, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
 	// will either a creation error or an initialization error. SignalCancellation is advisory and
 	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
 	// called before (e.g.) hard-closing any gRPC connection.
-	SignalCancellation() error
+	SignalCancellation(context.Context) error
+
+	// GetMapping returns the mapping (if any) for the provider. A provider should return an empty response
+	// (not an error) if it doesn't have a mapping for the given key.
+	GetMapping(context.Context, GetMappingRequest) (GetMappingResponse, error)
+
+	// GetMappings returns the mappings (if any) for the providers. A provider should return an empty list (not an
+	// error) if it doesn't have any mappings for the given key.
+	// If a provider implements this method GetMapping will be called using the results from this method.
+	GetMappings(context.Context, GetMappingsRequest) (GetMappingsResponse, error)
+
+	// mustEmbed *requires* that implementers make an explicit choice about forward compatibility.
+	//
+	// If [UnimplementedProvider] is embedded, then the struct will be forward compatible.
+	//
+	// If [NotForwardCompatibleProvider] is embedded, then the struct *will not* be forward compatible.
+	mustEmbedAForwardCompatibilityOption(UnimplementedProvider, NotForwardCompatibleProvider)
+}
+
+type GrpcProvider interface {
+	Provider
+
+	// Attach triggers an attach for a currently running provider to the engine
+	// TODO It would be nice if this was a HostClient rather than the string address but due to dependency
+	// ordering we don't have access to declare that here.
+	Attach(address string) error
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.
@@ -150,9 +390,11 @@ func (d DiffKind) IsReplace() bool {
 	switch d {
 	case DiffAddReplace, DiffDeleteReplace, DiffUpdateReplace:
 		return true
-	default:
+	case DiffAdd, DiffDelete, DiffUpdate:
 		return false
 	}
+	contract.Failf("Unknown diff kind %v", int(d))
+	return false
 }
 
 // AsReplace converts a DiffKind into the equivalent replacement if it not already
@@ -174,6 +416,34 @@ func (d DiffKind) AsReplace() DiffKind {
 	default:
 		contract.Failf("Unknown diff kind %v", int(d))
 		return DiffUpdateReplace
+	}
+}
+
+// Invert returns the opposite diff kind to the receiver. That is:
+//
+//   - Add -> Delete
+//   - AddReplace -> DeleteReplace
+//   - Delete -> Add
+//   - DeleteReplace -> AddReplace
+//   - Update -> Update
+//   - UpdateReplace -> UpdateReplace
+func (d DiffKind) Invert() DiffKind {
+	switch d {
+	case DiffAdd:
+		return DiffDelete
+	case DiffAddReplace:
+		return DiffDeleteReplace
+	case DiffDelete:
+		return DiffAdd
+	case DiffDeleteReplace:
+		return DiffAddReplace
+	case DiffUpdate:
+		return DiffUpdate
+	case DiffUpdateReplace:
+		return DiffUpdateReplace
+	default:
+		contract.Failf("Unknown diff kind %v", int(d))
+		return DiffUpdate
 	}
 }
 
@@ -217,6 +487,75 @@ type DiffResult struct {
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
 }
 
+// NewDetailedDiffFromObjectDiff computes the detailed diff of Updated, Added and Deleted keys.
+func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff, inputDiff bool) map[string]PropertyDiff {
+	if diff == nil {
+		return map[string]PropertyDiff{}
+	}
+	out := map[string]PropertyDiff{}
+	objectDiffToDetailedDiff(nil, diff, inputDiff, out)
+	return out
+}
+
+func objectDiffToDetailedDiff(
+	prefix resource.PropertyPath, diff *resource.ObjectDiff, inputDiff bool, acc map[string]PropertyDiff,
+) {
+	getPrefix := func(k resource.PropertyKey) resource.PropertyPath {
+		return append(prefix, string(k))
+	}
+
+	for k, vd := range diff.Updates {
+		nestedPrefix := getPrefix(k)
+		valueDiffToDetailedDiff(nestedPrefix, vd, inputDiff, acc)
+	}
+
+	for k := range diff.Adds {
+		nestedPrefix := getPrefix(k)
+		acc[nestedPrefix.String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+	}
+
+	for k := range diff.Deletes {
+		nestedPrefix := getPrefix(k)
+		acc[nestedPrefix.String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+	}
+}
+
+func arrayDiffToDetailedDiff(
+	prefix resource.PropertyPath, d *resource.ArrayDiff, inputDiff bool, acc map[string]PropertyDiff,
+) {
+	nestedPrefix := func(i int) resource.PropertyPath {
+		return append(prefix, i)
+	}
+	for i, vd := range d.Updates {
+		valueDiffToDetailedDiff(nestedPrefix(i), vd, inputDiff, acc)
+	}
+	for i := range d.Adds {
+		acc[nestedPrefix(i).String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+	}
+	for i := range d.Deletes {
+		acc[nestedPrefix(i).String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+	}
+}
+
+func valueDiffToDetailedDiff(
+	prefix resource.PropertyPath, vd resource.ValueDiff, inputDiff bool, acc map[string]PropertyDiff,
+) {
+	if vd.Object != nil {
+		objectDiffToDetailedDiff(prefix, vd.Object, inputDiff, acc)
+	} else if vd.Array != nil {
+		arrayDiffToDetailedDiff(prefix, vd.Array, inputDiff, acc)
+	} else {
+		switch {
+		case vd.Old.V == nil && vd.New.V != nil:
+			acc[prefix.String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+		case vd.Old.V != nil && vd.New.V == nil:
+			acc[prefix.String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+		default:
+			acc[prefix.String()] = PropertyDiff{Kind: DiffUpdate, InputDiff: inputDiff}
+		}
+	}
+}
+
 // Replace returns true if this diff represents a replacement.
 func (r DiffResult) Replace() bool {
 	for _, v := range r.DetailedDiff {
@@ -225,6 +564,27 @@ func (r DiffResult) Replace() bool {
 		}
 	}
 	return len(r.ReplaceKeys) > 0
+}
+
+// Invert computes the inverse diff of the receiver -- the diff that would be
+// required to "undo" this one.
+func (r DiffResult) Invert() DiffResult {
+	detailedDiff := make(map[string]PropertyDiff)
+	for k, v := range r.DetailedDiff {
+		detailedDiff[k] = PropertyDiff{
+			Kind:      v.Kind.Invert(),
+			InputDiff: v.InputDiff,
+		}
+	}
+
+	return DiffResult{
+		Changes:             r.Changes,
+		ReplaceKeys:         r.ReplaceKeys,
+		StableKeys:          r.StableKeys,
+		ChangedKeys:         r.ChangedKeys,
+		DeleteBeforeReplace: r.DeleteBeforeReplace,
+		DetailedDiff:        detailedDiff,
+	}
 }
 
 // DiffUnavailableError may be returned by a provider if the provider is unable to diff a resource.
@@ -262,22 +622,61 @@ type ConstructInfo struct {
 	Config           map[config.Key]string // the configuration variables to apply before running.
 	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
 	DryRun           bool                  // true if we are performing a dry-run (preview).
-	Parallel         int                   // the degree of parallelism for resource operations (<=1 for serial).
+	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress   string                // the RPC address to the host resource monitor.
 }
 
 // ConstructOptions captures options for a call to Construct.
 type ConstructOptions struct {
 	// Aliases is the set of aliases for the component.
-	Aliases []resource.URN
+	Aliases []resource.Alias
+
 	// Dependencies is the list of resources this component depends on.
 	Dependencies []resource.URN
+
 	// Protect is true if the component is protected.
 	Protect bool
+
 	// Providers is a map from package name to provider reference.
 	Providers map[string]string
+
 	// PropertyDependencies is a map from property name to a list of resources that property depends on.
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
+
+	// AdditionalSecretOutputs lists extra output properties
+	// that should be treated as secrets.
+	AdditionalSecretOutputs []string
+
+	// CustomTimeouts overrides default timeouts for resource operations.
+	CustomTimeouts *CustomTimeouts
+
+	// DeletedWith specifies that if the given resource is deleted,
+	// it will also delete this resource.
+	DeletedWith resource.URN
+
+	// DeleteBeforeReplace specifies that replacements of this resource
+	// should delete the old resource before creating the new resource.
+	DeleteBeforeReplace bool
+
+	// IgnoreChanges lists properties that should be ignored
+	// when determining whether the resource should has changed.
+	IgnoreChanges []string
+
+	// ReplaceOnChanges lists properties changing which should cause
+	// the resource to be replaced.
+	ReplaceOnChanges []string
+
+	// RetainOnDelete is true if deletion of the resource should not
+	// delete the resource in the provider.
+	RetainOnDelete bool
+}
+
+// CustomTimeouts overrides default timeouts for resource operations.
+// Timeout values are strings in the format accepted by time.ParseDuration.
+type CustomTimeouts struct {
+	Create string
+	Update string
+	Delete string
 }
 
 // ConstructResult is the result of a call to Construct.
@@ -296,7 +695,7 @@ type CallInfo struct {
 	Stack          string                // the stack name being evaluated.
 	Config         map[config.Key]string // the configuration variables to apply before running.
 	DryRun         bool                  // true if we are performing a dry-run (preview).
-	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
+	Parallel       int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress string                // the RPC address to the host resource monitor.
 }
 

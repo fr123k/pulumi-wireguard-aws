@@ -143,7 +143,7 @@ import (
 //
 // ## Import
 //
-// Route53 Health Checks can be imported using the `health check id`, e.g.
+// Route53 Health Checks can be imported using the `health check id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:route53/healthCheck:HealthCheck http_check abcdef11-2222-3333-4444-555555fedcba
@@ -151,6 +151,8 @@ import (
 type HealthCheck struct {
 	pulumi.CustomResourceState
 
+	// The Amazon Resource Name (ARN) of the Health Check.
+	Arn pulumi.StringOutput `pulumi:"arn"`
 	// The minimum number of child health checks that must be healthy for Route 53 to consider the parent health check to be healthy. Valid values are integers between 0 and 256, inclusive
 	ChildHealthThreshold pulumi.IntPtrOutput `pulumi:"childHealthThreshold"`
 	// For a specified parent health check, a list of HealthCheckId values for the associated child health checks.
@@ -167,7 +169,7 @@ type HealthCheck struct {
 	// A boolean value that indicates whether Route53 should send the `fqdn` to the endpoint when performing the health check. This defaults to AWS' defaults: when the `type` is "HTTPS" `enableSni` defaults to `true`, when `type` is anything else `enableSni` defaults to `false`.
 	EnableSni pulumi.BoolOutput `pulumi:"enableSni"`
 	// The number of consecutive health checks that an endpoint must pass or fail.
-	FailureThreshold pulumi.IntPtrOutput `pulumi:"failureThreshold"`
+	FailureThreshold pulumi.IntOutput `pulumi:"failureThreshold"`
 	// The fully qualified domain name of the endpoint to be checked.
 	Fqdn pulumi.StringPtrOutput `pulumi:"fqdn"`
 	// The status of the health check when CloudWatch has insufficient data about the state of associated alarm. Valid values are `Healthy` , `Unhealthy` and `LastKnownStatus`.
@@ -189,13 +191,15 @@ type HealthCheck struct {
 	RequestInterval pulumi.IntPtrOutput `pulumi:"requestInterval"`
 	// The path that you want Amazon Route 53 to request when performing health checks.
 	ResourcePath pulumi.StringPtrOutput `pulumi:"resourcePath"`
+	// The Amazon Resource Name (ARN) for the Route 53 Application Recovery Controller routing control. This is used when health check type is `RECOVERY_CONTROL`
+	RoutingControlArn pulumi.StringPtrOutput `pulumi:"routingControlArn"`
 	// String searched in the first 5120 bytes of the response body for check to be considered healthy. Only valid with `HTTP_STR_MATCH` and `HTTPS_STR_MATCH`.
 	SearchString pulumi.StringPtrOutput `pulumi:"searchString"`
-	// A map of tags to assign to the health check. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	// A map of tags to assign to the health check. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapOutput `pulumi:"tags"`
 	// A map of tags assigned to the resource, including those inherited from the provider .
 	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
-	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED` and `CLOUDWATCH_METRIC`.
+	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED`, `CLOUDWATCH_METRIC` and `RECOVERY_CONTROL`.
 	Type pulumi.StringOutput `pulumi:"type"`
 }
 
@@ -231,6 +235,8 @@ func GetHealthCheck(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering HealthCheck resources.
 type healthCheckState struct {
+	// The Amazon Resource Name (ARN) of the Health Check.
+	Arn *string `pulumi:"arn"`
 	// The minimum number of child health checks that must be healthy for Route 53 to consider the parent health check to be healthy. Valid values are integers between 0 and 256, inclusive
 	ChildHealthThreshold *int `pulumi:"childHealthThreshold"`
 	// For a specified parent health check, a list of HealthCheckId values for the associated child health checks.
@@ -269,17 +275,21 @@ type healthCheckState struct {
 	RequestInterval *int `pulumi:"requestInterval"`
 	// The path that you want Amazon Route 53 to request when performing health checks.
 	ResourcePath *string `pulumi:"resourcePath"`
+	// The Amazon Resource Name (ARN) for the Route 53 Application Recovery Controller routing control. This is used when health check type is `RECOVERY_CONTROL`
+	RoutingControlArn *string `pulumi:"routingControlArn"`
 	// String searched in the first 5120 bytes of the response body for check to be considered healthy. Only valid with `HTTP_STR_MATCH` and `HTTPS_STR_MATCH`.
 	SearchString *string `pulumi:"searchString"`
-	// A map of tags to assign to the health check. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	// A map of tags to assign to the health check. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags map[string]string `pulumi:"tags"`
 	// A map of tags assigned to the resource, including those inherited from the provider .
 	TagsAll map[string]string `pulumi:"tagsAll"`
-	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED` and `CLOUDWATCH_METRIC`.
+	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED`, `CLOUDWATCH_METRIC` and `RECOVERY_CONTROL`.
 	Type *string `pulumi:"type"`
 }
 
 type HealthCheckState struct {
+	// The Amazon Resource Name (ARN) of the Health Check.
+	Arn pulumi.StringPtrInput
 	// The minimum number of child health checks that must be healthy for Route 53 to consider the parent health check to be healthy. Valid values are integers between 0 and 256, inclusive
 	ChildHealthThreshold pulumi.IntPtrInput
 	// For a specified parent health check, a list of HealthCheckId values for the associated child health checks.
@@ -318,13 +328,15 @@ type HealthCheckState struct {
 	RequestInterval pulumi.IntPtrInput
 	// The path that you want Amazon Route 53 to request when performing health checks.
 	ResourcePath pulumi.StringPtrInput
+	// The Amazon Resource Name (ARN) for the Route 53 Application Recovery Controller routing control. This is used when health check type is `RECOVERY_CONTROL`
+	RoutingControlArn pulumi.StringPtrInput
 	// String searched in the first 5120 bytes of the response body for check to be considered healthy. Only valid with `HTTP_STR_MATCH` and `HTTPS_STR_MATCH`.
 	SearchString pulumi.StringPtrInput
-	// A map of tags to assign to the health check. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	// A map of tags to assign to the health check. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapInput
 	// A map of tags assigned to the resource, including those inherited from the provider .
 	TagsAll pulumi.StringMapInput
-	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED` and `CLOUDWATCH_METRIC`.
+	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED`, `CLOUDWATCH_METRIC` and `RECOVERY_CONTROL`.
 	Type pulumi.StringPtrInput
 }
 
@@ -371,11 +383,13 @@ type healthCheckArgs struct {
 	RequestInterval *int `pulumi:"requestInterval"`
 	// The path that you want Amazon Route 53 to request when performing health checks.
 	ResourcePath *string `pulumi:"resourcePath"`
+	// The Amazon Resource Name (ARN) for the Route 53 Application Recovery Controller routing control. This is used when health check type is `RECOVERY_CONTROL`
+	RoutingControlArn *string `pulumi:"routingControlArn"`
 	// String searched in the first 5120 bytes of the response body for check to be considered healthy. Only valid with `HTTP_STR_MATCH` and `HTTPS_STR_MATCH`.
 	SearchString *string `pulumi:"searchString"`
-	// A map of tags to assign to the health check. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	// A map of tags to assign to the health check. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags map[string]string `pulumi:"tags"`
-	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED` and `CLOUDWATCH_METRIC`.
+	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED`, `CLOUDWATCH_METRIC` and `RECOVERY_CONTROL`.
 	Type string `pulumi:"type"`
 }
 
@@ -419,11 +433,13 @@ type HealthCheckArgs struct {
 	RequestInterval pulumi.IntPtrInput
 	// The path that you want Amazon Route 53 to request when performing health checks.
 	ResourcePath pulumi.StringPtrInput
+	// The Amazon Resource Name (ARN) for the Route 53 Application Recovery Controller routing control. This is used when health check type is `RECOVERY_CONTROL`
+	RoutingControlArn pulumi.StringPtrInput
 	// String searched in the first 5120 bytes of the response body for check to be considered healthy. Only valid with `HTTP_STR_MATCH` and `HTTPS_STR_MATCH`.
 	SearchString pulumi.StringPtrInput
-	// A map of tags to assign to the health check. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	// A map of tags to assign to the health check. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapInput
-	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED` and `CLOUDWATCH_METRIC`.
+	// The protocol to use when performing health checks. Valid values are `HTTP`, `HTTPS`, `HTTP_STR_MATCH`, `HTTPS_STR_MATCH`, `TCP`, `CALCULATED`, `CLOUDWATCH_METRIC` and `RECOVERY_CONTROL`.
 	Type pulumi.StringInput
 }
 
@@ -439,7 +455,7 @@ type HealthCheckInput interface {
 }
 
 func (*HealthCheck) ElementType() reflect.Type {
-	return reflect.TypeOf((*HealthCheck)(nil))
+	return reflect.TypeOf((**HealthCheck)(nil)).Elem()
 }
 
 func (i *HealthCheck) ToHealthCheckOutput() HealthCheckOutput {
@@ -448,35 +464,6 @@ func (i *HealthCheck) ToHealthCheckOutput() HealthCheckOutput {
 
 func (i *HealthCheck) ToHealthCheckOutputWithContext(ctx context.Context) HealthCheckOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(HealthCheckOutput)
-}
-
-func (i *HealthCheck) ToHealthCheckPtrOutput() HealthCheckPtrOutput {
-	return i.ToHealthCheckPtrOutputWithContext(context.Background())
-}
-
-func (i *HealthCheck) ToHealthCheckPtrOutputWithContext(ctx context.Context) HealthCheckPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(HealthCheckPtrOutput)
-}
-
-type HealthCheckPtrInput interface {
-	pulumi.Input
-
-	ToHealthCheckPtrOutput() HealthCheckPtrOutput
-	ToHealthCheckPtrOutputWithContext(ctx context.Context) HealthCheckPtrOutput
-}
-
-type healthCheckPtrType HealthCheckArgs
-
-func (*healthCheckPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**HealthCheck)(nil))
-}
-
-func (i *healthCheckPtrType) ToHealthCheckPtrOutput() HealthCheckPtrOutput {
-	return i.ToHealthCheckPtrOutputWithContext(context.Background())
-}
-
-func (i *healthCheckPtrType) ToHealthCheckPtrOutputWithContext(ctx context.Context) HealthCheckPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(HealthCheckPtrOutput)
 }
 
 // HealthCheckArrayInput is an input type that accepts HealthCheckArray and HealthCheckArrayOutput values.
@@ -532,7 +519,7 @@ func (i HealthCheckMap) ToHealthCheckMapOutputWithContext(ctx context.Context) H
 type HealthCheckOutput struct{ *pulumi.OutputState }
 
 func (HealthCheckOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*HealthCheck)(nil))
+	return reflect.TypeOf((**HealthCheck)(nil)).Elem()
 }
 
 func (o HealthCheckOutput) ToHealthCheckOutput() HealthCheckOutput {
@@ -543,44 +530,10 @@ func (o HealthCheckOutput) ToHealthCheckOutputWithContext(ctx context.Context) H
 	return o
 }
 
-func (o HealthCheckOutput) ToHealthCheckPtrOutput() HealthCheckPtrOutput {
-	return o.ToHealthCheckPtrOutputWithContext(context.Background())
-}
-
-func (o HealthCheckOutput) ToHealthCheckPtrOutputWithContext(ctx context.Context) HealthCheckPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v HealthCheck) *HealthCheck {
-		return &v
-	}).(HealthCheckPtrOutput)
-}
-
-type HealthCheckPtrOutput struct{ *pulumi.OutputState }
-
-func (HealthCheckPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**HealthCheck)(nil))
-}
-
-func (o HealthCheckPtrOutput) ToHealthCheckPtrOutput() HealthCheckPtrOutput {
-	return o
-}
-
-func (o HealthCheckPtrOutput) ToHealthCheckPtrOutputWithContext(ctx context.Context) HealthCheckPtrOutput {
-	return o
-}
-
-func (o HealthCheckPtrOutput) Elem() HealthCheckOutput {
-	return o.ApplyT(func(v *HealthCheck) HealthCheck {
-		if v != nil {
-			return *v
-		}
-		var ret HealthCheck
-		return ret
-	}).(HealthCheckOutput)
-}
-
 type HealthCheckArrayOutput struct{ *pulumi.OutputState }
 
 func (HealthCheckArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]HealthCheck)(nil))
+	return reflect.TypeOf((*[]*HealthCheck)(nil)).Elem()
 }
 
 func (o HealthCheckArrayOutput) ToHealthCheckArrayOutput() HealthCheckArrayOutput {
@@ -592,15 +545,15 @@ func (o HealthCheckArrayOutput) ToHealthCheckArrayOutputWithContext(ctx context.
 }
 
 func (o HealthCheckArrayOutput) Index(i pulumi.IntInput) HealthCheckOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) HealthCheck {
-		return vs[0].([]HealthCheck)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *HealthCheck {
+		return vs[0].([]*HealthCheck)[vs[1].(int)]
 	}).(HealthCheckOutput)
 }
 
 type HealthCheckMapOutput struct{ *pulumi.OutputState }
 
 func (HealthCheckMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]HealthCheck)(nil))
+	return reflect.TypeOf((*map[string]*HealthCheck)(nil)).Elem()
 }
 
 func (o HealthCheckMapOutput) ToHealthCheckMapOutput() HealthCheckMapOutput {
@@ -612,14 +565,16 @@ func (o HealthCheckMapOutput) ToHealthCheckMapOutputWithContext(ctx context.Cont
 }
 
 func (o HealthCheckMapOutput) MapIndex(k pulumi.StringInput) HealthCheckOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) HealthCheck {
-		return vs[0].(map[string]HealthCheck)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *HealthCheck {
+		return vs[0].(map[string]*HealthCheck)[vs[1].(string)]
 	}).(HealthCheckOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*HealthCheckInput)(nil)).Elem(), &HealthCheck{})
+	pulumi.RegisterInputType(reflect.TypeOf((*HealthCheckArrayInput)(nil)).Elem(), HealthCheckArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*HealthCheckMapInput)(nil)).Elem(), HealthCheckMap{})
 	pulumi.RegisterOutputType(HealthCheckOutput{})
-	pulumi.RegisterOutputType(HealthCheckPtrOutput{})
 	pulumi.RegisterOutputType(HealthCheckArrayOutput{})
 	pulumi.RegisterOutputType(HealthCheckMapOutput{})
 }

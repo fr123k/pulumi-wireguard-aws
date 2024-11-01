@@ -31,10 +31,10 @@ package rpcerror
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/runtime/protoiface"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -129,7 +129,7 @@ func Wrap(code codes.Code, err error, message string) error {
 	status := status.New(code, message)
 	cause := serializeErrorCause(err)
 	status, newErr := status.WithDetails(cause)
-	contract.AssertNoError(newErr)
+	contract.AssertNoErrorf(newErr, "error adding details to status")
 	return status.Err()
 }
 
@@ -142,18 +142,18 @@ func Wrapf(code codes.Code, err error, messageFormat string, args ...interface{}
 	status := status.Newf(code, messageFormat, args...)
 	cause := serializeErrorCause(err)
 	status, newErr := status.WithDetails(cause)
-	contract.AssertNoError(newErr)
+	contract.AssertNoErrorf(newErr, "error adding details to status")
 	return status.Err()
 }
 
 // WithDetails adds arbitrary protobuf payloads to errors created by this package.
 // These errors will be accessible by calling `Details` on `Error` instances created
 // by `FromError`.
-func WithDetails(err error, details ...proto.Message) error {
+func WithDetails(err error, details ...protoiface.MessageV1) error {
 	status, ok := status.FromError(err)
 	contract.Assertf(ok, "WithDetails called on error not created by rpcerror")
 	status, conversionError := status.WithDetails(details...)
-	contract.AssertNoError(conversionError)
+	contract.AssertNoErrorf(conversionError, "error adding details to status")
 	return status.Err()
 }
 

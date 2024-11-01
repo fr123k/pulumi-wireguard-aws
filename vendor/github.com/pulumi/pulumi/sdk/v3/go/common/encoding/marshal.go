@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,14 +15,22 @@
 package encoding
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"io"
 	"path/filepath"
 
-	yaml "gopkg.in/yaml.v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil"
+	yaml "gopkg.in/yaml.v3"
 )
 
-var JSONExt = ".json"
-var YAMLExt = ".yaml"
+var (
+	JSONExt = ".json"
+	YAMLExt = ".yaml"
+	GZIPExt = ".gz"
+)
 
 // Exts contains a list of all the valid marshalable extension types.
 var Exts = []string{
@@ -56,27 +64,25 @@ func DefaultExt() string {
 
 // Marshaler is a type that knows how to marshal and unmarshal data in one format.
 type Marshaler interface {
-	IsJSONLike() bool
-	IsYAMLLike() bool
 	Marshal(v interface{}) ([]byte, error)
 	Unmarshal(data []byte, v interface{}) error
 }
 
+// JSON is a Marshaler that marshals and unmarshals JSON with indented printing.
 var JSON Marshaler = &jsonMarshaler{}
 
-type jsonMarshaler struct {
-}
-
-func (m *jsonMarshaler) IsJSONLike() bool {
-	return true
-}
-
-func (m *jsonMarshaler) IsYAMLLike() bool {
-	return false
-}
+type jsonMarshaler struct{}
 
 func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
-	return json.MarshalIndent(v, "", "    ")
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "    ")
+	err := enc.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
@@ -87,24 +93,85 @@ func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
 
 var YAML Marshaler = &yamlMarshaler{}
 
-type yamlMarshaler struct {
-}
-
-func (m *yamlMarshaler) IsJSONLike() bool {
-	return false
-}
-
-func (m *yamlMarshaler) IsYAMLLike() bool {
-	return true
-}
+type yamlMarshaler struct{}
 
 func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
-	return yaml.Marshal(v)
+	if r, ok := v.(yamlutil.HasRawValue); ok {
+		if len(r.RawValue()) > 0 {
+			// Attempt a comment preserving edit:
+			return yamlutil.Edit(r.RawValue(), v)
+		}
+	}
+
+	return yamlutil.YamlEncode(v)
 }
 
 func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
 
-	return yaml.Unmarshal(data, v)
+	err := yaml.Unmarshal(data, v)
+	if err != nil {
+		// Return type errors directly
+		if _, ok := err.(*yaml.TypeError); ok {
+			return err
+		}
+		// Other errors will be parse errors due to invalid syntax
+		return fmt.Errorf("invalid YAML file: %w", err)
+	}
+	return nil
+}
+
+type gzipMarshaller struct {
+	inner Marshaler
+}
+
+func (m *gzipMarshaller) Marshal(v interface{}) ([]byte, error) {
+	b, err := m.inner.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	writer := gzip.NewWriter(&buf)
+	defer writer.Close()
+	_, err = writer.Write(b)
+	if err != nil {
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (m *gzipMarshaller) Unmarshal(data []byte, v interface{}) error {
+	buf := bytes.NewBuffer(data)
+	reader, err := gzip.NewReader(buf)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	inflated, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	if err := reader.Close(); err != nil {
+		return err
+	}
+	return m.inner.Unmarshal(inflated, v)
+}
+
+// IsCompressed returns if data is zip compressed.
+func IsCompressed(buf []byte) bool {
+	// Taken from compress/gzip/gunzip.go
+	return len(buf) >= 3 && buf[0] == 31 && buf[1] == 139 && buf[2] == 8
+}
+
+func Gzip(m Marshaler) Marshaler {
+	_, alreadyGZIP := m.(*gzipMarshaller)
+	if alreadyGZIP {
+		return m
+	}
+	return &gzipMarshaller{m}
 }

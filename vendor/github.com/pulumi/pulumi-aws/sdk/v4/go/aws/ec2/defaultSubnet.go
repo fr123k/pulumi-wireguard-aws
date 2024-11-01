@@ -45,7 +45,7 @@ import (
 //
 // ## Import
 //
-// Subnets can be imported using the `subnet id`, e.g.
+// Subnets can be imported using the `subnet id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/defaultSubnet:DefaultSubnet public_subnet subnet-9d4a7b6c
@@ -62,17 +62,22 @@ type DefaultSubnet struct {
 	AvailabilityZone   pulumi.StringOutput `pulumi:"availabilityZone"`
 	AvailabilityZoneId pulumi.StringOutput `pulumi:"availabilityZoneId"`
 	// CIDR block for the subnet.
-	CidrBlock             pulumi.StringOutput    `pulumi:"cidrBlock"`
-	CustomerOwnedIpv4Pool pulumi.StringPtrOutput `pulumi:"customerOwnedIpv4Pool"`
+	CidrBlock                               pulumi.StringOutput    `pulumi:"cidrBlock"`
+	CustomerOwnedIpv4Pool                   pulumi.StringPtrOutput `pulumi:"customerOwnedIpv4Pool"`
+	EnableDns64                             pulumi.BoolPtrOutput   `pulumi:"enableDns64"`
+	EnableResourceNameDnsARecordOnLaunch    pulumi.BoolPtrOutput   `pulumi:"enableResourceNameDnsARecordOnLaunch"`
+	EnableResourceNameDnsAaaaRecordOnLaunch pulumi.BoolPtrOutput   `pulumi:"enableResourceNameDnsAaaaRecordOnLaunch"`
 	// IPv6 CIDR block.
 	Ipv6CidrBlock              pulumi.StringOutput  `pulumi:"ipv6CidrBlock"`
 	Ipv6CidrBlockAssociationId pulumi.StringOutput  `pulumi:"ipv6CidrBlockAssociationId"`
+	Ipv6Native                 pulumi.BoolPtrOutput `pulumi:"ipv6Native"`
 	MapCustomerOwnedIpOnLaunch pulumi.BoolPtrOutput `pulumi:"mapCustomerOwnedIpOnLaunch"`
 	// Whether instances launched into the subnet should be assigned a public IP address.
 	MapPublicIpOnLaunch pulumi.BoolOutput      `pulumi:"mapPublicIpOnLaunch"`
 	OutpostArn          pulumi.StringPtrOutput `pulumi:"outpostArn"`
 	// ID of the AWS account that owns the subnet.
-	OwnerId pulumi.StringOutput `pulumi:"ownerId"`
+	OwnerId                        pulumi.StringOutput `pulumi:"ownerId"`
+	PrivateDnsHostnameTypeOnLaunch pulumi.StringOutput `pulumi:"privateDnsHostnameTypeOnLaunch"`
 	// Map of tags to assign to the resource.
 	Tags    pulumi.StringMapOutput `pulumi:"tags"`
 	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
@@ -121,17 +126,22 @@ type defaultSubnetState struct {
 	AvailabilityZone   *string `pulumi:"availabilityZone"`
 	AvailabilityZoneId *string `pulumi:"availabilityZoneId"`
 	// CIDR block for the subnet.
-	CidrBlock             *string `pulumi:"cidrBlock"`
-	CustomerOwnedIpv4Pool *string `pulumi:"customerOwnedIpv4Pool"`
+	CidrBlock                               *string `pulumi:"cidrBlock"`
+	CustomerOwnedIpv4Pool                   *string `pulumi:"customerOwnedIpv4Pool"`
+	EnableDns64                             *bool   `pulumi:"enableDns64"`
+	EnableResourceNameDnsARecordOnLaunch    *bool   `pulumi:"enableResourceNameDnsARecordOnLaunch"`
+	EnableResourceNameDnsAaaaRecordOnLaunch *bool   `pulumi:"enableResourceNameDnsAaaaRecordOnLaunch"`
 	// IPv6 CIDR block.
 	Ipv6CidrBlock              *string `pulumi:"ipv6CidrBlock"`
 	Ipv6CidrBlockAssociationId *string `pulumi:"ipv6CidrBlockAssociationId"`
+	Ipv6Native                 *bool   `pulumi:"ipv6Native"`
 	MapCustomerOwnedIpOnLaunch *bool   `pulumi:"mapCustomerOwnedIpOnLaunch"`
 	// Whether instances launched into the subnet should be assigned a public IP address.
 	MapPublicIpOnLaunch *bool   `pulumi:"mapPublicIpOnLaunch"`
 	OutpostArn          *string `pulumi:"outpostArn"`
 	// ID of the AWS account that owns the subnet.
-	OwnerId *string `pulumi:"ownerId"`
+	OwnerId                        *string `pulumi:"ownerId"`
+	PrivateDnsHostnameTypeOnLaunch *string `pulumi:"privateDnsHostnameTypeOnLaunch"`
 	// Map of tags to assign to the resource.
 	Tags    map[string]string `pulumi:"tags"`
 	TagsAll map[string]string `pulumi:"tagsAll"`
@@ -149,17 +159,22 @@ type DefaultSubnetState struct {
 	AvailabilityZone   pulumi.StringPtrInput
 	AvailabilityZoneId pulumi.StringPtrInput
 	// CIDR block for the subnet.
-	CidrBlock             pulumi.StringPtrInput
-	CustomerOwnedIpv4Pool pulumi.StringPtrInput
+	CidrBlock                               pulumi.StringPtrInput
+	CustomerOwnedIpv4Pool                   pulumi.StringPtrInput
+	EnableDns64                             pulumi.BoolPtrInput
+	EnableResourceNameDnsARecordOnLaunch    pulumi.BoolPtrInput
+	EnableResourceNameDnsAaaaRecordOnLaunch pulumi.BoolPtrInput
 	// IPv6 CIDR block.
 	Ipv6CidrBlock              pulumi.StringPtrInput
 	Ipv6CidrBlockAssociationId pulumi.StringPtrInput
+	Ipv6Native                 pulumi.BoolPtrInput
 	MapCustomerOwnedIpOnLaunch pulumi.BoolPtrInput
 	// Whether instances launched into the subnet should be assigned a public IP address.
 	MapPublicIpOnLaunch pulumi.BoolPtrInput
 	OutpostArn          pulumi.StringPtrInput
 	// ID of the AWS account that owns the subnet.
-	OwnerId pulumi.StringPtrInput
+	OwnerId                        pulumi.StringPtrInput
+	PrivateDnsHostnameTypeOnLaunch pulumi.StringPtrInput
 	// Map of tags to assign to the resource.
 	Tags    pulumi.StringMapInput
 	TagsAll pulumi.StringMapInput
@@ -173,12 +188,17 @@ func (DefaultSubnetState) ElementType() reflect.Type {
 
 type defaultSubnetArgs struct {
 	// AZ for the subnet.
-	AvailabilityZone           string  `pulumi:"availabilityZone"`
-	CustomerOwnedIpv4Pool      *string `pulumi:"customerOwnedIpv4Pool"`
-	MapCustomerOwnedIpOnLaunch *bool   `pulumi:"mapCustomerOwnedIpOnLaunch"`
+	AvailabilityZone                        string  `pulumi:"availabilityZone"`
+	CustomerOwnedIpv4Pool                   *string `pulumi:"customerOwnedIpv4Pool"`
+	EnableDns64                             *bool   `pulumi:"enableDns64"`
+	EnableResourceNameDnsARecordOnLaunch    *bool   `pulumi:"enableResourceNameDnsARecordOnLaunch"`
+	EnableResourceNameDnsAaaaRecordOnLaunch *bool   `pulumi:"enableResourceNameDnsAaaaRecordOnLaunch"`
+	Ipv6Native                              *bool   `pulumi:"ipv6Native"`
+	MapCustomerOwnedIpOnLaunch              *bool   `pulumi:"mapCustomerOwnedIpOnLaunch"`
 	// Whether instances launched into the subnet should be assigned a public IP address.
-	MapPublicIpOnLaunch *bool   `pulumi:"mapPublicIpOnLaunch"`
-	OutpostArn          *string `pulumi:"outpostArn"`
+	MapPublicIpOnLaunch            *bool   `pulumi:"mapPublicIpOnLaunch"`
+	OutpostArn                     *string `pulumi:"outpostArn"`
+	PrivateDnsHostnameTypeOnLaunch *string `pulumi:"privateDnsHostnameTypeOnLaunch"`
 	// Map of tags to assign to the resource.
 	Tags map[string]string `pulumi:"tags"`
 }
@@ -186,12 +206,17 @@ type defaultSubnetArgs struct {
 // The set of arguments for constructing a DefaultSubnet resource.
 type DefaultSubnetArgs struct {
 	// AZ for the subnet.
-	AvailabilityZone           pulumi.StringInput
-	CustomerOwnedIpv4Pool      pulumi.StringPtrInput
-	MapCustomerOwnedIpOnLaunch pulumi.BoolPtrInput
+	AvailabilityZone                        pulumi.StringInput
+	CustomerOwnedIpv4Pool                   pulumi.StringPtrInput
+	EnableDns64                             pulumi.BoolPtrInput
+	EnableResourceNameDnsARecordOnLaunch    pulumi.BoolPtrInput
+	EnableResourceNameDnsAaaaRecordOnLaunch pulumi.BoolPtrInput
+	Ipv6Native                              pulumi.BoolPtrInput
+	MapCustomerOwnedIpOnLaunch              pulumi.BoolPtrInput
 	// Whether instances launched into the subnet should be assigned a public IP address.
-	MapPublicIpOnLaunch pulumi.BoolPtrInput
-	OutpostArn          pulumi.StringPtrInput
+	MapPublicIpOnLaunch            pulumi.BoolPtrInput
+	OutpostArn                     pulumi.StringPtrInput
+	PrivateDnsHostnameTypeOnLaunch pulumi.StringPtrInput
 	// Map of tags to assign to the resource.
 	Tags pulumi.StringMapInput
 }
@@ -208,7 +233,7 @@ type DefaultSubnetInput interface {
 }
 
 func (*DefaultSubnet) ElementType() reflect.Type {
-	return reflect.TypeOf((*DefaultSubnet)(nil))
+	return reflect.TypeOf((**DefaultSubnet)(nil)).Elem()
 }
 
 func (i *DefaultSubnet) ToDefaultSubnetOutput() DefaultSubnetOutput {
@@ -217,35 +242,6 @@ func (i *DefaultSubnet) ToDefaultSubnetOutput() DefaultSubnetOutput {
 
 func (i *DefaultSubnet) ToDefaultSubnetOutputWithContext(ctx context.Context) DefaultSubnetOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DefaultSubnetOutput)
-}
-
-func (i *DefaultSubnet) ToDefaultSubnetPtrOutput() DefaultSubnetPtrOutput {
-	return i.ToDefaultSubnetPtrOutputWithContext(context.Background())
-}
-
-func (i *DefaultSubnet) ToDefaultSubnetPtrOutputWithContext(ctx context.Context) DefaultSubnetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(DefaultSubnetPtrOutput)
-}
-
-type DefaultSubnetPtrInput interface {
-	pulumi.Input
-
-	ToDefaultSubnetPtrOutput() DefaultSubnetPtrOutput
-	ToDefaultSubnetPtrOutputWithContext(ctx context.Context) DefaultSubnetPtrOutput
-}
-
-type defaultSubnetPtrType DefaultSubnetArgs
-
-func (*defaultSubnetPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**DefaultSubnet)(nil))
-}
-
-func (i *defaultSubnetPtrType) ToDefaultSubnetPtrOutput() DefaultSubnetPtrOutput {
-	return i.ToDefaultSubnetPtrOutputWithContext(context.Background())
-}
-
-func (i *defaultSubnetPtrType) ToDefaultSubnetPtrOutputWithContext(ctx context.Context) DefaultSubnetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(DefaultSubnetPtrOutput)
 }
 
 // DefaultSubnetArrayInput is an input type that accepts DefaultSubnetArray and DefaultSubnetArrayOutput values.
@@ -301,7 +297,7 @@ func (i DefaultSubnetMap) ToDefaultSubnetMapOutputWithContext(ctx context.Contex
 type DefaultSubnetOutput struct{ *pulumi.OutputState }
 
 func (DefaultSubnetOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*DefaultSubnet)(nil))
+	return reflect.TypeOf((**DefaultSubnet)(nil)).Elem()
 }
 
 func (o DefaultSubnetOutput) ToDefaultSubnetOutput() DefaultSubnetOutput {
@@ -312,44 +308,10 @@ func (o DefaultSubnetOutput) ToDefaultSubnetOutputWithContext(ctx context.Contex
 	return o
 }
 
-func (o DefaultSubnetOutput) ToDefaultSubnetPtrOutput() DefaultSubnetPtrOutput {
-	return o.ToDefaultSubnetPtrOutputWithContext(context.Background())
-}
-
-func (o DefaultSubnetOutput) ToDefaultSubnetPtrOutputWithContext(ctx context.Context) DefaultSubnetPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v DefaultSubnet) *DefaultSubnet {
-		return &v
-	}).(DefaultSubnetPtrOutput)
-}
-
-type DefaultSubnetPtrOutput struct{ *pulumi.OutputState }
-
-func (DefaultSubnetPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**DefaultSubnet)(nil))
-}
-
-func (o DefaultSubnetPtrOutput) ToDefaultSubnetPtrOutput() DefaultSubnetPtrOutput {
-	return o
-}
-
-func (o DefaultSubnetPtrOutput) ToDefaultSubnetPtrOutputWithContext(ctx context.Context) DefaultSubnetPtrOutput {
-	return o
-}
-
-func (o DefaultSubnetPtrOutput) Elem() DefaultSubnetOutput {
-	return o.ApplyT(func(v *DefaultSubnet) DefaultSubnet {
-		if v != nil {
-			return *v
-		}
-		var ret DefaultSubnet
-		return ret
-	}).(DefaultSubnetOutput)
-}
-
 type DefaultSubnetArrayOutput struct{ *pulumi.OutputState }
 
 func (DefaultSubnetArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]DefaultSubnet)(nil))
+	return reflect.TypeOf((*[]*DefaultSubnet)(nil)).Elem()
 }
 
 func (o DefaultSubnetArrayOutput) ToDefaultSubnetArrayOutput() DefaultSubnetArrayOutput {
@@ -361,15 +323,15 @@ func (o DefaultSubnetArrayOutput) ToDefaultSubnetArrayOutputWithContext(ctx cont
 }
 
 func (o DefaultSubnetArrayOutput) Index(i pulumi.IntInput) DefaultSubnetOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DefaultSubnet {
-		return vs[0].([]DefaultSubnet)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *DefaultSubnet {
+		return vs[0].([]*DefaultSubnet)[vs[1].(int)]
 	}).(DefaultSubnetOutput)
 }
 
 type DefaultSubnetMapOutput struct{ *pulumi.OutputState }
 
 func (DefaultSubnetMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]DefaultSubnet)(nil))
+	return reflect.TypeOf((*map[string]*DefaultSubnet)(nil)).Elem()
 }
 
 func (o DefaultSubnetMapOutput) ToDefaultSubnetMapOutput() DefaultSubnetMapOutput {
@@ -381,14 +343,16 @@ func (o DefaultSubnetMapOutput) ToDefaultSubnetMapOutputWithContext(ctx context.
 }
 
 func (o DefaultSubnetMapOutput) MapIndex(k pulumi.StringInput) DefaultSubnetOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) DefaultSubnet {
-		return vs[0].(map[string]DefaultSubnet)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *DefaultSubnet {
+		return vs[0].(map[string]*DefaultSubnet)[vs[1].(string)]
 	}).(DefaultSubnetOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultSubnetInput)(nil)).Elem(), &DefaultSubnet{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultSubnetArrayInput)(nil)).Elem(), DefaultSubnetArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultSubnetMapInput)(nil)).Elem(), DefaultSubnetMap{})
 	pulumi.RegisterOutputType(DefaultSubnetOutput{})
-	pulumi.RegisterOutputType(DefaultSubnetPtrOutput{})
 	pulumi.RegisterOutputType(DefaultSubnetArrayOutput{})
 	pulumi.RegisterOutputType(DefaultSubnetMapOutput{})
 }

@@ -54,7 +54,6 @@ type CreatePolicyPackResponse struct {
 // RequiredPolicy is the information regarding a particular Policy that is required
 // by an organization.
 type RequiredPolicy struct {
-
 	// The name (unique and URL-safe) of the required Policy Pack.
 	Name string `json:"name"`
 
@@ -126,6 +125,9 @@ const (
 	// Mandatory is an enforcement level that prevents a resource from being created.
 	Mandatory EnforcementLevel = "mandatory"
 
+	// Remediate is an enforcement level that fixes policy issues instead of issuing diagnostics.
+	Remediate EnforcementLevel = "remediate"
+
 	// Disabled is an enforcement level that disables the policy from being enforced.
 	Disabled EnforcementLevel = "disabled"
 )
@@ -133,7 +135,7 @@ const (
 // IsValid returns true if the EnforcementLevel is a valid value.
 func (el EnforcementLevel) IsValid() bool {
 	switch el {
-	case Advisory, Mandatory, Disabled:
+	case Advisory, Mandatory, Remediate, Disabled:
 		return true
 	}
 	return false

@@ -12,9 +12,117 @@ import (
 
 // Provides an EC2 launch template resource. Can be used to create instances or auto scaling groups.
 //
+// ## Example Usage
+//
+// ```go
+// package main
+//
+// import (
+// 	"encoding/base64"
+// 	"fmt"
+// 	"io/ioutil"
+//
+// 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+// )
+//
+// func filebase64OrPanic(path string) pulumi.StringPtrInput {
+// 	if fileData, err := ioutil.ReadFile(path); err == nil {
+// 		return pulumi.String(base64.StdEncoding.EncodeToString(fileData[:]))
+// 	} else {
+// 		panic(err.Error())
+// 	}
+// }
+//
+// func main() {
+// 	pulumi.Run(func(ctx *pulumi.Context) error {
+// 		_, err := ec2.NewLaunchTemplate(ctx, "foo", &ec2.LaunchTemplateArgs{
+// 			BlockDeviceMappings: ec2.LaunchTemplateBlockDeviceMappingArray{
+// 				&ec2.LaunchTemplateBlockDeviceMappingArgs{
+// 					DeviceName: pulumi.String("/dev/sda1"),
+// 					Ebs: &ec2.LaunchTemplateBlockDeviceMappingEbsArgs{
+// 						VolumeSize: pulumi.Int(20),
+// 					},
+// 				},
+// 			},
+// 			CapacityReservationSpecification: &ec2.LaunchTemplateCapacityReservationSpecificationArgs{
+// 				CapacityReservationPreference: pulumi.String("open"),
+// 			},
+// 			CpuOptions: &ec2.LaunchTemplateCpuOptionsArgs{
+// 				CoreCount:      pulumi.Int(4),
+// 				ThreadsPerCore: pulumi.Int(2),
+// 			},
+// 			CreditSpecification: &ec2.LaunchTemplateCreditSpecificationArgs{
+// 				CpuCredits: pulumi.String("standard"),
+// 			},
+// 			DisableApiTermination: pulumi.Bool(true),
+// 			EbsOptimized:          pulumi.String("true"),
+// 			ElasticGpuSpecifications: ec2.LaunchTemplateElasticGpuSpecificationArray{
+// 				&ec2.LaunchTemplateElasticGpuSpecificationArgs{
+// 					Type: pulumi.String("test"),
+// 				},
+// 			},
+// 			ElasticInferenceAccelerator: &ec2.LaunchTemplateElasticInferenceAcceleratorArgs{
+// 				Type: pulumi.String("eia1.medium"),
+// 			},
+// 			IamInstanceProfile: &ec2.LaunchTemplateIamInstanceProfileArgs{
+// 				Name: pulumi.String("test"),
+// 			},
+// 			ImageId:                           pulumi.String("ami-test"),
+// 			InstanceInitiatedShutdownBehavior: pulumi.String("terminate"),
+// 			InstanceMarketOptions: &ec2.LaunchTemplateInstanceMarketOptionsArgs{
+// 				MarketType: pulumi.String("spot"),
+// 			},
+// 			InstanceType: pulumi.String("t2.micro"),
+// 			KernelId:     pulumi.String("test"),
+// 			KeyName:      pulumi.String("test"),
+// 			LicenseSpecifications: ec2.LaunchTemplateLicenseSpecificationArray{
+// 				&ec2.LaunchTemplateLicenseSpecificationArgs{
+// 					LicenseConfigurationArn: pulumi.String("arn:aws:license-manager:eu-west-1:123456789012:license-configuration:lic-0123456789abcdef0123456789abcdef"),
+// 				},
+// 			},
+// 			MetadataOptions: &ec2.LaunchTemplateMetadataOptionsArgs{
+// 				HttpEndpoint:            pulumi.String("enabled"),
+// 				HttpTokens:              pulumi.String("required"),
+// 				HttpPutResponseHopLimit: pulumi.Int(1),
+// 				InstanceMetadataTags:    pulumi.String("enabled"),
+// 			},
+// 			Monitoring: &ec2.LaunchTemplateMonitoringArgs{
+// 				Enabled: pulumi.Bool(true),
+// 			},
+// 			NetworkInterfaces: ec2.LaunchTemplateNetworkInterfaceArray{
+// 				&ec2.LaunchTemplateNetworkInterfaceArgs{
+// 					AssociatePublicIpAddress: pulumi.String("true"),
+// 				},
+// 			},
+// 			Placement: &ec2.LaunchTemplatePlacementArgs{
+// 				AvailabilityZone: pulumi.String("us-west-2a"),
+// 			},
+// 			RamDiskId: pulumi.String("test"),
+// 			VpcSecurityGroupIds: pulumi.StringArray{
+// 				pulumi.String("sg-12345678"),
+// 			},
+// 			TagSpecifications: ec2.LaunchTemplateTagSpecificationArray{
+// 				&ec2.LaunchTemplateTagSpecificationArgs{
+// 					ResourceType: pulumi.String("instance"),
+// 					Tags: pulumi.StringMap{
+// 						"Name": pulumi.String("test"),
+// 					},
+// 				},
+// 			},
+// 			UserData: filebase64OrPanic(fmt.Sprintf("%v%v", path.Module, "/example.sh")),
+// 		})
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	})
+// }
+// ```
+//
 // ## Import
 //
-// Launch Templates can be imported using the `id`, e.g.
+// Launch Templates can be imported using the `id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/launchTemplate:LaunchTemplate web lt-12345678
@@ -101,7 +209,7 @@ type LaunchTemplate struct {
 	UpdateDefaultVersion pulumi.BoolPtrOutput `pulumi:"updateDefaultVersion"`
 	// The Base64-encoded user data to provide when launching the instance.
 	UserData pulumi.StringPtrOutput `pulumi:"userData"`
-	// A list of security group IDs to associate with.
+	// A list of security group IDs to associate with. Conflicts with `network_interfaces.security_groups`
 	VpcSecurityGroupIds pulumi.StringArrayOutput `pulumi:"vpcSecurityGroupIds"`
 }
 
@@ -213,7 +321,7 @@ type launchTemplateState struct {
 	UpdateDefaultVersion *bool `pulumi:"updateDefaultVersion"`
 	// The Base64-encoded user data to provide when launching the instance.
 	UserData *string `pulumi:"userData"`
-	// A list of security group IDs to associate with.
+	// A list of security group IDs to associate with. Conflicts with `network_interfaces.security_groups`
 	VpcSecurityGroupIds []string `pulumi:"vpcSecurityGroupIds"`
 }
 
@@ -297,7 +405,7 @@ type LaunchTemplateState struct {
 	UpdateDefaultVersion pulumi.BoolPtrInput
 	// The Base64-encoded user data to provide when launching the instance.
 	UserData pulumi.StringPtrInput
-	// A list of security group IDs to associate with.
+	// A list of security group IDs to associate with. Conflicts with `network_interfaces.security_groups`
 	VpcSecurityGroupIds pulumi.StringArrayInput
 }
 
@@ -379,7 +487,7 @@ type launchTemplateArgs struct {
 	UpdateDefaultVersion *bool `pulumi:"updateDefaultVersion"`
 	// The Base64-encoded user data to provide when launching the instance.
 	UserData *string `pulumi:"userData"`
-	// A list of security group IDs to associate with.
+	// A list of security group IDs to associate with. Conflicts with `network_interfaces.security_groups`
 	VpcSecurityGroupIds []string `pulumi:"vpcSecurityGroupIds"`
 }
 
@@ -458,7 +566,7 @@ type LaunchTemplateArgs struct {
 	UpdateDefaultVersion pulumi.BoolPtrInput
 	// The Base64-encoded user data to provide when launching the instance.
 	UserData pulumi.StringPtrInput
-	// A list of security group IDs to associate with.
+	// A list of security group IDs to associate with. Conflicts with `network_interfaces.security_groups`
 	VpcSecurityGroupIds pulumi.StringArrayInput
 }
 
@@ -474,7 +582,7 @@ type LaunchTemplateInput interface {
 }
 
 func (*LaunchTemplate) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplate)(nil))
+	return reflect.TypeOf((**LaunchTemplate)(nil)).Elem()
 }
 
 func (i *LaunchTemplate) ToLaunchTemplateOutput() LaunchTemplateOutput {
@@ -483,35 +591,6 @@ func (i *LaunchTemplate) ToLaunchTemplateOutput() LaunchTemplateOutput {
 
 func (i *LaunchTemplate) ToLaunchTemplateOutputWithContext(ctx context.Context) LaunchTemplateOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(LaunchTemplateOutput)
-}
-
-func (i *LaunchTemplate) ToLaunchTemplatePtrOutput() LaunchTemplatePtrOutput {
-	return i.ToLaunchTemplatePtrOutputWithContext(context.Background())
-}
-
-func (i *LaunchTemplate) ToLaunchTemplatePtrOutputWithContext(ctx context.Context) LaunchTemplatePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(LaunchTemplatePtrOutput)
-}
-
-type LaunchTemplatePtrInput interface {
-	pulumi.Input
-
-	ToLaunchTemplatePtrOutput() LaunchTemplatePtrOutput
-	ToLaunchTemplatePtrOutputWithContext(ctx context.Context) LaunchTemplatePtrOutput
-}
-
-type launchTemplatePtrType LaunchTemplateArgs
-
-func (*launchTemplatePtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**LaunchTemplate)(nil))
-}
-
-func (i *launchTemplatePtrType) ToLaunchTemplatePtrOutput() LaunchTemplatePtrOutput {
-	return i.ToLaunchTemplatePtrOutputWithContext(context.Background())
-}
-
-func (i *launchTemplatePtrType) ToLaunchTemplatePtrOutputWithContext(ctx context.Context) LaunchTemplatePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(LaunchTemplatePtrOutput)
 }
 
 // LaunchTemplateArrayInput is an input type that accepts LaunchTemplateArray and LaunchTemplateArrayOutput values.
@@ -567,7 +646,7 @@ func (i LaunchTemplateMap) ToLaunchTemplateMapOutputWithContext(ctx context.Cont
 type LaunchTemplateOutput struct{ *pulumi.OutputState }
 
 func (LaunchTemplateOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplate)(nil))
+	return reflect.TypeOf((**LaunchTemplate)(nil)).Elem()
 }
 
 func (o LaunchTemplateOutput) ToLaunchTemplateOutput() LaunchTemplateOutput {
@@ -578,44 +657,10 @@ func (o LaunchTemplateOutput) ToLaunchTemplateOutputWithContext(ctx context.Cont
 	return o
 }
 
-func (o LaunchTemplateOutput) ToLaunchTemplatePtrOutput() LaunchTemplatePtrOutput {
-	return o.ToLaunchTemplatePtrOutputWithContext(context.Background())
-}
-
-func (o LaunchTemplateOutput) ToLaunchTemplatePtrOutputWithContext(ctx context.Context) LaunchTemplatePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v LaunchTemplate) *LaunchTemplate {
-		return &v
-	}).(LaunchTemplatePtrOutput)
-}
-
-type LaunchTemplatePtrOutput struct{ *pulumi.OutputState }
-
-func (LaunchTemplatePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**LaunchTemplate)(nil))
-}
-
-func (o LaunchTemplatePtrOutput) ToLaunchTemplatePtrOutput() LaunchTemplatePtrOutput {
-	return o
-}
-
-func (o LaunchTemplatePtrOutput) ToLaunchTemplatePtrOutputWithContext(ctx context.Context) LaunchTemplatePtrOutput {
-	return o
-}
-
-func (o LaunchTemplatePtrOutput) Elem() LaunchTemplateOutput {
-	return o.ApplyT(func(v *LaunchTemplate) LaunchTemplate {
-		if v != nil {
-			return *v
-		}
-		var ret LaunchTemplate
-		return ret
-	}).(LaunchTemplateOutput)
-}
-
 type LaunchTemplateArrayOutput struct{ *pulumi.OutputState }
 
 func (LaunchTemplateArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]LaunchTemplate)(nil))
+	return reflect.TypeOf((*[]*LaunchTemplate)(nil)).Elem()
 }
 
 func (o LaunchTemplateArrayOutput) ToLaunchTemplateArrayOutput() LaunchTemplateArrayOutput {
@@ -627,15 +672,15 @@ func (o LaunchTemplateArrayOutput) ToLaunchTemplateArrayOutputWithContext(ctx co
 }
 
 func (o LaunchTemplateArrayOutput) Index(i pulumi.IntInput) LaunchTemplateOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) LaunchTemplate {
-		return vs[0].([]LaunchTemplate)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *LaunchTemplate {
+		return vs[0].([]*LaunchTemplate)[vs[1].(int)]
 	}).(LaunchTemplateOutput)
 }
 
 type LaunchTemplateMapOutput struct{ *pulumi.OutputState }
 
 func (LaunchTemplateMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]LaunchTemplate)(nil))
+	return reflect.TypeOf((*map[string]*LaunchTemplate)(nil)).Elem()
 }
 
 func (o LaunchTemplateMapOutput) ToLaunchTemplateMapOutput() LaunchTemplateMapOutput {
@@ -647,14 +692,16 @@ func (o LaunchTemplateMapOutput) ToLaunchTemplateMapOutputWithContext(ctx contex
 }
 
 func (o LaunchTemplateMapOutput) MapIndex(k pulumi.StringInput) LaunchTemplateOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) LaunchTemplate {
-		return vs[0].(map[string]LaunchTemplate)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *LaunchTemplate {
+		return vs[0].(map[string]*LaunchTemplate)[vs[1].(string)]
 	}).(LaunchTemplateOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateInput)(nil)).Elem(), &LaunchTemplate{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateArrayInput)(nil)).Elem(), LaunchTemplateArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateMapInput)(nil)).Elem(), LaunchTemplateMap{})
 	pulumi.RegisterOutputType(LaunchTemplateOutput{})
-	pulumi.RegisterOutputType(LaunchTemplatePtrOutput{})
 	pulumi.RegisterOutputType(LaunchTemplateArrayOutput{})
 	pulumi.RegisterOutputType(LaunchTemplateMapOutput{})
 }

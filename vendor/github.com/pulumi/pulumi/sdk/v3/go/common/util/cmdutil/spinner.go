@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 	"unicode/utf8"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 // NewSpinnerAndTicker returns a new Spinner and a ticker that will fire an event when the next call
@@ -25,7 +27,10 @@ import (
 // connected to a tty or not and returns either a nice animated spinner that updates quickly, using
 // the specified ttyFrames, or a simple spinner that just prints a dot on each tick and updates
 // slowly.
-func NewSpinnerAndTicker(prefix string, ttyFrames []string, timesPerSecond time.Duration) (Spinner, *time.Ticker) {
+func NewSpinnerAndTicker(prefix string, ttyFrames []string,
+	color colors.Colorization, timesPerSecond time.Duration,
+	suppressProgress bool,
+) (Spinner, *time.Ticker) {
 	if ttyFrames == nil {
 		// If explicit tick frames weren't specified, default to unicode for Mac and ASCII for Windows/Linux.
 		if Emoji {
@@ -35,25 +40,29 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string, timesPerSecond time.
 		}
 	}
 
+	if suppressProgress {
+		return &noopSpinner{}, time.NewTicker(time.Second * 20)
+	}
+
 	if Interactive() {
 		return &ttySpinner{
 			prefix: prefix,
 			frames: ttyFrames,
 		}, time.NewTicker(time.Second / timesPerSecond)
 	}
-
 	return &dotSpinner{
+		color:  color,
 		prefix: prefix,
 	}, time.NewTicker(time.Second * 20)
 }
 
 // Spinner represents a very simple progress reporter.
 type Spinner interface {
-	// Print the next frame of the spinner. After Tick() has been called, there should be no writes to Stdout before
+	// Tick prints the next frame of the spinner. After Tick() has been called, there should be no writes to Stdout before
 	// calling Reset().
 	Tick()
 
-	// Called to release ownership of stdout, so others may write to it.
+	// Reset is called to release ownership of stdout, so others may write to it.
 	Reset()
 }
 
@@ -104,15 +113,16 @@ func (spin *ttySpinner) Reset() {
 // dotSpinner is the spinner that can be used when standard out is not a tty. In this case, we just write a single
 // dot on each tick.
 type dotSpinner struct {
+	color      colors.Colorization
 	prefix     string
 	hasWritten bool
 }
 
 func (spin *dotSpinner) Tick() {
 	if !spin.hasWritten {
-		fmt.Print(spin.prefix)
+		fmt.Print(spin.color.Colorize(colors.Yellow + spin.prefix + colors.Reset))
 	}
-	fmt.Printf(".")
+	fmt.Print(spin.color.Colorize(colors.Yellow + "." + colors.Reset))
 	spin.hasWritten = true
 }
 
@@ -122,3 +132,8 @@ func (spin *dotSpinner) Reset() {
 	}
 	spin.hasWritten = false
 }
+
+type noopSpinner struct{}
+
+func (spin *noopSpinner) Tick()  {}
+func (spin *noopSpinner) Reset() {}
