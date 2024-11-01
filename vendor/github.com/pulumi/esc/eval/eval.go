@@ -66,6 +66,10 @@ func LoadYAMLBytes(filename string, source []byte) (*ast.EnvironmentDecl, syntax
 
 	t, tdiags := ast.ParseEnvironment(source, syn)
 	diags.Extend(tdiags...)
+	if tdiags.HasErrors() {
+		return nil, diags, nil
+	}
+
 	return t, diags, nil
 }
 
@@ -79,7 +83,7 @@ func EvalEnvironment(
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, false, name, env, decrypter, providers, environments, execContext)
+	return evalEnvironment(ctx, false, name, env, decrypter, providers, environments, execContext, true)
 }
 
 // CheckEnvironment symbolically evaluates the given environment. Calls to fn::open are not invoked, and instead
@@ -88,11 +92,13 @@ func CheckEnvironment(
 	ctx context.Context,
 	name string,
 	env *ast.EnvironmentDecl,
+	decrypter Decrypter,
 	providers ProviderLoader,
 	environments EnvironmentLoader,
 	execContext *esc.ExecContext,
+	showSecrets bool,
 ) (*esc.Environment, syntax.Diagnostics) {
-	return evalEnvironment(ctx, true, name, env, nil, providers, environments, execContext)
+	return evalEnvironment(ctx, true, name, env, decrypter, providers, environments, execContext, showSecrets)
 }
 
 // evalEnvironment evaluates an environment and exports the result of evaluation.
@@ -105,12 +111,13 @@ func evalEnvironment(
 	providers ProviderLoader,
 	envs EnvironmentLoader,
 	execContext *esc.ExecContext,
+	showSecrets bool,
 ) (*esc.Environment, syntax.Diagnostics) {
 	if env == nil || (len(env.Values.GetEntries()) == 0 && len(env.Imports.GetElements()) == 0) {
 		return nil, nil
 	}
 
-	ec := newEvalContext(ctx, validating, name, env, decrypter, providers, envs, map[string]*imported{}, execContext)
+	ec := newEvalContext(ctx, validating, name, env, decrypter, providers, envs, map[string]*imported{}, execContext, showSecrets)
 	v, diags := ec.evaluate()
 
 	s := schema.Never().Schema()
@@ -144,6 +151,7 @@ type imported struct {
 type evalContext struct {
 	ctx          context.Context      // the cancellation context for evaluation
 	validating   bool                 // true if we are only checking the environment
+	showSecrets  bool                 // true if secrets should be decrypted during validation
 	name         string               // the name of the environment
 	env          *ast.EnvironmentDecl // the root of the environment AST
 	decrypter    Decrypter            // the decrypter to use for the environment
@@ -170,10 +178,12 @@ func newEvalContext(
 	environments EnvironmentLoader,
 	imports map[string]*imported,
 	execContext *esc.ExecContext,
+	showSecrets bool,
 ) *evalContext {
 	return &evalContext{
 		ctx:          ctx,
 		validating:   validating,
+		showSecrets:  showSecrets,
 		name:         name,
 		env:          env,
 		decrypter:    decrypter,
@@ -182,6 +192,11 @@ func newEvalContext(
 		imports:      imports,
 		execContext:  execContext.CopyForEnv(name),
 	}
+}
+
+// decryptSecrets returns true if static secrets should be decrypted.
+func (e *evalContext) decryptSecrets() bool {
+	return !e.validating || e.showSecrets
 }
 
 // error records an evaluation error associated with an expression.
@@ -349,7 +364,7 @@ func (e *evalContext) evaluate() (*value, syntax.Diagnostics) {
 	// root.
 	properties := make(map[string]*expr, len(e.env.Values.GetEntries()))
 	e.root = &expr{
-		path: fmt.Sprintf("<%v>", e.name),
+		path: "<" + e.name + ">",
 		repr: &objectExpr{
 			node:       ast.Object(),
 			properties: properties,
@@ -391,7 +406,7 @@ func (e *evalContext) evaluateImports() {
 		e.evaluateImport(myImports, entry)
 	}
 
-	properties := make(map[string]schema.Builder, len(myImports))
+	properties := make(schema.SchemaMap, len(myImports))
 	for k, v := range myImports {
 		properties[k] = v.schema
 	}
@@ -447,7 +462,7 @@ func (e *evalContext) evaluateImport(myImports map[string]*value, decl *ast.Impo
 			return
 		}
 
-		imp := newEvalContext(e.ctx, e.validating, name, env, dec, e.providers, e.environments, e.imports, e.execContext)
+		imp := newEvalContext(e.ctx, e.validating, name, env, dec, e.providers, e.environments, e.imports, e.execContext, e.showSecrets)
 		v, diags := imp.evaluate()
 		e.diags.Extend(diags...)
 
@@ -571,7 +586,7 @@ func (e *evalContext) evaluateObject(x *expr, repr *objectExpr) *value {
 	keys := maps.Keys(repr.properties)
 	sort.Strings(keys)
 
-	object, properties := make(map[string]*value, len(keys)), make(map[string]schema.Builder, len(keys))
+	object, properties := make(map[string]*value, len(keys)), make(schema.SchemaMap, len(keys))
 	for _, k := range keys {
 		pv := e.evaluateExpr(repr.properties[k])
 		object[k], properties[k] = pv, pv.schema
@@ -854,7 +869,7 @@ func (e *evalContext) evaluateBuiltinSecret(x *expr, repr *secretExpr) *value {
 		v.unknown = true
 		return v
 	}
-	if e.validating {
+	if !e.decryptSecrets() {
 		v.unknown = true
 		return v
 	}
@@ -910,7 +925,7 @@ func (e *evalContext) evaluateBuiltinOpen(x *expr, repr *openExpr) *value {
 
 	output, err := provider.Open(e.ctx, inputs.export("").Value.(map[string]esc.Value), e.execContext)
 	if err != nil {
-		e.errorf(repr.syntax(), err.Error())
+		e.errorf(repr.syntax(), "%s", err.Error())
 		v.unknown = true
 		return v
 	}
