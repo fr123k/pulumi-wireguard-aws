@@ -9,7 +9,7 @@ WIREGUARD_SERVER_IP=$(shell pulumi stack output publicIp)
 WIREGUARD_SERVER_PUBLIC_KEY=$(shell pulumi stack output wireguard.publicKey)
 SSH_USER ?= ubuntu
 
-PRIVATE_KEY_FILE ?= ./keys/wireguard.pem
+PRIVATE_KEY_FILE ?= ./keys/id_rsa_wireguard
 TMP_FOLDER ?= ./test/tmp
 BUILD_FOLDER ?= $(PWD)
 
@@ -34,6 +34,7 @@ pulumi-init: build
 	pulumi stack select -c ${STACK_NAME} 
 	pulumi config set aws:region eu-west-1
 	pulumi config set vpn_enabled_ssh ${VPN_ENABLED_SSH}
+	pulumi config set ssh_key_file ${PRIVATE_KEY_FILE}
 
 init: pulumi-init
 
