@@ -8,24 +8,27 @@ mkdir -p /home/frank.ittermann/.ssh/
 echo "frank.ittermann ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/frank_ittermann
 chmod 0440 /etc/sudoers.d/frank_ittermann
 
-mv /root/.ssh/authorized_keys /home/frank.ittermann/.ssh/authorized_keys
+cp /root/.ssh/authorized_keys /home/frank.ittermann/.ssh/authorized_keys
 chmod 600 /home/frank.ittermann/.ssh/authorized_keys
 chown -R frank.ittermann:frank.ittermann /home/frank.ittermann
 
 # Hardening ssh
 sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
 sed -i 's|[#]*PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config
+sed -i -e '$aPubkeyAcceptedAlgorithms +ssh-rsa' /etc/ssh/sshd_config
 sed -i -e '$aAllowUsers frank.ittermann' /etc/ssh/sshd_config
 
-systemctl reload sshd.service
-
-# Setup fail2ban
-apt-get install fail2ban
-systemctl enable fail2ban
+systemctl reload ssh.service
 
 apt-get update -y
 apt-get upgrade -y
-apt-get install -y wireguard-dkms wireguard-tools pwgen
+
+# Setup fail2ban
+apt-get install -y fail2ban
+systemctl enable fail2ban
+
+# Setup wireguard
+apt-get install -y wireguard wireguard-tools pwgen
 
 umask 077
 #TODO make server public key available outside the vm instance
@@ -35,7 +38,7 @@ MYV4IP=$(curl {{ METADATA_URL }})
 
 cat > /etc/wireguard/wg0.conf <<- EOF
 [Interface]
-Address = $MYV4IP/24
+Address = 172.16.16.1/24
 PrivateKey = $(cat /tmp/server_privatekey)
 ListenPort = 51820
 PostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
@@ -99,10 +102,10 @@ fi
 # Install https://github.com/ngoduykhanh/wireguard-ui
 
 cd /tmp
-wget https://github.com/ngoduykhanh/wireguard-ui/releases/download/v0.3.0/wireguard-ui-v0.3.0-linux-amd64.tar.gz
-tar xvfz wireguard-ui-v0.3.0-linux-amd64.tar.gz
+wget https://github.com/fr123k/wireguard-ui/releases/download/v0.3.8/wireguard-ui-v0.3.8-linux-amd64.tar.gz
+tar xvfz wireguard-ui-v0.3.8-linux-amd64.tar.gz
 mv wireguard-ui /usr/local/bin/wireguard-ui
-rm wireguard-ui-v0.3.0-linux-amd64.tar.gz
+rm wireguard-ui-v0.3.8-linux-amd64.tar.gz
 
 cat > /etc/systemd/system/wgui-restart-wg.service <<- EOF
 [Unit]
@@ -136,6 +139,8 @@ Description=Start wireguard-ui
 TimeoutStartSec=0
 Restart=always
 WorkingDirectory=/usr/local/bin
+Environment="WGUI_PASSWORD=$(cat /tmp/user_password)"
+Environment="SESSION_SECRET=hasdgjh"
 ExecStart=/usr/local/bin/wireguard-ui --bind-address 0.0.0.0:80
 
 [Install]
@@ -162,12 +167,12 @@ EOF
 cat > /usr/local/bin/db/server/interfaces.json <<- EOF
 {
 	"addresses": [
-		"$MYV4IP/24"
+		"172.16.16.1/24"
 	],
 	"listen_port": "51820",
 	"updated_at": "$(date --utc +%FT%T.%3NZ)",
 	"post_up": "iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE",
-	"post_down": "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
+	"post_down": "iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
 }
 EOF
 
