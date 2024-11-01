@@ -3010,6 +3010,181 @@ func (o FleetTargetCapacitySpecificationPtrOutput) TotalTargetCapacity() pulumi.
 	}).(pulumi.IntPtrOutput)
 }
 
+type FlowLogDestinationOptions struct {
+	// The format for the flow log. Default value: `plain-text`. Valid values: `plain-text`, `parquet`.
+	FileFormat *string `pulumi:"fileFormat"`
+	// Indicates whether to use Hive-compatible prefixes for flow logs stored in Amazon S3. Default value: `false`.
+	HiveCompatiblePartitions *bool `pulumi:"hiveCompatiblePartitions"`
+	// Indicates whether to partition the flow log per hour. This reduces the cost and response time for queries. Default value: `false`.
+	PerHourPartition *bool `pulumi:"perHourPartition"`
+}
+
+// FlowLogDestinationOptionsInput is an input type that accepts FlowLogDestinationOptionsArgs and FlowLogDestinationOptionsOutput values.
+// You can construct a concrete instance of `FlowLogDestinationOptionsInput` via:
+//
+//          FlowLogDestinationOptionsArgs{...}
+type FlowLogDestinationOptionsInput interface {
+	pulumi.Input
+
+	ToFlowLogDestinationOptionsOutput() FlowLogDestinationOptionsOutput
+	ToFlowLogDestinationOptionsOutputWithContext(context.Context) FlowLogDestinationOptionsOutput
+}
+
+type FlowLogDestinationOptionsArgs struct {
+	// The format for the flow log. Default value: `plain-text`. Valid values: `plain-text`, `parquet`.
+	FileFormat pulumi.StringPtrInput `pulumi:"fileFormat"`
+	// Indicates whether to use Hive-compatible prefixes for flow logs stored in Amazon S3. Default value: `false`.
+	HiveCompatiblePartitions pulumi.BoolPtrInput `pulumi:"hiveCompatiblePartitions"`
+	// Indicates whether to partition the flow log per hour. This reduces the cost and response time for queries. Default value: `false`.
+	PerHourPartition pulumi.BoolPtrInput `pulumi:"perHourPartition"`
+}
+
+func (FlowLogDestinationOptionsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*FlowLogDestinationOptions)(nil)).Elem()
+}
+
+func (i FlowLogDestinationOptionsArgs) ToFlowLogDestinationOptionsOutput() FlowLogDestinationOptionsOutput {
+	return i.ToFlowLogDestinationOptionsOutputWithContext(context.Background())
+}
+
+func (i FlowLogDestinationOptionsArgs) ToFlowLogDestinationOptionsOutputWithContext(ctx context.Context) FlowLogDestinationOptionsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(FlowLogDestinationOptionsOutput)
+}
+
+func (i FlowLogDestinationOptionsArgs) ToFlowLogDestinationOptionsPtrOutput() FlowLogDestinationOptionsPtrOutput {
+	return i.ToFlowLogDestinationOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i FlowLogDestinationOptionsArgs) ToFlowLogDestinationOptionsPtrOutputWithContext(ctx context.Context) FlowLogDestinationOptionsPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(FlowLogDestinationOptionsOutput).ToFlowLogDestinationOptionsPtrOutputWithContext(ctx)
+}
+
+// FlowLogDestinationOptionsPtrInput is an input type that accepts FlowLogDestinationOptionsArgs, FlowLogDestinationOptionsPtr and FlowLogDestinationOptionsPtrOutput values.
+// You can construct a concrete instance of `FlowLogDestinationOptionsPtrInput` via:
+//
+//          FlowLogDestinationOptionsArgs{...}
+//
+//  or:
+//
+//          nil
+type FlowLogDestinationOptionsPtrInput interface {
+	pulumi.Input
+
+	ToFlowLogDestinationOptionsPtrOutput() FlowLogDestinationOptionsPtrOutput
+	ToFlowLogDestinationOptionsPtrOutputWithContext(context.Context) FlowLogDestinationOptionsPtrOutput
+}
+
+type flowLogDestinationOptionsPtrType FlowLogDestinationOptionsArgs
+
+func FlowLogDestinationOptionsPtr(v *FlowLogDestinationOptionsArgs) FlowLogDestinationOptionsPtrInput {
+	return (*flowLogDestinationOptionsPtrType)(v)
+}
+
+func (*flowLogDestinationOptionsPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**FlowLogDestinationOptions)(nil)).Elem()
+}
+
+func (i *flowLogDestinationOptionsPtrType) ToFlowLogDestinationOptionsPtrOutput() FlowLogDestinationOptionsPtrOutput {
+	return i.ToFlowLogDestinationOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i *flowLogDestinationOptionsPtrType) ToFlowLogDestinationOptionsPtrOutputWithContext(ctx context.Context) FlowLogDestinationOptionsPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(FlowLogDestinationOptionsPtrOutput)
+}
+
+type FlowLogDestinationOptionsOutput struct{ *pulumi.OutputState }
+
+func (FlowLogDestinationOptionsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*FlowLogDestinationOptions)(nil)).Elem()
+}
+
+func (o FlowLogDestinationOptionsOutput) ToFlowLogDestinationOptionsOutput() FlowLogDestinationOptionsOutput {
+	return o
+}
+
+func (o FlowLogDestinationOptionsOutput) ToFlowLogDestinationOptionsOutputWithContext(ctx context.Context) FlowLogDestinationOptionsOutput {
+	return o
+}
+
+func (o FlowLogDestinationOptionsOutput) ToFlowLogDestinationOptionsPtrOutput() FlowLogDestinationOptionsPtrOutput {
+	return o.ToFlowLogDestinationOptionsPtrOutputWithContext(context.Background())
+}
+
+func (o FlowLogDestinationOptionsOutput) ToFlowLogDestinationOptionsPtrOutputWithContext(ctx context.Context) FlowLogDestinationOptionsPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v FlowLogDestinationOptions) *FlowLogDestinationOptions {
+		return &v
+	}).(FlowLogDestinationOptionsPtrOutput)
+}
+
+// The format for the flow log. Default value: `plain-text`. Valid values: `plain-text`, `parquet`.
+func (o FlowLogDestinationOptionsOutput) FileFormat() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v FlowLogDestinationOptions) *string { return v.FileFormat }).(pulumi.StringPtrOutput)
+}
+
+// Indicates whether to use Hive-compatible prefixes for flow logs stored in Amazon S3. Default value: `false`.
+func (o FlowLogDestinationOptionsOutput) HiveCompatiblePartitions() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v FlowLogDestinationOptions) *bool { return v.HiveCompatiblePartitions }).(pulumi.BoolPtrOutput)
+}
+
+// Indicates whether to partition the flow log per hour. This reduces the cost and response time for queries. Default value: `false`.
+func (o FlowLogDestinationOptionsOutput) PerHourPartition() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v FlowLogDestinationOptions) *bool { return v.PerHourPartition }).(pulumi.BoolPtrOutput)
+}
+
+type FlowLogDestinationOptionsPtrOutput struct{ *pulumi.OutputState }
+
+func (FlowLogDestinationOptionsPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**FlowLogDestinationOptions)(nil)).Elem()
+}
+
+func (o FlowLogDestinationOptionsPtrOutput) ToFlowLogDestinationOptionsPtrOutput() FlowLogDestinationOptionsPtrOutput {
+	return o
+}
+
+func (o FlowLogDestinationOptionsPtrOutput) ToFlowLogDestinationOptionsPtrOutputWithContext(ctx context.Context) FlowLogDestinationOptionsPtrOutput {
+	return o
+}
+
+func (o FlowLogDestinationOptionsPtrOutput) Elem() FlowLogDestinationOptionsOutput {
+	return o.ApplyT(func(v *FlowLogDestinationOptions) FlowLogDestinationOptions {
+		if v != nil {
+			return *v
+		}
+		var ret FlowLogDestinationOptions
+		return ret
+	}).(FlowLogDestinationOptionsOutput)
+}
+
+// The format for the flow log. Default value: `plain-text`. Valid values: `plain-text`, `parquet`.
+func (o FlowLogDestinationOptionsPtrOutput) FileFormat() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *FlowLogDestinationOptions) *string {
+		if v == nil {
+			return nil
+		}
+		return v.FileFormat
+	}).(pulumi.StringPtrOutput)
+}
+
+// Indicates whether to use Hive-compatible prefixes for flow logs stored in Amazon S3. Default value: `false`.
+func (o FlowLogDestinationOptionsPtrOutput) HiveCompatiblePartitions() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *FlowLogDestinationOptions) *bool {
+		if v == nil {
+			return nil
+		}
+		return v.HiveCompatiblePartitions
+	}).(pulumi.BoolPtrOutput)
+}
+
+// Indicates whether to partition the flow log per hour. This reduces the cost and response time for queries. Default value: `false`.
+func (o FlowLogDestinationOptionsPtrOutput) PerHourPartition() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *FlowLogDestinationOptions) *bool {
+		if v == nil {
+			return nil
+		}
+		return v.PerHourPartition
+	}).(pulumi.BoolPtrOutput)
+}
+
 type InstanceCapacityReservationSpecification struct {
 	// Indicates the instance's Capacity Reservation preferences. Can be `"open"` or `"none"`. (Default: `"open"`).
 	CapacityReservationPreference *string `pulumi:"capacityReservationPreference"`
@@ -3773,7 +3948,7 @@ type InstanceEphemeralBlockDevice struct {
 	DeviceName string `pulumi:"deviceName"`
 	// Suppresses the specified device included in the AMI's block device mapping.
 	NoDevice *bool `pulumi:"noDevice"`
-	// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g. `ephemeral0`).
+	// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g., `ephemeral0`).
 	VirtualName *string `pulumi:"virtualName"`
 }
 
@@ -3793,7 +3968,7 @@ type InstanceEphemeralBlockDeviceArgs struct {
 	DeviceName pulumi.StringInput `pulumi:"deviceName"`
 	// Suppresses the specified device included in the AMI's block device mapping.
 	NoDevice pulumi.BoolPtrInput `pulumi:"noDevice"`
-	// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g. `ephemeral0`).
+	// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g., `ephemeral0`).
 	VirtualName pulumi.StringPtrInput `pulumi:"virtualName"`
 }
 
@@ -3858,7 +4033,7 @@ func (o InstanceEphemeralBlockDeviceOutput) NoDevice() pulumi.BoolPtrOutput {
 	return o.ApplyT(func(v InstanceEphemeralBlockDevice) *bool { return v.NoDevice }).(pulumi.BoolPtrOutput)
 }
 
-// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g. `ephemeral0`).
+// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g., `ephemeral0`).
 func (o InstanceEphemeralBlockDeviceOutput) VirtualName() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v InstanceEphemeralBlockDevice) *string { return v.VirtualName }).(pulumi.StringPtrOutput)
 }
@@ -4065,6 +4240,8 @@ type InstanceMetadataOptions struct {
 	HttpPutResponseHopLimit *int `pulumi:"httpPutResponseHopLimit"`
 	// Whether or not the metadata service requires session tokens, also referred to as _Instance Metadata Service Version 2 (IMDSv2)_. Valid values include `optional` or `required`. Defaults to `optional`.
 	HttpTokens *string `pulumi:"httpTokens"`
+	// Enables or disables access to instance tags from the instance metadata service. Valid values include `enabled` or `disabled`. Defaults to `disabled`.
+	InstanceMetadataTags *string `pulumi:"instanceMetadataTags"`
 }
 
 // InstanceMetadataOptionsInput is an input type that accepts InstanceMetadataOptionsArgs and InstanceMetadataOptionsOutput values.
@@ -4085,6 +4262,8 @@ type InstanceMetadataOptionsArgs struct {
 	HttpPutResponseHopLimit pulumi.IntPtrInput `pulumi:"httpPutResponseHopLimit"`
 	// Whether or not the metadata service requires session tokens, also referred to as _Instance Metadata Service Version 2 (IMDSv2)_. Valid values include `optional` or `required`. Defaults to `optional`.
 	HttpTokens pulumi.StringPtrInput `pulumi:"httpTokens"`
+	// Enables or disables access to instance tags from the instance metadata service. Valid values include `enabled` or `disabled`. Defaults to `disabled`.
+	InstanceMetadataTags pulumi.StringPtrInput `pulumi:"instanceMetadataTags"`
 }
 
 func (InstanceMetadataOptionsArgs) ElementType() reflect.Type {
@@ -4179,6 +4358,11 @@ func (o InstanceMetadataOptionsOutput) HttpTokens() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v InstanceMetadataOptions) *string { return v.HttpTokens }).(pulumi.StringPtrOutput)
 }
 
+// Enables or disables access to instance tags from the instance metadata service. Valid values include `enabled` or `disabled`. Defaults to `disabled`.
+func (o InstanceMetadataOptionsOutput) InstanceMetadataTags() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v InstanceMetadataOptions) *string { return v.InstanceMetadataTags }).(pulumi.StringPtrOutput)
+}
+
 type InstanceMetadataOptionsPtrOutput struct{ *pulumi.OutputState }
 
 func (InstanceMetadataOptionsPtrOutput) ElementType() reflect.Type {
@@ -4230,6 +4414,16 @@ func (o InstanceMetadataOptionsPtrOutput) HttpTokens() pulumi.StringPtrOutput {
 			return nil
 		}
 		return v.HttpTokens
+	}).(pulumi.StringPtrOutput)
+}
+
+// Enables or disables access to instance tags from the instance metadata service. Valid values include `enabled` or `disabled`. Defaults to `disabled`.
+func (o InstanceMetadataOptionsPtrOutput) InstanceMetadataTags() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *InstanceMetadataOptions) *string {
+		if v == nil {
+			return nil
+		}
+		return v.InstanceMetadataTags
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -5290,7 +5484,7 @@ type LaunchTemplateBlockDeviceMapping struct {
 	NoDevice *string `pulumi:"noDevice"`
 	// The [Instance Store Device
 	// Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames)
-	// (e.g. `"ephemeral0"`).
+	// (e.g., `"ephemeral0"`).
 	VirtualName *string `pulumi:"virtualName"`
 }
 
@@ -5314,7 +5508,7 @@ type LaunchTemplateBlockDeviceMappingArgs struct {
 	NoDevice pulumi.StringPtrInput `pulumi:"noDevice"`
 	// The [Instance Store Device
 	// Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames)
-	// (e.g. `"ephemeral0"`).
+	// (e.g., `"ephemeral0"`).
 	VirtualName pulumi.StringPtrInput `pulumi:"virtualName"`
 }
 
@@ -5386,7 +5580,7 @@ func (o LaunchTemplateBlockDeviceMappingOutput) NoDevice() pulumi.StringPtrOutpu
 
 // The [Instance Store Device
 // Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames)
-// (e.g. `"ephemeral0"`).
+// (e.g., `"ephemeral0"`).
 func (o LaunchTemplateBlockDeviceMappingOutput) VirtualName() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v LaunchTemplateBlockDeviceMapping) *string { return v.VirtualName }).(pulumi.StringPtrOutput)
 }
@@ -5426,7 +5620,7 @@ type LaunchTemplateBlockDeviceMappingEbs struct {
 	KmsKeyId *string `pulumi:"kmsKeyId"`
 	// The Snapshot ID to mount.
 	SnapshotId *string `pulumi:"snapshotId"`
-	// The throughput to provision for a `gp3` volume in MiB/s (specified as an integer, e.g. 500), with a maximum of 1,000 MiB/s.
+	// The throughput to provision for a `gp3` volume in MiB/s (specified as an integer, e.g., 500), with a maximum of 1,000 MiB/s.
 	Throughput *int `pulumi:"throughput"`
 	// The size of the volume in gigabytes.
 	VolumeSize *int `pulumi:"volumeSize"`
@@ -5460,7 +5654,7 @@ type LaunchTemplateBlockDeviceMappingEbsArgs struct {
 	KmsKeyId pulumi.StringPtrInput `pulumi:"kmsKeyId"`
 	// The Snapshot ID to mount.
 	SnapshotId pulumi.StringPtrInput `pulumi:"snapshotId"`
-	// The throughput to provision for a `gp3` volume in MiB/s (specified as an integer, e.g. 500), with a maximum of 1,000 MiB/s.
+	// The throughput to provision for a `gp3` volume in MiB/s (specified as an integer, e.g., 500), with a maximum of 1,000 MiB/s.
 	Throughput pulumi.IntPtrInput `pulumi:"throughput"`
 	// The size of the volume in gigabytes.
 	VolumeSize pulumi.IntPtrInput `pulumi:"volumeSize"`
@@ -5574,7 +5768,7 @@ func (o LaunchTemplateBlockDeviceMappingEbsOutput) SnapshotId() pulumi.StringPtr
 	return o.ApplyT(func(v LaunchTemplateBlockDeviceMappingEbs) *string { return v.SnapshotId }).(pulumi.StringPtrOutput)
 }
 
-// The throughput to provision for a `gp3` volume in MiB/s (specified as an integer, e.g. 500), with a maximum of 1,000 MiB/s.
+// The throughput to provision for a `gp3` volume in MiB/s (specified as an integer, e.g., 500), with a maximum of 1,000 MiB/s.
 func (o LaunchTemplateBlockDeviceMappingEbsOutput) Throughput() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v LaunchTemplateBlockDeviceMappingEbs) *int { return v.Throughput }).(pulumi.IntPtrOutput)
 }
@@ -5667,7 +5861,7 @@ func (o LaunchTemplateBlockDeviceMappingEbsPtrOutput) SnapshotId() pulumi.String
 	}).(pulumi.StringPtrOutput)
 }
 
-// The throughput to provision for a `gp3` volume in MiB/s (specified as an integer, e.g. 500), with a maximum of 1,000 MiB/s.
+// The throughput to provision for a `gp3` volume in MiB/s (specified as an integer, e.g., 500), with a maximum of 1,000 MiB/s.
 func (o LaunchTemplateBlockDeviceMappingEbsPtrOutput) Throughput() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v *LaunchTemplateBlockDeviceMappingEbs) *int {
 		if v == nil {
@@ -7430,10 +7624,14 @@ func (o LaunchTemplateLicenseSpecificationArrayOutput) Index(i pulumi.IntInput) 
 type LaunchTemplateMetadataOptions struct {
 	// Whether the metadata service is available. Can be `"enabled"` or `"disabled"`. (Default: `"enabled"`).
 	HttpEndpoint *string `pulumi:"httpEndpoint"`
+	// Enables or disables the IPv6 endpoint for the instance metadata service. (Default: `disabled`).
+	HttpProtocolIpv6 *string `pulumi:"httpProtocolIpv6"`
 	// The desired HTTP PUT response hop limit for instance metadata requests. The larger the number, the further instance metadata requests can travel. Can be an integer from `1` to `64`. (Default: `1`).
 	HttpPutResponseHopLimit *int `pulumi:"httpPutResponseHopLimit"`
 	// Whether or not the metadata service requires session tokens, also referred to as _Instance Metadata Service Version 2 (IMDSv2)_. Can be `"optional"` or `"required"`. (Default: `"optional"`).
 	HttpTokens *string `pulumi:"httpTokens"`
+	// Enables or disables access to instance tags from the instance metadata service. (Default: `disabled`).
+	InstanceMetadataTags *string `pulumi:"instanceMetadataTags"`
 }
 
 // LaunchTemplateMetadataOptionsInput is an input type that accepts LaunchTemplateMetadataOptionsArgs and LaunchTemplateMetadataOptionsOutput values.
@@ -7450,10 +7648,14 @@ type LaunchTemplateMetadataOptionsInput interface {
 type LaunchTemplateMetadataOptionsArgs struct {
 	// Whether the metadata service is available. Can be `"enabled"` or `"disabled"`. (Default: `"enabled"`).
 	HttpEndpoint pulumi.StringPtrInput `pulumi:"httpEndpoint"`
+	// Enables or disables the IPv6 endpoint for the instance metadata service. (Default: `disabled`).
+	HttpProtocolIpv6 pulumi.StringPtrInput `pulumi:"httpProtocolIpv6"`
 	// The desired HTTP PUT response hop limit for instance metadata requests. The larger the number, the further instance metadata requests can travel. Can be an integer from `1` to `64`. (Default: `1`).
 	HttpPutResponseHopLimit pulumi.IntPtrInput `pulumi:"httpPutResponseHopLimit"`
 	// Whether or not the metadata service requires session tokens, also referred to as _Instance Metadata Service Version 2 (IMDSv2)_. Can be `"optional"` or `"required"`. (Default: `"optional"`).
 	HttpTokens pulumi.StringPtrInput `pulumi:"httpTokens"`
+	// Enables or disables access to instance tags from the instance metadata service. (Default: `disabled`).
+	InstanceMetadataTags pulumi.StringPtrInput `pulumi:"instanceMetadataTags"`
 }
 
 func (LaunchTemplateMetadataOptionsArgs) ElementType() reflect.Type {
@@ -7538,6 +7740,11 @@ func (o LaunchTemplateMetadataOptionsOutput) HttpEndpoint() pulumi.StringPtrOutp
 	return o.ApplyT(func(v LaunchTemplateMetadataOptions) *string { return v.HttpEndpoint }).(pulumi.StringPtrOutput)
 }
 
+// Enables or disables the IPv6 endpoint for the instance metadata service. (Default: `disabled`).
+func (o LaunchTemplateMetadataOptionsOutput) HttpProtocolIpv6() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v LaunchTemplateMetadataOptions) *string { return v.HttpProtocolIpv6 }).(pulumi.StringPtrOutput)
+}
+
 // The desired HTTP PUT response hop limit for instance metadata requests. The larger the number, the further instance metadata requests can travel. Can be an integer from `1` to `64`. (Default: `1`).
 func (o LaunchTemplateMetadataOptionsOutput) HttpPutResponseHopLimit() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v LaunchTemplateMetadataOptions) *int { return v.HttpPutResponseHopLimit }).(pulumi.IntPtrOutput)
@@ -7546,6 +7753,11 @@ func (o LaunchTemplateMetadataOptionsOutput) HttpPutResponseHopLimit() pulumi.In
 // Whether or not the metadata service requires session tokens, also referred to as _Instance Metadata Service Version 2 (IMDSv2)_. Can be `"optional"` or `"required"`. (Default: `"optional"`).
 func (o LaunchTemplateMetadataOptionsOutput) HttpTokens() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v LaunchTemplateMetadataOptions) *string { return v.HttpTokens }).(pulumi.StringPtrOutput)
+}
+
+// Enables or disables access to instance tags from the instance metadata service. (Default: `disabled`).
+func (o LaunchTemplateMetadataOptionsOutput) InstanceMetadataTags() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v LaunchTemplateMetadataOptions) *string { return v.InstanceMetadataTags }).(pulumi.StringPtrOutput)
 }
 
 type LaunchTemplateMetadataOptionsPtrOutput struct{ *pulumi.OutputState }
@@ -7582,6 +7794,16 @@ func (o LaunchTemplateMetadataOptionsPtrOutput) HttpEndpoint() pulumi.StringPtrO
 	}).(pulumi.StringPtrOutput)
 }
 
+// Enables or disables the IPv6 endpoint for the instance metadata service. (Default: `disabled`).
+func (o LaunchTemplateMetadataOptionsPtrOutput) HttpProtocolIpv6() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *LaunchTemplateMetadataOptions) *string {
+		if v == nil {
+			return nil
+		}
+		return v.HttpProtocolIpv6
+	}).(pulumi.StringPtrOutput)
+}
+
 // The desired HTTP PUT response hop limit for instance metadata requests. The larger the number, the further instance metadata requests can travel. Can be an integer from `1` to `64`. (Default: `1`).
 func (o LaunchTemplateMetadataOptionsPtrOutput) HttpPutResponseHopLimit() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v *LaunchTemplateMetadataOptions) *int {
@@ -7599,6 +7821,16 @@ func (o LaunchTemplateMetadataOptionsPtrOutput) HttpTokens() pulumi.StringPtrOut
 			return nil
 		}
 		return v.HttpTokens
+	}).(pulumi.StringPtrOutput)
+}
+
+// Enables or disables access to instance tags from the instance metadata service. (Default: `disabled`).
+func (o LaunchTemplateMetadataOptionsPtrOutput) InstanceMetadataTags() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *LaunchTemplateMetadataOptions) *string {
+		if v == nil {
+			return nil
+		}
+		return v.InstanceMetadataTags
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -7760,6 +7992,8 @@ type LaunchTemplateNetworkInterface struct {
 	Ipv6AddressCount *int `pulumi:"ipv6AddressCount"`
 	// One or more specific IPv6 addresses from the IPv6 CIDR block range of your subnet. Conflicts with `ipv6AddressCount`
 	Ipv6Addresses []string `pulumi:"ipv6Addresses"`
+	// The index of the network card. Some instance types support multiple network cards. The primary network interface must be assigned to network card index 0. The default is network card index 0.
+	NetworkCardIndex *int `pulumi:"networkCardIndex"`
 	// The ID of the network interface to attach.
 	NetworkInterfaceId *string `pulumi:"networkInterfaceId"`
 	// The primary private IPv4 address.
@@ -7802,6 +8036,8 @@ type LaunchTemplateNetworkInterfaceArgs struct {
 	Ipv6AddressCount pulumi.IntPtrInput `pulumi:"ipv6AddressCount"`
 	// One or more specific IPv6 addresses from the IPv6 CIDR block range of your subnet. Conflicts with `ipv6AddressCount`
 	Ipv6Addresses pulumi.StringArrayInput `pulumi:"ipv6Addresses"`
+	// The index of the network card. Some instance types support multiple network cards. The primary network interface must be assigned to network card index 0. The default is network card index 0.
+	NetworkCardIndex pulumi.IntPtrInput `pulumi:"networkCardIndex"`
 	// The ID of the network interface to attach.
 	NetworkInterfaceId pulumi.StringPtrInput `pulumi:"networkInterfaceId"`
 	// The primary private IPv4 address.
@@ -7911,6 +8147,11 @@ func (o LaunchTemplateNetworkInterfaceOutput) Ipv6AddressCount() pulumi.IntPtrOu
 // One or more specific IPv6 addresses from the IPv6 CIDR block range of your subnet. Conflicts with `ipv6AddressCount`
 func (o LaunchTemplateNetworkInterfaceOutput) Ipv6Addresses() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v LaunchTemplateNetworkInterface) []string { return v.Ipv6Addresses }).(pulumi.StringArrayOutput)
+}
+
+// The index of the network card. Some instance types support multiple network cards. The primary network interface must be assigned to network card index 0. The default is network card index 0.
+func (o LaunchTemplateNetworkInterfaceOutput) NetworkCardIndex() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v LaunchTemplateNetworkInterface) *int { return v.NetworkCardIndex }).(pulumi.IntPtrOutput)
 }
 
 // The ID of the network interface to attach.
@@ -8329,110 +8570,110 @@ func (o LaunchTemplateTagSpecificationArrayOutput) Index(i pulumi.IntInput) Laun
 	}).(LaunchTemplateTagSpecificationOutput)
 }
 
-type ManagedPrefixListEntry struct {
+type ManagedPrefixListEntryType struct {
 	// CIDR block of this entry.
 	Cidr string `pulumi:"cidr"`
 	// Description of this entry. Due to API limitations, updating only the description of an existing entry requires temporarily removing and re-adding the entry.
 	Description *string `pulumi:"description"`
 }
 
-// ManagedPrefixListEntryInput is an input type that accepts ManagedPrefixListEntryArgs and ManagedPrefixListEntryOutput values.
-// You can construct a concrete instance of `ManagedPrefixListEntryInput` via:
+// ManagedPrefixListEntryTypeInput is an input type that accepts ManagedPrefixListEntryTypeArgs and ManagedPrefixListEntryTypeOutput values.
+// You can construct a concrete instance of `ManagedPrefixListEntryTypeInput` via:
 //
-//          ManagedPrefixListEntryArgs{...}
-type ManagedPrefixListEntryInput interface {
+//          ManagedPrefixListEntryTypeArgs{...}
+type ManagedPrefixListEntryTypeInput interface {
 	pulumi.Input
 
-	ToManagedPrefixListEntryOutput() ManagedPrefixListEntryOutput
-	ToManagedPrefixListEntryOutputWithContext(context.Context) ManagedPrefixListEntryOutput
+	ToManagedPrefixListEntryTypeOutput() ManagedPrefixListEntryTypeOutput
+	ToManagedPrefixListEntryTypeOutputWithContext(context.Context) ManagedPrefixListEntryTypeOutput
 }
 
-type ManagedPrefixListEntryArgs struct {
+type ManagedPrefixListEntryTypeArgs struct {
 	// CIDR block of this entry.
 	Cidr pulumi.StringInput `pulumi:"cidr"`
 	// Description of this entry. Due to API limitations, updating only the description of an existing entry requires temporarily removing and re-adding the entry.
 	Description pulumi.StringPtrInput `pulumi:"description"`
 }
 
-func (ManagedPrefixListEntryArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*ManagedPrefixListEntry)(nil)).Elem()
+func (ManagedPrefixListEntryTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*ManagedPrefixListEntryType)(nil)).Elem()
 }
 
-func (i ManagedPrefixListEntryArgs) ToManagedPrefixListEntryOutput() ManagedPrefixListEntryOutput {
-	return i.ToManagedPrefixListEntryOutputWithContext(context.Background())
+func (i ManagedPrefixListEntryTypeArgs) ToManagedPrefixListEntryTypeOutput() ManagedPrefixListEntryTypeOutput {
+	return i.ToManagedPrefixListEntryTypeOutputWithContext(context.Background())
 }
 
-func (i ManagedPrefixListEntryArgs) ToManagedPrefixListEntryOutputWithContext(ctx context.Context) ManagedPrefixListEntryOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ManagedPrefixListEntryOutput)
+func (i ManagedPrefixListEntryTypeArgs) ToManagedPrefixListEntryTypeOutputWithContext(ctx context.Context) ManagedPrefixListEntryTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ManagedPrefixListEntryTypeOutput)
 }
 
-// ManagedPrefixListEntryArrayInput is an input type that accepts ManagedPrefixListEntryArray and ManagedPrefixListEntryArrayOutput values.
-// You can construct a concrete instance of `ManagedPrefixListEntryArrayInput` via:
+// ManagedPrefixListEntryTypeArrayInput is an input type that accepts ManagedPrefixListEntryTypeArray and ManagedPrefixListEntryTypeArrayOutput values.
+// You can construct a concrete instance of `ManagedPrefixListEntryTypeArrayInput` via:
 //
-//          ManagedPrefixListEntryArray{ ManagedPrefixListEntryArgs{...} }
-type ManagedPrefixListEntryArrayInput interface {
+//          ManagedPrefixListEntryTypeArray{ ManagedPrefixListEntryTypeArgs{...} }
+type ManagedPrefixListEntryTypeArrayInput interface {
 	pulumi.Input
 
-	ToManagedPrefixListEntryArrayOutput() ManagedPrefixListEntryArrayOutput
-	ToManagedPrefixListEntryArrayOutputWithContext(context.Context) ManagedPrefixListEntryArrayOutput
+	ToManagedPrefixListEntryTypeArrayOutput() ManagedPrefixListEntryTypeArrayOutput
+	ToManagedPrefixListEntryTypeArrayOutputWithContext(context.Context) ManagedPrefixListEntryTypeArrayOutput
 }
 
-type ManagedPrefixListEntryArray []ManagedPrefixListEntryInput
+type ManagedPrefixListEntryTypeArray []ManagedPrefixListEntryTypeInput
 
-func (ManagedPrefixListEntryArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]ManagedPrefixListEntry)(nil)).Elem()
+func (ManagedPrefixListEntryTypeArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]ManagedPrefixListEntryType)(nil)).Elem()
 }
 
-func (i ManagedPrefixListEntryArray) ToManagedPrefixListEntryArrayOutput() ManagedPrefixListEntryArrayOutput {
-	return i.ToManagedPrefixListEntryArrayOutputWithContext(context.Background())
+func (i ManagedPrefixListEntryTypeArray) ToManagedPrefixListEntryTypeArrayOutput() ManagedPrefixListEntryTypeArrayOutput {
+	return i.ToManagedPrefixListEntryTypeArrayOutputWithContext(context.Background())
 }
 
-func (i ManagedPrefixListEntryArray) ToManagedPrefixListEntryArrayOutputWithContext(ctx context.Context) ManagedPrefixListEntryArrayOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ManagedPrefixListEntryArrayOutput)
+func (i ManagedPrefixListEntryTypeArray) ToManagedPrefixListEntryTypeArrayOutputWithContext(ctx context.Context) ManagedPrefixListEntryTypeArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ManagedPrefixListEntryTypeArrayOutput)
 }
 
-type ManagedPrefixListEntryOutput struct{ *pulumi.OutputState }
+type ManagedPrefixListEntryTypeOutput struct{ *pulumi.OutputState }
 
-func (ManagedPrefixListEntryOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ManagedPrefixListEntry)(nil)).Elem()
+func (ManagedPrefixListEntryTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ManagedPrefixListEntryType)(nil)).Elem()
 }
 
-func (o ManagedPrefixListEntryOutput) ToManagedPrefixListEntryOutput() ManagedPrefixListEntryOutput {
+func (o ManagedPrefixListEntryTypeOutput) ToManagedPrefixListEntryTypeOutput() ManagedPrefixListEntryTypeOutput {
 	return o
 }
 
-func (o ManagedPrefixListEntryOutput) ToManagedPrefixListEntryOutputWithContext(ctx context.Context) ManagedPrefixListEntryOutput {
+func (o ManagedPrefixListEntryTypeOutput) ToManagedPrefixListEntryTypeOutputWithContext(ctx context.Context) ManagedPrefixListEntryTypeOutput {
 	return o
 }
 
 // CIDR block of this entry.
-func (o ManagedPrefixListEntryOutput) Cidr() pulumi.StringOutput {
-	return o.ApplyT(func(v ManagedPrefixListEntry) string { return v.Cidr }).(pulumi.StringOutput)
+func (o ManagedPrefixListEntryTypeOutput) Cidr() pulumi.StringOutput {
+	return o.ApplyT(func(v ManagedPrefixListEntryType) string { return v.Cidr }).(pulumi.StringOutput)
 }
 
 // Description of this entry. Due to API limitations, updating only the description of an existing entry requires temporarily removing and re-adding the entry.
-func (o ManagedPrefixListEntryOutput) Description() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ManagedPrefixListEntry) *string { return v.Description }).(pulumi.StringPtrOutput)
+func (o ManagedPrefixListEntryTypeOutput) Description() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v ManagedPrefixListEntryType) *string { return v.Description }).(pulumi.StringPtrOutput)
 }
 
-type ManagedPrefixListEntryArrayOutput struct{ *pulumi.OutputState }
+type ManagedPrefixListEntryTypeArrayOutput struct{ *pulumi.OutputState }
 
-func (ManagedPrefixListEntryArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]ManagedPrefixListEntry)(nil)).Elem()
+func (ManagedPrefixListEntryTypeArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]ManagedPrefixListEntryType)(nil)).Elem()
 }
 
-func (o ManagedPrefixListEntryArrayOutput) ToManagedPrefixListEntryArrayOutput() ManagedPrefixListEntryArrayOutput {
+func (o ManagedPrefixListEntryTypeArrayOutput) ToManagedPrefixListEntryTypeArrayOutput() ManagedPrefixListEntryTypeArrayOutput {
 	return o
 }
 
-func (o ManagedPrefixListEntryArrayOutput) ToManagedPrefixListEntryArrayOutputWithContext(ctx context.Context) ManagedPrefixListEntryArrayOutput {
+func (o ManagedPrefixListEntryTypeArrayOutput) ToManagedPrefixListEntryTypeArrayOutputWithContext(ctx context.Context) ManagedPrefixListEntryTypeArrayOutput {
 	return o
 }
 
-func (o ManagedPrefixListEntryArrayOutput) Index(i pulumi.IntInput) ManagedPrefixListEntryOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) ManagedPrefixListEntry {
-		return vs[0].([]ManagedPrefixListEntry)[vs[1].(int)]
-	}).(ManagedPrefixListEntryOutput)
+func (o ManagedPrefixListEntryTypeArrayOutput) Index(i pulumi.IntInput) ManagedPrefixListEntryTypeOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) ManagedPrefixListEntryType {
+		return vs[0].([]ManagedPrefixListEntryType)[vs[1].(int)]
+	}).(ManagedPrefixListEntryTypeOutput)
 }
 
 type NetworkAclEgress struct {
@@ -10549,7 +10790,7 @@ type SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecification struct {
 	Id *string `pulumi:"id"`
 	// The name of the launch template. Conflicts with `id`.
 	Name *string `pulumi:"name"`
-	// Template version. Unlike the autoscaling equivalent, does not support `$Latest` or `$Default`, so use the launchTemplate resource's attribute, e.g. `"${aws_launch_template.foo.latest_version}"`. It will use the default version if omitted.
+	// Template version. Unlike the autoscaling equivalent, does not support `$Latest` or `$Default`, so use the launchTemplate resource's attribute, e.g., `"${aws_launch_template.foo.latest_version}"`. It will use the default version if omitted.
 	Version *string `pulumi:"version"`
 }
 
@@ -10569,7 +10810,7 @@ type SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecificationArgs struct 
 	Id pulumi.StringPtrInput `pulumi:"id"`
 	// The name of the launch template. Conflicts with `id`.
 	Name pulumi.StringPtrInput `pulumi:"name"`
-	// Template version. Unlike the autoscaling equivalent, does not support `$Latest` or `$Default`, so use the launchTemplate resource's attribute, e.g. `"${aws_launch_template.foo.latest_version}"`. It will use the default version if omitted.
+	// Template version. Unlike the autoscaling equivalent, does not support `$Latest` or `$Default`, so use the launchTemplate resource's attribute, e.g., `"${aws_launch_template.foo.latest_version}"`. It will use the default version if omitted.
 	Version pulumi.StringPtrInput `pulumi:"version"`
 }
 
@@ -10609,7 +10850,7 @@ func (o SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecificationOutput) N
 	return o.ApplyT(func(v SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecification) *string { return v.Name }).(pulumi.StringPtrOutput)
 }
 
-// Template version. Unlike the autoscaling equivalent, does not support `$Latest` or `$Default`, so use the launchTemplate resource's attribute, e.g. `"${aws_launch_template.foo.latest_version}"`. It will use the default version if omitted.
+// Template version. Unlike the autoscaling equivalent, does not support `$Latest` or `$Default`, so use the launchTemplate resource's attribute, e.g., `"${aws_launch_template.foo.latest_version}"`. It will use the default version if omitted.
 func (o SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecificationOutput) Version() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecification) *string { return v.Version }).(pulumi.StringPtrOutput)
 }
@@ -11796,7 +12037,7 @@ type SpotInstanceRequestEphemeralBlockDevice struct {
 	DeviceName string `pulumi:"deviceName"`
 	// Suppresses the specified device included in the AMI's block device mapping.
 	NoDevice *bool `pulumi:"noDevice"`
-	// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g. `ephemeral0`).
+	// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g., `ephemeral0`).
 	VirtualName *string `pulumi:"virtualName"`
 }
 
@@ -11816,7 +12057,7 @@ type SpotInstanceRequestEphemeralBlockDeviceArgs struct {
 	DeviceName pulumi.StringInput `pulumi:"deviceName"`
 	// Suppresses the specified device included in the AMI's block device mapping.
 	NoDevice pulumi.BoolPtrInput `pulumi:"noDevice"`
-	// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g. `ephemeral0`).
+	// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g., `ephemeral0`).
 	VirtualName pulumi.StringPtrInput `pulumi:"virtualName"`
 }
 
@@ -11881,7 +12122,7 @@ func (o SpotInstanceRequestEphemeralBlockDeviceOutput) NoDevice() pulumi.BoolPtr
 	return o.ApplyT(func(v SpotInstanceRequestEphemeralBlockDevice) *bool { return v.NoDevice }).(pulumi.BoolPtrOutput)
 }
 
-// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g. `ephemeral0`).
+// [Instance Store Device Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames) (e.g., `ephemeral0`).
 func (o SpotInstanceRequestEphemeralBlockDeviceOutput) VirtualName() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v SpotInstanceRequestEphemeralBlockDevice) *string { return v.VirtualName }).(pulumi.StringPtrOutput)
 }
@@ -12088,6 +12329,8 @@ type SpotInstanceRequestMetadataOptions struct {
 	HttpPutResponseHopLimit *int `pulumi:"httpPutResponseHopLimit"`
 	// Whether or not the metadata service requires session tokens, also referred to as _Instance Metadata Service Version 2 (IMDSv2)_. Valid values include `optional` or `required`. Defaults to `optional`.
 	HttpTokens *string `pulumi:"httpTokens"`
+	// Enables or disables access to instance tags from the instance metadata service. Valid values include `enabled` or `disabled`. Defaults to `disabled`.
+	InstanceMetadataTags *string `pulumi:"instanceMetadataTags"`
 }
 
 // SpotInstanceRequestMetadataOptionsInput is an input type that accepts SpotInstanceRequestMetadataOptionsArgs and SpotInstanceRequestMetadataOptionsOutput values.
@@ -12108,6 +12351,8 @@ type SpotInstanceRequestMetadataOptionsArgs struct {
 	HttpPutResponseHopLimit pulumi.IntPtrInput `pulumi:"httpPutResponseHopLimit"`
 	// Whether or not the metadata service requires session tokens, also referred to as _Instance Metadata Service Version 2 (IMDSv2)_. Valid values include `optional` or `required`. Defaults to `optional`.
 	HttpTokens pulumi.StringPtrInput `pulumi:"httpTokens"`
+	// Enables or disables access to instance tags from the instance metadata service. Valid values include `enabled` or `disabled`. Defaults to `disabled`.
+	InstanceMetadataTags pulumi.StringPtrInput `pulumi:"instanceMetadataTags"`
 }
 
 func (SpotInstanceRequestMetadataOptionsArgs) ElementType() reflect.Type {
@@ -12202,6 +12447,11 @@ func (o SpotInstanceRequestMetadataOptionsOutput) HttpTokens() pulumi.StringPtrO
 	return o.ApplyT(func(v SpotInstanceRequestMetadataOptions) *string { return v.HttpTokens }).(pulumi.StringPtrOutput)
 }
 
+// Enables or disables access to instance tags from the instance metadata service. Valid values include `enabled` or `disabled`. Defaults to `disabled`.
+func (o SpotInstanceRequestMetadataOptionsOutput) InstanceMetadataTags() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v SpotInstanceRequestMetadataOptions) *string { return v.InstanceMetadataTags }).(pulumi.StringPtrOutput)
+}
+
 type SpotInstanceRequestMetadataOptionsPtrOutput struct{ *pulumi.OutputState }
 
 func (SpotInstanceRequestMetadataOptionsPtrOutput) ElementType() reflect.Type {
@@ -12253,6 +12503,16 @@ func (o SpotInstanceRequestMetadataOptionsPtrOutput) HttpTokens() pulumi.StringP
 			return nil
 		}
 		return v.HttpTokens
+	}).(pulumi.StringPtrOutput)
+}
+
+// Enables or disables access to instance tags from the instance metadata service. Valid values include `enabled` or `disabled`. Defaults to `disabled`.
+func (o SpotInstanceRequestMetadataOptionsPtrOutput) InstanceMetadataTags() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *SpotInstanceRequestMetadataOptions) *string {
+		if v == nil {
+			return nil
+		}
+		return v.InstanceMetadataTags
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -13217,15 +13477,266 @@ func (o VpcEndpointServicePrivateDnsNameConfigurationArrayOutput) Index(i pulumi
 	}).(VpcEndpointServicePrivateDnsNameConfigurationOutput)
 }
 
+type VpcIpamOperatingRegion struct {
+	// The name of the Region you want to add to the IPAM.
+	RegionName string `pulumi:"regionName"`
+}
+
+// VpcIpamOperatingRegionInput is an input type that accepts VpcIpamOperatingRegionArgs and VpcIpamOperatingRegionOutput values.
+// You can construct a concrete instance of `VpcIpamOperatingRegionInput` via:
+//
+//          VpcIpamOperatingRegionArgs{...}
+type VpcIpamOperatingRegionInput interface {
+	pulumi.Input
+
+	ToVpcIpamOperatingRegionOutput() VpcIpamOperatingRegionOutput
+	ToVpcIpamOperatingRegionOutputWithContext(context.Context) VpcIpamOperatingRegionOutput
+}
+
+type VpcIpamOperatingRegionArgs struct {
+	// The name of the Region you want to add to the IPAM.
+	RegionName pulumi.StringInput `pulumi:"regionName"`
+}
+
+func (VpcIpamOperatingRegionArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*VpcIpamOperatingRegion)(nil)).Elem()
+}
+
+func (i VpcIpamOperatingRegionArgs) ToVpcIpamOperatingRegionOutput() VpcIpamOperatingRegionOutput {
+	return i.ToVpcIpamOperatingRegionOutputWithContext(context.Background())
+}
+
+func (i VpcIpamOperatingRegionArgs) ToVpcIpamOperatingRegionOutputWithContext(ctx context.Context) VpcIpamOperatingRegionOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VpcIpamOperatingRegionOutput)
+}
+
+// VpcIpamOperatingRegionArrayInput is an input type that accepts VpcIpamOperatingRegionArray and VpcIpamOperatingRegionArrayOutput values.
+// You can construct a concrete instance of `VpcIpamOperatingRegionArrayInput` via:
+//
+//          VpcIpamOperatingRegionArray{ VpcIpamOperatingRegionArgs{...} }
+type VpcIpamOperatingRegionArrayInput interface {
+	pulumi.Input
+
+	ToVpcIpamOperatingRegionArrayOutput() VpcIpamOperatingRegionArrayOutput
+	ToVpcIpamOperatingRegionArrayOutputWithContext(context.Context) VpcIpamOperatingRegionArrayOutput
+}
+
+type VpcIpamOperatingRegionArray []VpcIpamOperatingRegionInput
+
+func (VpcIpamOperatingRegionArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]VpcIpamOperatingRegion)(nil)).Elem()
+}
+
+func (i VpcIpamOperatingRegionArray) ToVpcIpamOperatingRegionArrayOutput() VpcIpamOperatingRegionArrayOutput {
+	return i.ToVpcIpamOperatingRegionArrayOutputWithContext(context.Background())
+}
+
+func (i VpcIpamOperatingRegionArray) ToVpcIpamOperatingRegionArrayOutputWithContext(ctx context.Context) VpcIpamOperatingRegionArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VpcIpamOperatingRegionArrayOutput)
+}
+
+type VpcIpamOperatingRegionOutput struct{ *pulumi.OutputState }
+
+func (VpcIpamOperatingRegionOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*VpcIpamOperatingRegion)(nil)).Elem()
+}
+
+func (o VpcIpamOperatingRegionOutput) ToVpcIpamOperatingRegionOutput() VpcIpamOperatingRegionOutput {
+	return o
+}
+
+func (o VpcIpamOperatingRegionOutput) ToVpcIpamOperatingRegionOutputWithContext(ctx context.Context) VpcIpamOperatingRegionOutput {
+	return o
+}
+
+// The name of the Region you want to add to the IPAM.
+func (o VpcIpamOperatingRegionOutput) RegionName() pulumi.StringOutput {
+	return o.ApplyT(func(v VpcIpamOperatingRegion) string { return v.RegionName }).(pulumi.StringOutput)
+}
+
+type VpcIpamOperatingRegionArrayOutput struct{ *pulumi.OutputState }
+
+func (VpcIpamOperatingRegionArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]VpcIpamOperatingRegion)(nil)).Elem()
+}
+
+func (o VpcIpamOperatingRegionArrayOutput) ToVpcIpamOperatingRegionArrayOutput() VpcIpamOperatingRegionArrayOutput {
+	return o
+}
+
+func (o VpcIpamOperatingRegionArrayOutput) ToVpcIpamOperatingRegionArrayOutputWithContext(ctx context.Context) VpcIpamOperatingRegionArrayOutput {
+	return o
+}
+
+func (o VpcIpamOperatingRegionArrayOutput) Index(i pulumi.IntInput) VpcIpamOperatingRegionOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) VpcIpamOperatingRegion {
+		return vs[0].([]VpcIpamOperatingRegion)[vs[1].(int)]
+	}).(VpcIpamOperatingRegionOutput)
+}
+
+type VpcIpamPoolCidrCidrAuthorizationContext struct {
+	// The plain-text authorization message for the prefix and account.
+	Message *string `pulumi:"message"`
+	// The signed authorization message for the prefix and account.
+	Signature *string `pulumi:"signature"`
+}
+
+// VpcIpamPoolCidrCidrAuthorizationContextInput is an input type that accepts VpcIpamPoolCidrCidrAuthorizationContextArgs and VpcIpamPoolCidrCidrAuthorizationContextOutput values.
+// You can construct a concrete instance of `VpcIpamPoolCidrCidrAuthorizationContextInput` via:
+//
+//          VpcIpamPoolCidrCidrAuthorizationContextArgs{...}
+type VpcIpamPoolCidrCidrAuthorizationContextInput interface {
+	pulumi.Input
+
+	ToVpcIpamPoolCidrCidrAuthorizationContextOutput() VpcIpamPoolCidrCidrAuthorizationContextOutput
+	ToVpcIpamPoolCidrCidrAuthorizationContextOutputWithContext(context.Context) VpcIpamPoolCidrCidrAuthorizationContextOutput
+}
+
+type VpcIpamPoolCidrCidrAuthorizationContextArgs struct {
+	// The plain-text authorization message for the prefix and account.
+	Message pulumi.StringPtrInput `pulumi:"message"`
+	// The signed authorization message for the prefix and account.
+	Signature pulumi.StringPtrInput `pulumi:"signature"`
+}
+
+func (VpcIpamPoolCidrCidrAuthorizationContextArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*VpcIpamPoolCidrCidrAuthorizationContext)(nil)).Elem()
+}
+
+func (i VpcIpamPoolCidrCidrAuthorizationContextArgs) ToVpcIpamPoolCidrCidrAuthorizationContextOutput() VpcIpamPoolCidrCidrAuthorizationContextOutput {
+	return i.ToVpcIpamPoolCidrCidrAuthorizationContextOutputWithContext(context.Background())
+}
+
+func (i VpcIpamPoolCidrCidrAuthorizationContextArgs) ToVpcIpamPoolCidrCidrAuthorizationContextOutputWithContext(ctx context.Context) VpcIpamPoolCidrCidrAuthorizationContextOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VpcIpamPoolCidrCidrAuthorizationContextOutput)
+}
+
+func (i VpcIpamPoolCidrCidrAuthorizationContextArgs) ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutput() VpcIpamPoolCidrCidrAuthorizationContextPtrOutput {
+	return i.ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(context.Background())
+}
+
+func (i VpcIpamPoolCidrCidrAuthorizationContextArgs) ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(ctx context.Context) VpcIpamPoolCidrCidrAuthorizationContextPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VpcIpamPoolCidrCidrAuthorizationContextOutput).ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(ctx)
+}
+
+// VpcIpamPoolCidrCidrAuthorizationContextPtrInput is an input type that accepts VpcIpamPoolCidrCidrAuthorizationContextArgs, VpcIpamPoolCidrCidrAuthorizationContextPtr and VpcIpamPoolCidrCidrAuthorizationContextPtrOutput values.
+// You can construct a concrete instance of `VpcIpamPoolCidrCidrAuthorizationContextPtrInput` via:
+//
+//          VpcIpamPoolCidrCidrAuthorizationContextArgs{...}
+//
+//  or:
+//
+//          nil
+type VpcIpamPoolCidrCidrAuthorizationContextPtrInput interface {
+	pulumi.Input
+
+	ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutput() VpcIpamPoolCidrCidrAuthorizationContextPtrOutput
+	ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(context.Context) VpcIpamPoolCidrCidrAuthorizationContextPtrOutput
+}
+
+type vpcIpamPoolCidrCidrAuthorizationContextPtrType VpcIpamPoolCidrCidrAuthorizationContextArgs
+
+func VpcIpamPoolCidrCidrAuthorizationContextPtr(v *VpcIpamPoolCidrCidrAuthorizationContextArgs) VpcIpamPoolCidrCidrAuthorizationContextPtrInput {
+	return (*vpcIpamPoolCidrCidrAuthorizationContextPtrType)(v)
+}
+
+func (*vpcIpamPoolCidrCidrAuthorizationContextPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**VpcIpamPoolCidrCidrAuthorizationContext)(nil)).Elem()
+}
+
+func (i *vpcIpamPoolCidrCidrAuthorizationContextPtrType) ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutput() VpcIpamPoolCidrCidrAuthorizationContextPtrOutput {
+	return i.ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(context.Background())
+}
+
+func (i *vpcIpamPoolCidrCidrAuthorizationContextPtrType) ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(ctx context.Context) VpcIpamPoolCidrCidrAuthorizationContextPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(VpcIpamPoolCidrCidrAuthorizationContextPtrOutput)
+}
+
+type VpcIpamPoolCidrCidrAuthorizationContextOutput struct{ *pulumi.OutputState }
+
+func (VpcIpamPoolCidrCidrAuthorizationContextOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*VpcIpamPoolCidrCidrAuthorizationContext)(nil)).Elem()
+}
+
+func (o VpcIpamPoolCidrCidrAuthorizationContextOutput) ToVpcIpamPoolCidrCidrAuthorizationContextOutput() VpcIpamPoolCidrCidrAuthorizationContextOutput {
+	return o
+}
+
+func (o VpcIpamPoolCidrCidrAuthorizationContextOutput) ToVpcIpamPoolCidrCidrAuthorizationContextOutputWithContext(ctx context.Context) VpcIpamPoolCidrCidrAuthorizationContextOutput {
+	return o
+}
+
+func (o VpcIpamPoolCidrCidrAuthorizationContextOutput) ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutput() VpcIpamPoolCidrCidrAuthorizationContextPtrOutput {
+	return o.ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(context.Background())
+}
+
+func (o VpcIpamPoolCidrCidrAuthorizationContextOutput) ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(ctx context.Context) VpcIpamPoolCidrCidrAuthorizationContextPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v VpcIpamPoolCidrCidrAuthorizationContext) *VpcIpamPoolCidrCidrAuthorizationContext {
+		return &v
+	}).(VpcIpamPoolCidrCidrAuthorizationContextPtrOutput)
+}
+
+// The plain-text authorization message for the prefix and account.
+func (o VpcIpamPoolCidrCidrAuthorizationContextOutput) Message() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v VpcIpamPoolCidrCidrAuthorizationContext) *string { return v.Message }).(pulumi.StringPtrOutput)
+}
+
+// The signed authorization message for the prefix and account.
+func (o VpcIpamPoolCidrCidrAuthorizationContextOutput) Signature() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v VpcIpamPoolCidrCidrAuthorizationContext) *string { return v.Signature }).(pulumi.StringPtrOutput)
+}
+
+type VpcIpamPoolCidrCidrAuthorizationContextPtrOutput struct{ *pulumi.OutputState }
+
+func (VpcIpamPoolCidrCidrAuthorizationContextPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**VpcIpamPoolCidrCidrAuthorizationContext)(nil)).Elem()
+}
+
+func (o VpcIpamPoolCidrCidrAuthorizationContextPtrOutput) ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutput() VpcIpamPoolCidrCidrAuthorizationContextPtrOutput {
+	return o
+}
+
+func (o VpcIpamPoolCidrCidrAuthorizationContextPtrOutput) ToVpcIpamPoolCidrCidrAuthorizationContextPtrOutputWithContext(ctx context.Context) VpcIpamPoolCidrCidrAuthorizationContextPtrOutput {
+	return o
+}
+
+func (o VpcIpamPoolCidrCidrAuthorizationContextPtrOutput) Elem() VpcIpamPoolCidrCidrAuthorizationContextOutput {
+	return o.ApplyT(func(v *VpcIpamPoolCidrCidrAuthorizationContext) VpcIpamPoolCidrCidrAuthorizationContext {
+		if v != nil {
+			return *v
+		}
+		var ret VpcIpamPoolCidrCidrAuthorizationContext
+		return ret
+	}).(VpcIpamPoolCidrCidrAuthorizationContextOutput)
+}
+
+// The plain-text authorization message for the prefix and account.
+func (o VpcIpamPoolCidrCidrAuthorizationContextPtrOutput) Message() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *VpcIpamPoolCidrCidrAuthorizationContext) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Message
+	}).(pulumi.StringPtrOutput)
+}
+
+// The signed authorization message for the prefix and account.
+func (o VpcIpamPoolCidrCidrAuthorizationContextPtrOutput) Signature() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *VpcIpamPoolCidrCidrAuthorizationContext) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Signature
+	}).(pulumi.StringPtrOutput)
+}
+
 type VpcPeeringConnectionAccepterType struct {
 	// Allow a local linked EC2-Classic instance to communicate
 	// with instances in a peer VPC. This enables an outbound communication from the local ClassicLink connection
 	// to the remote VPC.
 	AllowClassicLinkToRemoteVpc *bool `pulumi:"allowClassicLinkToRemoteVpc"`
 	// Allow a local VPC to resolve public DNS hostnames to
-	// private IP addresses when queried from instances in the peer VPC. This is
-	// [not supported](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) for
-	// inter-region VPC peering.
+	// private IP addresses when queried from instances in the peer VPC.
 	AllowRemoteVpcDnsResolution *bool `pulumi:"allowRemoteVpcDnsResolution"`
 	// Allow a local VPC to communicate with a linked EC2-Classic
 	// instance in a peer VPC. This enables an outbound communication from the local VPC to the remote ClassicLink
@@ -13250,9 +13761,7 @@ type VpcPeeringConnectionAccepterTypeArgs struct {
 	// to the remote VPC.
 	AllowClassicLinkToRemoteVpc pulumi.BoolPtrInput `pulumi:"allowClassicLinkToRemoteVpc"`
 	// Allow a local VPC to resolve public DNS hostnames to
-	// private IP addresses when queried from instances in the peer VPC. This is
-	// [not supported](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) for
-	// inter-region VPC peering.
+	// private IP addresses when queried from instances in the peer VPC.
 	AllowRemoteVpcDnsResolution pulumi.BoolPtrInput `pulumi:"allowRemoteVpcDnsResolution"`
 	// Allow a local VPC to communicate with a linked EC2-Classic
 	// instance in a peer VPC. This enables an outbound communication from the local VPC to the remote ClassicLink
@@ -13345,9 +13854,7 @@ func (o VpcPeeringConnectionAccepterTypeOutput) AllowClassicLinkToRemoteVpc() pu
 }
 
 // Allow a local VPC to resolve public DNS hostnames to
-// private IP addresses when queried from instances in the peer VPC. This is
-// [not supported](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) for
-// inter-region VPC peering.
+// private IP addresses when queried from instances in the peer VPC.
 func (o VpcPeeringConnectionAccepterTypeOutput) AllowRemoteVpcDnsResolution() pulumi.BoolPtrOutput {
 	return o.ApplyT(func(v VpcPeeringConnectionAccepterType) *bool { return v.AllowRemoteVpcDnsResolution }).(pulumi.BoolPtrOutput)
 }
@@ -13396,9 +13903,7 @@ func (o VpcPeeringConnectionAccepterTypePtrOutput) AllowClassicLinkToRemoteVpc()
 }
 
 // Allow a local VPC to resolve public DNS hostnames to
-// private IP addresses when queried from instances in the peer VPC. This is
-// [not supported](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) for
-// inter-region VPC peering.
+// private IP addresses when queried from instances in the peer VPC.
 func (o VpcPeeringConnectionAccepterTypePtrOutput) AllowRemoteVpcDnsResolution() pulumi.BoolPtrOutput {
 	return o.ApplyT(func(v *VpcPeeringConnectionAccepterType) *bool {
 		if v == nil {
@@ -13800,9 +14305,7 @@ type VpcPeeringConnectionRequester struct {
 	// to the remote VPC.
 	AllowClassicLinkToRemoteVpc *bool `pulumi:"allowClassicLinkToRemoteVpc"`
 	// Allow a local VPC to resolve public DNS hostnames to
-	// private IP addresses when queried from instances in the peer VPC. This is
-	// [not supported](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) for
-	// inter-region VPC peering.
+	// private IP addresses when queried from instances in the peer VPC.
 	AllowRemoteVpcDnsResolution *bool `pulumi:"allowRemoteVpcDnsResolution"`
 	// Allow a local VPC to communicate with a linked EC2-Classic
 	// instance in a peer VPC. This enables an outbound communication from the local VPC to the remote ClassicLink
@@ -13827,9 +14330,7 @@ type VpcPeeringConnectionRequesterArgs struct {
 	// to the remote VPC.
 	AllowClassicLinkToRemoteVpc pulumi.BoolPtrInput `pulumi:"allowClassicLinkToRemoteVpc"`
 	// Allow a local VPC to resolve public DNS hostnames to
-	// private IP addresses when queried from instances in the peer VPC. This is
-	// [not supported](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) for
-	// inter-region VPC peering.
+	// private IP addresses when queried from instances in the peer VPC.
 	AllowRemoteVpcDnsResolution pulumi.BoolPtrInput `pulumi:"allowRemoteVpcDnsResolution"`
 	// Allow a local VPC to communicate with a linked EC2-Classic
 	// instance in a peer VPC. This enables an outbound communication from the local VPC to the remote ClassicLink
@@ -13922,9 +14423,7 @@ func (o VpcPeeringConnectionRequesterOutput) AllowClassicLinkToRemoteVpc() pulum
 }
 
 // Allow a local VPC to resolve public DNS hostnames to
-// private IP addresses when queried from instances in the peer VPC. This is
-// [not supported](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) for
-// inter-region VPC peering.
+// private IP addresses when queried from instances in the peer VPC.
 func (o VpcPeeringConnectionRequesterOutput) AllowRemoteVpcDnsResolution() pulumi.BoolPtrOutput {
 	return o.ApplyT(func(v VpcPeeringConnectionRequester) *bool { return v.AllowRemoteVpcDnsResolution }).(pulumi.BoolPtrOutput)
 }
@@ -13973,9 +14472,7 @@ func (o VpcPeeringConnectionRequesterPtrOutput) AllowClassicLinkToRemoteVpc() pu
 }
 
 // Allow a local VPC to resolve public DNS hostnames to
-// private IP addresses when queried from instances in the peer VPC. This is
-// [not supported](https://docs.aws.amazon.com/vpc/latest/peering/modify-peering-connections.html) for
-// inter-region VPC peering.
+// private IP addresses when queried from instances in the peer VPC.
 func (o VpcPeeringConnectionRequesterPtrOutput) AllowRemoteVpcDnsResolution() pulumi.BoolPtrOutput {
 	return o.ApplyT(func(v *VpcPeeringConnectionRequester) *bool {
 		if v == nil {
@@ -13998,9 +14495,12 @@ func (o VpcPeeringConnectionRequesterPtrOutput) AllowVpcToRemoteClassicLink() pu
 }
 
 type VpnConnectionRouteType struct {
+	// The CIDR block associated with the local subnet of the customer data center.
 	DestinationCidrBlock *string `pulumi:"destinationCidrBlock"`
-	Source               *string `pulumi:"source"`
-	State                *string `pulumi:"state"`
+	// Indicates how the routes were provided.
+	Source *string `pulumi:"source"`
+	// The current state of the static route.
+	State *string `pulumi:"state"`
 }
 
 // VpnConnectionRouteTypeInput is an input type that accepts VpnConnectionRouteTypeArgs and VpnConnectionRouteTypeOutput values.
@@ -14015,9 +14515,12 @@ type VpnConnectionRouteTypeInput interface {
 }
 
 type VpnConnectionRouteTypeArgs struct {
+	// The CIDR block associated with the local subnet of the customer data center.
 	DestinationCidrBlock pulumi.StringPtrInput `pulumi:"destinationCidrBlock"`
-	Source               pulumi.StringPtrInput `pulumi:"source"`
-	State                pulumi.StringPtrInput `pulumi:"state"`
+	// Indicates how the routes were provided.
+	Source pulumi.StringPtrInput `pulumi:"source"`
+	// The current state of the static route.
+	State pulumi.StringPtrInput `pulumi:"state"`
 }
 
 func (VpnConnectionRouteTypeArgs) ElementType() reflect.Type {
@@ -14071,14 +14574,17 @@ func (o VpnConnectionRouteTypeOutput) ToVpnConnectionRouteTypeOutputWithContext(
 	return o
 }
 
+// The CIDR block associated with the local subnet of the customer data center.
 func (o VpnConnectionRouteTypeOutput) DestinationCidrBlock() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v VpnConnectionRouteType) *string { return v.DestinationCidrBlock }).(pulumi.StringPtrOutput)
 }
 
+// Indicates how the routes were provided.
 func (o VpnConnectionRouteTypeOutput) Source() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v VpnConnectionRouteType) *string { return v.Source }).(pulumi.StringPtrOutput)
 }
 
+// The current state of the static route.
 func (o VpnConnectionRouteTypeOutput) State() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v VpnConnectionRouteType) *string { return v.State }).(pulumi.StringPtrOutput)
 }
@@ -14104,11 +14610,18 @@ func (o VpnConnectionRouteTypeArrayOutput) Index(i pulumi.IntInput) VpnConnectio
 }
 
 type VpnConnectionVgwTelemetry struct {
-	AcceptedRouteCount *int    `pulumi:"acceptedRouteCount"`
-	LastStatusChange   *string `pulumi:"lastStatusChange"`
-	OutsideIpAddress   *string `pulumi:"outsideIpAddress"`
-	Status             *string `pulumi:"status"`
-	StatusMessage      *string `pulumi:"statusMessage"`
+	// The number of accepted routes.
+	AcceptedRouteCount *int `pulumi:"acceptedRouteCount"`
+	// The Amazon Resource Name (ARN) of the VPN tunnel endpoint certificate.
+	CertificateArn *string `pulumi:"certificateArn"`
+	// The date and time of the last change in status.
+	LastStatusChange *string `pulumi:"lastStatusChange"`
+	// The Internet-routable IP address of the virtual private gateway's outside interface.
+	OutsideIpAddress *string `pulumi:"outsideIpAddress"`
+	// The status of the VPN tunnel.
+	Status *string `pulumi:"status"`
+	// If an error occurs, a description of the error.
+	StatusMessage *string `pulumi:"statusMessage"`
 }
 
 // VpnConnectionVgwTelemetryInput is an input type that accepts VpnConnectionVgwTelemetryArgs and VpnConnectionVgwTelemetryOutput values.
@@ -14123,11 +14636,18 @@ type VpnConnectionVgwTelemetryInput interface {
 }
 
 type VpnConnectionVgwTelemetryArgs struct {
-	AcceptedRouteCount pulumi.IntPtrInput    `pulumi:"acceptedRouteCount"`
-	LastStatusChange   pulumi.StringPtrInput `pulumi:"lastStatusChange"`
-	OutsideIpAddress   pulumi.StringPtrInput `pulumi:"outsideIpAddress"`
-	Status             pulumi.StringPtrInput `pulumi:"status"`
-	StatusMessage      pulumi.StringPtrInput `pulumi:"statusMessage"`
+	// The number of accepted routes.
+	AcceptedRouteCount pulumi.IntPtrInput `pulumi:"acceptedRouteCount"`
+	// The Amazon Resource Name (ARN) of the VPN tunnel endpoint certificate.
+	CertificateArn pulumi.StringPtrInput `pulumi:"certificateArn"`
+	// The date and time of the last change in status.
+	LastStatusChange pulumi.StringPtrInput `pulumi:"lastStatusChange"`
+	// The Internet-routable IP address of the virtual private gateway's outside interface.
+	OutsideIpAddress pulumi.StringPtrInput `pulumi:"outsideIpAddress"`
+	// The status of the VPN tunnel.
+	Status pulumi.StringPtrInput `pulumi:"status"`
+	// If an error occurs, a description of the error.
+	StatusMessage pulumi.StringPtrInput `pulumi:"statusMessage"`
 }
 
 func (VpnConnectionVgwTelemetryArgs) ElementType() reflect.Type {
@@ -14181,22 +14701,32 @@ func (o VpnConnectionVgwTelemetryOutput) ToVpnConnectionVgwTelemetryOutputWithCo
 	return o
 }
 
+// The number of accepted routes.
 func (o VpnConnectionVgwTelemetryOutput) AcceptedRouteCount() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v VpnConnectionVgwTelemetry) *int { return v.AcceptedRouteCount }).(pulumi.IntPtrOutput)
 }
 
+// The Amazon Resource Name (ARN) of the VPN tunnel endpoint certificate.
+func (o VpnConnectionVgwTelemetryOutput) CertificateArn() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v VpnConnectionVgwTelemetry) *string { return v.CertificateArn }).(pulumi.StringPtrOutput)
+}
+
+// The date and time of the last change in status.
 func (o VpnConnectionVgwTelemetryOutput) LastStatusChange() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v VpnConnectionVgwTelemetry) *string { return v.LastStatusChange }).(pulumi.StringPtrOutput)
 }
 
+// The Internet-routable IP address of the virtual private gateway's outside interface.
 func (o VpnConnectionVgwTelemetryOutput) OutsideIpAddress() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v VpnConnectionVgwTelemetry) *string { return v.OutsideIpAddress }).(pulumi.StringPtrOutput)
 }
 
+// The status of the VPN tunnel.
 func (o VpnConnectionVgwTelemetryOutput) Status() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v VpnConnectionVgwTelemetry) *string { return v.Status }).(pulumi.StringPtrOutput)
 }
 
+// If an error occurs, a description of the error.
 func (o VpnConnectionVgwTelemetryOutput) StatusMessage() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v VpnConnectionVgwTelemetry) *string { return v.StatusMessage }).(pulumi.StringPtrOutput)
 }
@@ -14224,7 +14754,7 @@ func (o VpnConnectionVgwTelemetryArrayOutput) Index(i pulumi.IntInput) VpnConnec
 type GetAmiBlockDeviceMapping struct {
 	// The physical name of the device.
 	DeviceName string `pulumi:"deviceName"`
-	// Map containing EBS information, if the device is EBS based. Unlike most object attributes, these are accessed directly (e.g. `ebs.volume_size` or `ebs["volumeSize"]`) rather than accessed through the first element of a list (e.g. `ebs[0].volume_size`).
+	// Map containing EBS information, if the device is EBS based. Unlike most object attributes, these are accessed directly (e.g., `ebs.volume_size` or `ebs["volumeSize"]`) rather than accessed through the first element of a list (e.g., `ebs[0].volume_size`).
 	Ebs map[string]string `pulumi:"ebs"`
 	// Suppresses the specified device included in the block device mapping of the AMI.
 	NoDevice string `pulumi:"noDevice"`
@@ -14246,7 +14776,7 @@ type GetAmiBlockDeviceMappingInput interface {
 type GetAmiBlockDeviceMappingArgs struct {
 	// The physical name of the device.
 	DeviceName pulumi.StringInput `pulumi:"deviceName"`
-	// Map containing EBS information, if the device is EBS based. Unlike most object attributes, these are accessed directly (e.g. `ebs.volume_size` or `ebs["volumeSize"]`) rather than accessed through the first element of a list (e.g. `ebs[0].volume_size`).
+	// Map containing EBS information, if the device is EBS based. Unlike most object attributes, these are accessed directly (e.g., `ebs.volume_size` or `ebs["volumeSize"]`) rather than accessed through the first element of a list (e.g., `ebs[0].volume_size`).
 	Ebs pulumi.StringMapInput `pulumi:"ebs"`
 	// Suppresses the specified device included in the block device mapping of the AMI.
 	NoDevice pulumi.StringInput `pulumi:"noDevice"`
@@ -14310,7 +14840,7 @@ func (o GetAmiBlockDeviceMappingOutput) DeviceName() pulumi.StringOutput {
 	return o.ApplyT(func(v GetAmiBlockDeviceMapping) string { return v.DeviceName }).(pulumi.StringOutput)
 }
 
-// Map containing EBS information, if the device is EBS based. Unlike most object attributes, these are accessed directly (e.g. `ebs.volume_size` or `ebs["volumeSize"]`) rather than accessed through the first element of a list (e.g. `ebs[0].volume_size`).
+// Map containing EBS information, if the device is EBS based. Unlike most object attributes, these are accessed directly (e.g., `ebs.volume_size` or `ebs["volumeSize"]`) rather than accessed through the first element of a list (e.g., `ebs[0].volume_size`).
 func (o GetAmiBlockDeviceMappingOutput) Ebs() pulumi.StringMapOutput {
 	return o.ApplyT(func(v GetAmiBlockDeviceMapping) map[string]string { return v.Ebs }).(pulumi.StringMapOutput)
 }
@@ -14970,6 +15500,112 @@ func (o GetCustomerGatewayFilterArrayOutput) Index(i pulumi.IntInput) GetCustome
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetCustomerGatewayFilter {
 		return vs[0].([]GetCustomerGatewayFilter)[vs[1].(int)]
 	}).(GetCustomerGatewayFilterOutput)
+}
+
+type GetDedicatedHostFilter struct {
+	// The name of the field to filter by, as defined by [the underlying AWS API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeHosts.html).
+	Name string `pulumi:"name"`
+	// Set of values that are accepted for the given field. A host will be selected if any one of the given values matches.
+	Values []string `pulumi:"values"`
+}
+
+// GetDedicatedHostFilterInput is an input type that accepts GetDedicatedHostFilterArgs and GetDedicatedHostFilterOutput values.
+// You can construct a concrete instance of `GetDedicatedHostFilterInput` via:
+//
+//          GetDedicatedHostFilterArgs{...}
+type GetDedicatedHostFilterInput interface {
+	pulumi.Input
+
+	ToGetDedicatedHostFilterOutput() GetDedicatedHostFilterOutput
+	ToGetDedicatedHostFilterOutputWithContext(context.Context) GetDedicatedHostFilterOutput
+}
+
+type GetDedicatedHostFilterArgs struct {
+	// The name of the field to filter by, as defined by [the underlying AWS API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeHosts.html).
+	Name pulumi.StringInput `pulumi:"name"`
+	// Set of values that are accepted for the given field. A host will be selected if any one of the given values matches.
+	Values pulumi.StringArrayInput `pulumi:"values"`
+}
+
+func (GetDedicatedHostFilterArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetDedicatedHostFilter)(nil)).Elem()
+}
+
+func (i GetDedicatedHostFilterArgs) ToGetDedicatedHostFilterOutput() GetDedicatedHostFilterOutput {
+	return i.ToGetDedicatedHostFilterOutputWithContext(context.Background())
+}
+
+func (i GetDedicatedHostFilterArgs) ToGetDedicatedHostFilterOutputWithContext(ctx context.Context) GetDedicatedHostFilterOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetDedicatedHostFilterOutput)
+}
+
+// GetDedicatedHostFilterArrayInput is an input type that accepts GetDedicatedHostFilterArray and GetDedicatedHostFilterArrayOutput values.
+// You can construct a concrete instance of `GetDedicatedHostFilterArrayInput` via:
+//
+//          GetDedicatedHostFilterArray{ GetDedicatedHostFilterArgs{...} }
+type GetDedicatedHostFilterArrayInput interface {
+	pulumi.Input
+
+	ToGetDedicatedHostFilterArrayOutput() GetDedicatedHostFilterArrayOutput
+	ToGetDedicatedHostFilterArrayOutputWithContext(context.Context) GetDedicatedHostFilterArrayOutput
+}
+
+type GetDedicatedHostFilterArray []GetDedicatedHostFilterInput
+
+func (GetDedicatedHostFilterArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetDedicatedHostFilter)(nil)).Elem()
+}
+
+func (i GetDedicatedHostFilterArray) ToGetDedicatedHostFilterArrayOutput() GetDedicatedHostFilterArrayOutput {
+	return i.ToGetDedicatedHostFilterArrayOutputWithContext(context.Background())
+}
+
+func (i GetDedicatedHostFilterArray) ToGetDedicatedHostFilterArrayOutputWithContext(ctx context.Context) GetDedicatedHostFilterArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetDedicatedHostFilterArrayOutput)
+}
+
+type GetDedicatedHostFilterOutput struct{ *pulumi.OutputState }
+
+func (GetDedicatedHostFilterOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetDedicatedHostFilter)(nil)).Elem()
+}
+
+func (o GetDedicatedHostFilterOutput) ToGetDedicatedHostFilterOutput() GetDedicatedHostFilterOutput {
+	return o
+}
+
+func (o GetDedicatedHostFilterOutput) ToGetDedicatedHostFilterOutputWithContext(ctx context.Context) GetDedicatedHostFilterOutput {
+	return o
+}
+
+// The name of the field to filter by, as defined by [the underlying AWS API](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeHosts.html).
+func (o GetDedicatedHostFilterOutput) Name() pulumi.StringOutput {
+	return o.ApplyT(func(v GetDedicatedHostFilter) string { return v.Name }).(pulumi.StringOutput)
+}
+
+// Set of values that are accepted for the given field. A host will be selected if any one of the given values matches.
+func (o GetDedicatedHostFilterOutput) Values() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v GetDedicatedHostFilter) []string { return v.Values }).(pulumi.StringArrayOutput)
+}
+
+type GetDedicatedHostFilterArrayOutput struct{ *pulumi.OutputState }
+
+func (GetDedicatedHostFilterArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetDedicatedHostFilter)(nil)).Elem()
+}
+
+func (o GetDedicatedHostFilterArrayOutput) ToGetDedicatedHostFilterArrayOutput() GetDedicatedHostFilterArrayOutput {
+	return o
+}
+
+func (o GetDedicatedHostFilterArrayOutput) ToGetDedicatedHostFilterArrayOutputWithContext(ctx context.Context) GetDedicatedHostFilterArrayOutput {
+	return o
+}
+
+func (o GetDedicatedHostFilterArrayOutput) Index(i pulumi.IntInput) GetDedicatedHostFilterOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetDedicatedHostFilter {
+		return vs[0].([]GetDedicatedHostFilter)[vs[1].(int)]
+	}).(GetDedicatedHostFilterOutput)
 }
 
 type GetElasticIpFilter struct {
@@ -15666,6 +16302,8 @@ type GetInstanceMetadataOption struct {
 	HttpPutResponseHopLimit int `pulumi:"httpPutResponseHopLimit"`
 	// If session tokens are required: `optional`, `required`.
 	HttpTokens string `pulumi:"httpTokens"`
+	// If access to instance tags is allowed from the metadata service: `enabled`, `disabled`.
+	InstanceMetadataTags string `pulumi:"instanceMetadataTags"`
 }
 
 // GetInstanceMetadataOptionInput is an input type that accepts GetInstanceMetadataOptionArgs and GetInstanceMetadataOptionOutput values.
@@ -15686,6 +16324,8 @@ type GetInstanceMetadataOptionArgs struct {
 	HttpPutResponseHopLimit pulumi.IntInput `pulumi:"httpPutResponseHopLimit"`
 	// If session tokens are required: `optional`, `required`.
 	HttpTokens pulumi.StringInput `pulumi:"httpTokens"`
+	// If access to instance tags is allowed from the metadata service: `enabled`, `disabled`.
+	InstanceMetadataTags pulumi.StringInput `pulumi:"instanceMetadataTags"`
 }
 
 func (GetInstanceMetadataOptionArgs) ElementType() reflect.Type {
@@ -15752,6 +16392,11 @@ func (o GetInstanceMetadataOptionOutput) HttpPutResponseHopLimit() pulumi.IntOut
 // If session tokens are required: `optional`, `required`.
 func (o GetInstanceMetadataOptionOutput) HttpTokens() pulumi.StringOutput {
 	return o.ApplyT(func(v GetInstanceMetadataOption) string { return v.HttpTokens }).(pulumi.StringOutput)
+}
+
+// If access to instance tags is allowed from the metadata service: `enabled`, `disabled`.
+func (o GetInstanceMetadataOptionOutput) InstanceMetadataTags() pulumi.StringOutput {
+	return o.ApplyT(func(v GetInstanceMetadataOption) string { return v.InstanceMetadataTags }).(pulumi.StringOutput)
 }
 
 type GetInstanceMetadataOptionArrayOutput struct{ *pulumi.OutputState }
@@ -16600,6 +17245,112 @@ func (o GetInstanceTypeOfferingsFilterArrayOutput) Index(i pulumi.IntInput) GetI
 	}).(GetInstanceTypeOfferingsFilterOutput)
 }
 
+type GetInstanceTypesFilter struct {
+	// Name of the filter.
+	Name string `pulumi:"name"`
+	// List of one or more values for the filter.
+	Values []string `pulumi:"values"`
+}
+
+// GetInstanceTypesFilterInput is an input type that accepts GetInstanceTypesFilterArgs and GetInstanceTypesFilterOutput values.
+// You can construct a concrete instance of `GetInstanceTypesFilterInput` via:
+//
+//          GetInstanceTypesFilterArgs{...}
+type GetInstanceTypesFilterInput interface {
+	pulumi.Input
+
+	ToGetInstanceTypesFilterOutput() GetInstanceTypesFilterOutput
+	ToGetInstanceTypesFilterOutputWithContext(context.Context) GetInstanceTypesFilterOutput
+}
+
+type GetInstanceTypesFilterArgs struct {
+	// Name of the filter.
+	Name pulumi.StringInput `pulumi:"name"`
+	// List of one or more values for the filter.
+	Values pulumi.StringArrayInput `pulumi:"values"`
+}
+
+func (GetInstanceTypesFilterArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetInstanceTypesFilter)(nil)).Elem()
+}
+
+func (i GetInstanceTypesFilterArgs) ToGetInstanceTypesFilterOutput() GetInstanceTypesFilterOutput {
+	return i.ToGetInstanceTypesFilterOutputWithContext(context.Background())
+}
+
+func (i GetInstanceTypesFilterArgs) ToGetInstanceTypesFilterOutputWithContext(ctx context.Context) GetInstanceTypesFilterOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetInstanceTypesFilterOutput)
+}
+
+// GetInstanceTypesFilterArrayInput is an input type that accepts GetInstanceTypesFilterArray and GetInstanceTypesFilterArrayOutput values.
+// You can construct a concrete instance of `GetInstanceTypesFilterArrayInput` via:
+//
+//          GetInstanceTypesFilterArray{ GetInstanceTypesFilterArgs{...} }
+type GetInstanceTypesFilterArrayInput interface {
+	pulumi.Input
+
+	ToGetInstanceTypesFilterArrayOutput() GetInstanceTypesFilterArrayOutput
+	ToGetInstanceTypesFilterArrayOutputWithContext(context.Context) GetInstanceTypesFilterArrayOutput
+}
+
+type GetInstanceTypesFilterArray []GetInstanceTypesFilterInput
+
+func (GetInstanceTypesFilterArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetInstanceTypesFilter)(nil)).Elem()
+}
+
+func (i GetInstanceTypesFilterArray) ToGetInstanceTypesFilterArrayOutput() GetInstanceTypesFilterArrayOutput {
+	return i.ToGetInstanceTypesFilterArrayOutputWithContext(context.Background())
+}
+
+func (i GetInstanceTypesFilterArray) ToGetInstanceTypesFilterArrayOutputWithContext(ctx context.Context) GetInstanceTypesFilterArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetInstanceTypesFilterArrayOutput)
+}
+
+type GetInstanceTypesFilterOutput struct{ *pulumi.OutputState }
+
+func (GetInstanceTypesFilterOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetInstanceTypesFilter)(nil)).Elem()
+}
+
+func (o GetInstanceTypesFilterOutput) ToGetInstanceTypesFilterOutput() GetInstanceTypesFilterOutput {
+	return o
+}
+
+func (o GetInstanceTypesFilterOutput) ToGetInstanceTypesFilterOutputWithContext(ctx context.Context) GetInstanceTypesFilterOutput {
+	return o
+}
+
+// Name of the filter.
+func (o GetInstanceTypesFilterOutput) Name() pulumi.StringOutput {
+	return o.ApplyT(func(v GetInstanceTypesFilter) string { return v.Name }).(pulumi.StringOutput)
+}
+
+// List of one or more values for the filter.
+func (o GetInstanceTypesFilterOutput) Values() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v GetInstanceTypesFilter) []string { return v.Values }).(pulumi.StringArrayOutput)
+}
+
+type GetInstanceTypesFilterArrayOutput struct{ *pulumi.OutputState }
+
+func (GetInstanceTypesFilterArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetInstanceTypesFilter)(nil)).Elem()
+}
+
+func (o GetInstanceTypesFilterArrayOutput) ToGetInstanceTypesFilterArrayOutput() GetInstanceTypesFilterArrayOutput {
+	return o
+}
+
+func (o GetInstanceTypesFilterArrayOutput) ToGetInstanceTypesFilterArrayOutputWithContext(ctx context.Context) GetInstanceTypesFilterArrayOutput {
+	return o
+}
+
+func (o GetInstanceTypesFilterArrayOutput) Index(i pulumi.IntInput) GetInstanceTypesFilterOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetInstanceTypesFilter {
+		return vs[0].([]GetInstanceTypesFilter)[vs[1].(int)]
+	}).(GetInstanceTypesFilterOutput)
+}
+
 type GetInstancesFilter struct {
 	Name   string   `pulumi:"name"`
 	Values []string `pulumi:"values"`
@@ -16916,6 +17667,112 @@ func (o GetInternetGatewayFilterArrayOutput) Index(i pulumi.IntInput) GetInterne
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetInternetGatewayFilter {
 		return vs[0].([]GetInternetGatewayFilter)[vs[1].(int)]
 	}).(GetInternetGatewayFilterOutput)
+}
+
+type GetKeyPairFilter struct {
+	// The name of the filter field. Valid values can be found in the [EC2 DescribeKeyPairs API Reference](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeKeyPairs.html).
+	Name string `pulumi:"name"`
+	// Set of values that are accepted for the given filter field. Results will be selected if any given value matches.
+	Values []string `pulumi:"values"`
+}
+
+// GetKeyPairFilterInput is an input type that accepts GetKeyPairFilterArgs and GetKeyPairFilterOutput values.
+// You can construct a concrete instance of `GetKeyPairFilterInput` via:
+//
+//          GetKeyPairFilterArgs{...}
+type GetKeyPairFilterInput interface {
+	pulumi.Input
+
+	ToGetKeyPairFilterOutput() GetKeyPairFilterOutput
+	ToGetKeyPairFilterOutputWithContext(context.Context) GetKeyPairFilterOutput
+}
+
+type GetKeyPairFilterArgs struct {
+	// The name of the filter field. Valid values can be found in the [EC2 DescribeKeyPairs API Reference](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeKeyPairs.html).
+	Name pulumi.StringInput `pulumi:"name"`
+	// Set of values that are accepted for the given filter field. Results will be selected if any given value matches.
+	Values pulumi.StringArrayInput `pulumi:"values"`
+}
+
+func (GetKeyPairFilterArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetKeyPairFilter)(nil)).Elem()
+}
+
+func (i GetKeyPairFilterArgs) ToGetKeyPairFilterOutput() GetKeyPairFilterOutput {
+	return i.ToGetKeyPairFilterOutputWithContext(context.Background())
+}
+
+func (i GetKeyPairFilterArgs) ToGetKeyPairFilterOutputWithContext(ctx context.Context) GetKeyPairFilterOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetKeyPairFilterOutput)
+}
+
+// GetKeyPairFilterArrayInput is an input type that accepts GetKeyPairFilterArray and GetKeyPairFilterArrayOutput values.
+// You can construct a concrete instance of `GetKeyPairFilterArrayInput` via:
+//
+//          GetKeyPairFilterArray{ GetKeyPairFilterArgs{...} }
+type GetKeyPairFilterArrayInput interface {
+	pulumi.Input
+
+	ToGetKeyPairFilterArrayOutput() GetKeyPairFilterArrayOutput
+	ToGetKeyPairFilterArrayOutputWithContext(context.Context) GetKeyPairFilterArrayOutput
+}
+
+type GetKeyPairFilterArray []GetKeyPairFilterInput
+
+func (GetKeyPairFilterArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetKeyPairFilter)(nil)).Elem()
+}
+
+func (i GetKeyPairFilterArray) ToGetKeyPairFilterArrayOutput() GetKeyPairFilterArrayOutput {
+	return i.ToGetKeyPairFilterArrayOutputWithContext(context.Background())
+}
+
+func (i GetKeyPairFilterArray) ToGetKeyPairFilterArrayOutputWithContext(ctx context.Context) GetKeyPairFilterArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetKeyPairFilterArrayOutput)
+}
+
+type GetKeyPairFilterOutput struct{ *pulumi.OutputState }
+
+func (GetKeyPairFilterOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetKeyPairFilter)(nil)).Elem()
+}
+
+func (o GetKeyPairFilterOutput) ToGetKeyPairFilterOutput() GetKeyPairFilterOutput {
+	return o
+}
+
+func (o GetKeyPairFilterOutput) ToGetKeyPairFilterOutputWithContext(ctx context.Context) GetKeyPairFilterOutput {
+	return o
+}
+
+// The name of the filter field. Valid values can be found in the [EC2 DescribeKeyPairs API Reference](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeKeyPairs.html).
+func (o GetKeyPairFilterOutput) Name() pulumi.StringOutput {
+	return o.ApplyT(func(v GetKeyPairFilter) string { return v.Name }).(pulumi.StringOutput)
+}
+
+// Set of values that are accepted for the given filter field. Results will be selected if any given value matches.
+func (o GetKeyPairFilterOutput) Values() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v GetKeyPairFilter) []string { return v.Values }).(pulumi.StringArrayOutput)
+}
+
+type GetKeyPairFilterArrayOutput struct{ *pulumi.OutputState }
+
+func (GetKeyPairFilterArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetKeyPairFilter)(nil)).Elem()
+}
+
+func (o GetKeyPairFilterArrayOutput) ToGetKeyPairFilterArrayOutput() GetKeyPairFilterArrayOutput {
+	return o
+}
+
+func (o GetKeyPairFilterArrayOutput) ToGetKeyPairFilterArrayOutputWithContext(ctx context.Context) GetKeyPairFilterArrayOutput {
+	return o
+}
+
+func (o GetKeyPairFilterArrayOutput) Index(i pulumi.IntInput) GetKeyPairFilterOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetKeyPairFilter {
+		return vs[0].([]GetKeyPairFilter)[vs[1].(int)]
+	}).(GetKeyPairFilterOutput)
 }
 
 type GetLaunchConfigurationEbsBlockDevice struct {
@@ -18512,10 +19369,14 @@ func (o GetLaunchTemplateInstanceMarketOptionSpotOptionArrayOutput) Index(i pulu
 type GetLaunchTemplateMetadataOption struct {
 	// The state of the metadata service: `enabled`, `disabled`.
 	HttpEndpoint string `pulumi:"httpEndpoint"`
+	// The state of IPv6 endpoint for the instance metadata service: `enabled`, `disabled`.
+	HttpProtocolIpv6 string `pulumi:"httpProtocolIpv6"`
 	// The desired HTTP PUT response hop limit for instance metadata requests.
 	HttpPutResponseHopLimit int `pulumi:"httpPutResponseHopLimit"`
 	// If session tokens are required: `optional`, `required`.
 	HttpTokens string `pulumi:"httpTokens"`
+	// If access to instance tags is allowed from the metadata service: `enabled`, `disabled`.
+	InstanceMetadataTags string `pulumi:"instanceMetadataTags"`
 }
 
 // GetLaunchTemplateMetadataOptionInput is an input type that accepts GetLaunchTemplateMetadataOptionArgs and GetLaunchTemplateMetadataOptionOutput values.
@@ -18532,10 +19393,14 @@ type GetLaunchTemplateMetadataOptionInput interface {
 type GetLaunchTemplateMetadataOptionArgs struct {
 	// The state of the metadata service: `enabled`, `disabled`.
 	HttpEndpoint pulumi.StringInput `pulumi:"httpEndpoint"`
+	// The state of IPv6 endpoint for the instance metadata service: `enabled`, `disabled`.
+	HttpProtocolIpv6 pulumi.StringInput `pulumi:"httpProtocolIpv6"`
 	// The desired HTTP PUT response hop limit for instance metadata requests.
 	HttpPutResponseHopLimit pulumi.IntInput `pulumi:"httpPutResponseHopLimit"`
 	// If session tokens are required: `optional`, `required`.
 	HttpTokens pulumi.StringInput `pulumi:"httpTokens"`
+	// If access to instance tags is allowed from the metadata service: `enabled`, `disabled`.
+	InstanceMetadataTags pulumi.StringInput `pulumi:"instanceMetadataTags"`
 }
 
 func (GetLaunchTemplateMetadataOptionArgs) ElementType() reflect.Type {
@@ -18594,6 +19459,11 @@ func (o GetLaunchTemplateMetadataOptionOutput) HttpEndpoint() pulumi.StringOutpu
 	return o.ApplyT(func(v GetLaunchTemplateMetadataOption) string { return v.HttpEndpoint }).(pulumi.StringOutput)
 }
 
+// The state of IPv6 endpoint for the instance metadata service: `enabled`, `disabled`.
+func (o GetLaunchTemplateMetadataOptionOutput) HttpProtocolIpv6() pulumi.StringOutput {
+	return o.ApplyT(func(v GetLaunchTemplateMetadataOption) string { return v.HttpProtocolIpv6 }).(pulumi.StringOutput)
+}
+
 // The desired HTTP PUT response hop limit for instance metadata requests.
 func (o GetLaunchTemplateMetadataOptionOutput) HttpPutResponseHopLimit() pulumi.IntOutput {
 	return o.ApplyT(func(v GetLaunchTemplateMetadataOption) int { return v.HttpPutResponseHopLimit }).(pulumi.IntOutput)
@@ -18602,6 +19472,11 @@ func (o GetLaunchTemplateMetadataOptionOutput) HttpPutResponseHopLimit() pulumi.
 // If session tokens are required: `optional`, `required`.
 func (o GetLaunchTemplateMetadataOptionOutput) HttpTokens() pulumi.StringOutput {
 	return o.ApplyT(func(v GetLaunchTemplateMetadataOption) string { return v.HttpTokens }).(pulumi.StringOutput)
+}
+
+// If access to instance tags is allowed from the metadata service: `enabled`, `disabled`.
+func (o GetLaunchTemplateMetadataOptionOutput) InstanceMetadataTags() pulumi.StringOutput {
+	return o.ApplyT(func(v GetLaunchTemplateMetadataOption) string { return v.InstanceMetadataTags }).(pulumi.StringOutput)
 }
 
 type GetLaunchTemplateMetadataOptionArrayOutput struct{ *pulumi.OutputState }
@@ -18733,6 +19608,7 @@ type GetLaunchTemplateNetworkInterface struct {
 	Ipv4Addresses      []string `pulumi:"ipv4Addresses"`
 	Ipv6AddressCount   int      `pulumi:"ipv6AddressCount"`
 	Ipv6Addresses      []string `pulumi:"ipv6Addresses"`
+	NetworkCardIndex   *int     `pulumi:"networkCardIndex"`
 	NetworkInterfaceId string   `pulumi:"networkInterfaceId"`
 	PrivateIpAddress   string   `pulumi:"privateIpAddress"`
 	SecurityGroups     []string `pulumi:"securityGroups"`
@@ -18762,6 +19638,7 @@ type GetLaunchTemplateNetworkInterfaceArgs struct {
 	Ipv4Addresses      pulumi.StringArrayInput `pulumi:"ipv4Addresses"`
 	Ipv6AddressCount   pulumi.IntInput         `pulumi:"ipv6AddressCount"`
 	Ipv6Addresses      pulumi.StringArrayInput `pulumi:"ipv6Addresses"`
+	NetworkCardIndex   pulumi.IntPtrInput      `pulumi:"networkCardIndex"`
 	NetworkInterfaceId pulumi.StringInput      `pulumi:"networkInterfaceId"`
 	PrivateIpAddress   pulumi.StringInput      `pulumi:"privateIpAddress"`
 	SecurityGroups     pulumi.StringArrayInput `pulumi:"securityGroups"`
@@ -18858,6 +19735,10 @@ func (o GetLaunchTemplateNetworkInterfaceOutput) Ipv6AddressCount() pulumi.IntOu
 
 func (o GetLaunchTemplateNetworkInterfaceOutput) Ipv6Addresses() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v GetLaunchTemplateNetworkInterface) []string { return v.Ipv6Addresses }).(pulumi.StringArrayOutput)
+}
+
+func (o GetLaunchTemplateNetworkInterfaceOutput) NetworkCardIndex() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v GetLaunchTemplateNetworkInterface) *int { return v.NetworkCardIndex }).(pulumi.IntPtrOutput)
 }
 
 func (o GetLaunchTemplateNetworkInterfaceOutput) NetworkInterfaceId() pulumi.StringOutput {
@@ -19901,104 +20782,104 @@ func (o GetLocalGatewaysFilterArrayOutput) Index(i pulumi.IntInput) GetLocalGate
 	}).(GetLocalGatewaysFilterOutput)
 }
 
-type GetManagedPrefixListEntry struct {
+type GetManagedPrefixListEntryType struct {
 	Cidr        string `pulumi:"cidr"`
 	Description string `pulumi:"description"`
 }
 
-// GetManagedPrefixListEntryInput is an input type that accepts GetManagedPrefixListEntryArgs and GetManagedPrefixListEntryOutput values.
-// You can construct a concrete instance of `GetManagedPrefixListEntryInput` via:
+// GetManagedPrefixListEntryTypeInput is an input type that accepts GetManagedPrefixListEntryTypeArgs and GetManagedPrefixListEntryTypeOutput values.
+// You can construct a concrete instance of `GetManagedPrefixListEntryTypeInput` via:
 //
-//          GetManagedPrefixListEntryArgs{...}
-type GetManagedPrefixListEntryInput interface {
+//          GetManagedPrefixListEntryTypeArgs{...}
+type GetManagedPrefixListEntryTypeInput interface {
 	pulumi.Input
 
-	ToGetManagedPrefixListEntryOutput() GetManagedPrefixListEntryOutput
-	ToGetManagedPrefixListEntryOutputWithContext(context.Context) GetManagedPrefixListEntryOutput
+	ToGetManagedPrefixListEntryTypeOutput() GetManagedPrefixListEntryTypeOutput
+	ToGetManagedPrefixListEntryTypeOutputWithContext(context.Context) GetManagedPrefixListEntryTypeOutput
 }
 
-type GetManagedPrefixListEntryArgs struct {
+type GetManagedPrefixListEntryTypeArgs struct {
 	Cidr        pulumi.StringInput `pulumi:"cidr"`
 	Description pulumi.StringInput `pulumi:"description"`
 }
 
-func (GetManagedPrefixListEntryArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*GetManagedPrefixListEntry)(nil)).Elem()
+func (GetManagedPrefixListEntryTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetManagedPrefixListEntryType)(nil)).Elem()
 }
 
-func (i GetManagedPrefixListEntryArgs) ToGetManagedPrefixListEntryOutput() GetManagedPrefixListEntryOutput {
-	return i.ToGetManagedPrefixListEntryOutputWithContext(context.Background())
+func (i GetManagedPrefixListEntryTypeArgs) ToGetManagedPrefixListEntryTypeOutput() GetManagedPrefixListEntryTypeOutput {
+	return i.ToGetManagedPrefixListEntryTypeOutputWithContext(context.Background())
 }
 
-func (i GetManagedPrefixListEntryArgs) ToGetManagedPrefixListEntryOutputWithContext(ctx context.Context) GetManagedPrefixListEntryOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(GetManagedPrefixListEntryOutput)
+func (i GetManagedPrefixListEntryTypeArgs) ToGetManagedPrefixListEntryTypeOutputWithContext(ctx context.Context) GetManagedPrefixListEntryTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetManagedPrefixListEntryTypeOutput)
 }
 
-// GetManagedPrefixListEntryArrayInput is an input type that accepts GetManagedPrefixListEntryArray and GetManagedPrefixListEntryArrayOutput values.
-// You can construct a concrete instance of `GetManagedPrefixListEntryArrayInput` via:
+// GetManagedPrefixListEntryTypeArrayInput is an input type that accepts GetManagedPrefixListEntryTypeArray and GetManagedPrefixListEntryTypeArrayOutput values.
+// You can construct a concrete instance of `GetManagedPrefixListEntryTypeArrayInput` via:
 //
-//          GetManagedPrefixListEntryArray{ GetManagedPrefixListEntryArgs{...} }
-type GetManagedPrefixListEntryArrayInput interface {
+//          GetManagedPrefixListEntryTypeArray{ GetManagedPrefixListEntryTypeArgs{...} }
+type GetManagedPrefixListEntryTypeArrayInput interface {
 	pulumi.Input
 
-	ToGetManagedPrefixListEntryArrayOutput() GetManagedPrefixListEntryArrayOutput
-	ToGetManagedPrefixListEntryArrayOutputWithContext(context.Context) GetManagedPrefixListEntryArrayOutput
+	ToGetManagedPrefixListEntryTypeArrayOutput() GetManagedPrefixListEntryTypeArrayOutput
+	ToGetManagedPrefixListEntryTypeArrayOutputWithContext(context.Context) GetManagedPrefixListEntryTypeArrayOutput
 }
 
-type GetManagedPrefixListEntryArray []GetManagedPrefixListEntryInput
+type GetManagedPrefixListEntryTypeArray []GetManagedPrefixListEntryTypeInput
 
-func (GetManagedPrefixListEntryArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]GetManagedPrefixListEntry)(nil)).Elem()
+func (GetManagedPrefixListEntryTypeArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetManagedPrefixListEntryType)(nil)).Elem()
 }
 
-func (i GetManagedPrefixListEntryArray) ToGetManagedPrefixListEntryArrayOutput() GetManagedPrefixListEntryArrayOutput {
-	return i.ToGetManagedPrefixListEntryArrayOutputWithContext(context.Background())
+func (i GetManagedPrefixListEntryTypeArray) ToGetManagedPrefixListEntryTypeArrayOutput() GetManagedPrefixListEntryTypeArrayOutput {
+	return i.ToGetManagedPrefixListEntryTypeArrayOutputWithContext(context.Background())
 }
 
-func (i GetManagedPrefixListEntryArray) ToGetManagedPrefixListEntryArrayOutputWithContext(ctx context.Context) GetManagedPrefixListEntryArrayOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(GetManagedPrefixListEntryArrayOutput)
+func (i GetManagedPrefixListEntryTypeArray) ToGetManagedPrefixListEntryTypeArrayOutputWithContext(ctx context.Context) GetManagedPrefixListEntryTypeArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetManagedPrefixListEntryTypeArrayOutput)
 }
 
-type GetManagedPrefixListEntryOutput struct{ *pulumi.OutputState }
+type GetManagedPrefixListEntryTypeOutput struct{ *pulumi.OutputState }
 
-func (GetManagedPrefixListEntryOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*GetManagedPrefixListEntry)(nil)).Elem()
+func (GetManagedPrefixListEntryTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetManagedPrefixListEntryType)(nil)).Elem()
 }
 
-func (o GetManagedPrefixListEntryOutput) ToGetManagedPrefixListEntryOutput() GetManagedPrefixListEntryOutput {
+func (o GetManagedPrefixListEntryTypeOutput) ToGetManagedPrefixListEntryTypeOutput() GetManagedPrefixListEntryTypeOutput {
 	return o
 }
 
-func (o GetManagedPrefixListEntryOutput) ToGetManagedPrefixListEntryOutputWithContext(ctx context.Context) GetManagedPrefixListEntryOutput {
+func (o GetManagedPrefixListEntryTypeOutput) ToGetManagedPrefixListEntryTypeOutputWithContext(ctx context.Context) GetManagedPrefixListEntryTypeOutput {
 	return o
 }
 
-func (o GetManagedPrefixListEntryOutput) Cidr() pulumi.StringOutput {
-	return o.ApplyT(func(v GetManagedPrefixListEntry) string { return v.Cidr }).(pulumi.StringOutput)
+func (o GetManagedPrefixListEntryTypeOutput) Cidr() pulumi.StringOutput {
+	return o.ApplyT(func(v GetManagedPrefixListEntryType) string { return v.Cidr }).(pulumi.StringOutput)
 }
 
-func (o GetManagedPrefixListEntryOutput) Description() pulumi.StringOutput {
-	return o.ApplyT(func(v GetManagedPrefixListEntry) string { return v.Description }).(pulumi.StringOutput)
+func (o GetManagedPrefixListEntryTypeOutput) Description() pulumi.StringOutput {
+	return o.ApplyT(func(v GetManagedPrefixListEntryType) string { return v.Description }).(pulumi.StringOutput)
 }
 
-type GetManagedPrefixListEntryArrayOutput struct{ *pulumi.OutputState }
+type GetManagedPrefixListEntryTypeArrayOutput struct{ *pulumi.OutputState }
 
-func (GetManagedPrefixListEntryArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]GetManagedPrefixListEntry)(nil)).Elem()
+func (GetManagedPrefixListEntryTypeArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetManagedPrefixListEntryType)(nil)).Elem()
 }
 
-func (o GetManagedPrefixListEntryArrayOutput) ToGetManagedPrefixListEntryArrayOutput() GetManagedPrefixListEntryArrayOutput {
+func (o GetManagedPrefixListEntryTypeArrayOutput) ToGetManagedPrefixListEntryTypeArrayOutput() GetManagedPrefixListEntryTypeArrayOutput {
 	return o
 }
 
-func (o GetManagedPrefixListEntryArrayOutput) ToGetManagedPrefixListEntryArrayOutputWithContext(ctx context.Context) GetManagedPrefixListEntryArrayOutput {
+func (o GetManagedPrefixListEntryTypeArrayOutput) ToGetManagedPrefixListEntryTypeArrayOutputWithContext(ctx context.Context) GetManagedPrefixListEntryTypeArrayOutput {
 	return o
 }
 
-func (o GetManagedPrefixListEntryArrayOutput) Index(i pulumi.IntInput) GetManagedPrefixListEntryOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetManagedPrefixListEntry {
-		return vs[0].([]GetManagedPrefixListEntry)[vs[1].(int)]
-	}).(GetManagedPrefixListEntryOutput)
+func (o GetManagedPrefixListEntryTypeArrayOutput) Index(i pulumi.IntInput) GetManagedPrefixListEntryTypeOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetManagedPrefixListEntryType {
+		return vs[0].([]GetManagedPrefixListEntryType)[vs[1].(int)]
+	}).(GetManagedPrefixListEntryTypeOutput)
 }
 
 type GetManagedPrefixListFilter struct {
@@ -22891,6 +23772,106 @@ func (o GetVpcFilterArrayOutput) Index(i pulumi.IntInput) GetVpcFilterOutput {
 	}).(GetVpcFilterOutput)
 }
 
+type GetVpcIamPoolFilter struct {
+	Name   string   `pulumi:"name"`
+	Values []string `pulumi:"values"`
+}
+
+// GetVpcIamPoolFilterInput is an input type that accepts GetVpcIamPoolFilterArgs and GetVpcIamPoolFilterOutput values.
+// You can construct a concrete instance of `GetVpcIamPoolFilterInput` via:
+//
+//          GetVpcIamPoolFilterArgs{...}
+type GetVpcIamPoolFilterInput interface {
+	pulumi.Input
+
+	ToGetVpcIamPoolFilterOutput() GetVpcIamPoolFilterOutput
+	ToGetVpcIamPoolFilterOutputWithContext(context.Context) GetVpcIamPoolFilterOutput
+}
+
+type GetVpcIamPoolFilterArgs struct {
+	Name   pulumi.StringInput      `pulumi:"name"`
+	Values pulumi.StringArrayInput `pulumi:"values"`
+}
+
+func (GetVpcIamPoolFilterArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetVpcIamPoolFilter)(nil)).Elem()
+}
+
+func (i GetVpcIamPoolFilterArgs) ToGetVpcIamPoolFilterOutput() GetVpcIamPoolFilterOutput {
+	return i.ToGetVpcIamPoolFilterOutputWithContext(context.Background())
+}
+
+func (i GetVpcIamPoolFilterArgs) ToGetVpcIamPoolFilterOutputWithContext(ctx context.Context) GetVpcIamPoolFilterOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetVpcIamPoolFilterOutput)
+}
+
+// GetVpcIamPoolFilterArrayInput is an input type that accepts GetVpcIamPoolFilterArray and GetVpcIamPoolFilterArrayOutput values.
+// You can construct a concrete instance of `GetVpcIamPoolFilterArrayInput` via:
+//
+//          GetVpcIamPoolFilterArray{ GetVpcIamPoolFilterArgs{...} }
+type GetVpcIamPoolFilterArrayInput interface {
+	pulumi.Input
+
+	ToGetVpcIamPoolFilterArrayOutput() GetVpcIamPoolFilterArrayOutput
+	ToGetVpcIamPoolFilterArrayOutputWithContext(context.Context) GetVpcIamPoolFilterArrayOutput
+}
+
+type GetVpcIamPoolFilterArray []GetVpcIamPoolFilterInput
+
+func (GetVpcIamPoolFilterArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetVpcIamPoolFilter)(nil)).Elem()
+}
+
+func (i GetVpcIamPoolFilterArray) ToGetVpcIamPoolFilterArrayOutput() GetVpcIamPoolFilterArrayOutput {
+	return i.ToGetVpcIamPoolFilterArrayOutputWithContext(context.Background())
+}
+
+func (i GetVpcIamPoolFilterArray) ToGetVpcIamPoolFilterArrayOutputWithContext(ctx context.Context) GetVpcIamPoolFilterArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(GetVpcIamPoolFilterArrayOutput)
+}
+
+type GetVpcIamPoolFilterOutput struct{ *pulumi.OutputState }
+
+func (GetVpcIamPoolFilterOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetVpcIamPoolFilter)(nil)).Elem()
+}
+
+func (o GetVpcIamPoolFilterOutput) ToGetVpcIamPoolFilterOutput() GetVpcIamPoolFilterOutput {
+	return o
+}
+
+func (o GetVpcIamPoolFilterOutput) ToGetVpcIamPoolFilterOutputWithContext(ctx context.Context) GetVpcIamPoolFilterOutput {
+	return o
+}
+
+func (o GetVpcIamPoolFilterOutput) Name() pulumi.StringOutput {
+	return o.ApplyT(func(v GetVpcIamPoolFilter) string { return v.Name }).(pulumi.StringOutput)
+}
+
+func (o GetVpcIamPoolFilterOutput) Values() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v GetVpcIamPoolFilter) []string { return v.Values }).(pulumi.StringArrayOutput)
+}
+
+type GetVpcIamPoolFilterArrayOutput struct{ *pulumi.OutputState }
+
+func (GetVpcIamPoolFilterArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]GetVpcIamPoolFilter)(nil)).Elem()
+}
+
+func (o GetVpcIamPoolFilterArrayOutput) ToGetVpcIamPoolFilterArrayOutput() GetVpcIamPoolFilterArrayOutput {
+	return o
+}
+
+func (o GetVpcIamPoolFilterArrayOutput) ToGetVpcIamPoolFilterArrayOutputWithContext(ctx context.Context) GetVpcIamPoolFilterArrayOutput {
+	return o
+}
+
+func (o GetVpcIamPoolFilterArrayOutput) Index(i pulumi.IntInput) GetVpcIamPoolFilterOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) GetVpcIamPoolFilter {
+		return vs[0].([]GetVpcIamPoolFilter)[vs[1].(int)]
+	}).(GetVpcIamPoolFilterOutput)
+}
+
 type GetVpcPeeringConnectionCidrBlockSet struct {
 	// The primary CIDR block of the requester VPC of the specific VPC Peering Connection to retrieve.
 	CidrBlock string `pulumi:"cidrBlock"`
@@ -23534,6 +24515,363 @@ func (o GetVpnGatewayFilterArrayOutput) Index(i pulumi.IntInput) GetVpnGatewayFi
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiCopyEbsBlockDeviceInput)(nil)).Elem(), AmiCopyEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiCopyEbsBlockDeviceArrayInput)(nil)).Elem(), AmiCopyEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiCopyEphemeralBlockDeviceInput)(nil)).Elem(), AmiCopyEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiCopyEphemeralBlockDeviceArrayInput)(nil)).Elem(), AmiCopyEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiEbsBlockDeviceInput)(nil)).Elem(), AmiEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiEbsBlockDeviceArrayInput)(nil)).Elem(), AmiEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiEphemeralBlockDeviceInput)(nil)).Elem(), AmiEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiEphemeralBlockDeviceArrayInput)(nil)).Elem(), AmiEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiFromInstanceEbsBlockDeviceInput)(nil)).Elem(), AmiFromInstanceEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiFromInstanceEbsBlockDeviceArrayInput)(nil)).Elem(), AmiFromInstanceEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiFromInstanceEphemeralBlockDeviceInput)(nil)).Elem(), AmiFromInstanceEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AmiFromInstanceEphemeralBlockDeviceArrayInput)(nil)).Elem(), AmiFromInstanceEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultNetworkAclEgressInput)(nil)).Elem(), DefaultNetworkAclEgressArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultNetworkAclEgressArrayInput)(nil)).Elem(), DefaultNetworkAclEgressArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultNetworkAclIngressInput)(nil)).Elem(), DefaultNetworkAclIngressArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultNetworkAclIngressArrayInput)(nil)).Elem(), DefaultNetworkAclIngressArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultRouteTableRouteInput)(nil)).Elem(), DefaultRouteTableRouteArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultRouteTableRouteArrayInput)(nil)).Elem(), DefaultRouteTableRouteArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultSecurityGroupEgressInput)(nil)).Elem(), DefaultSecurityGroupEgressArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultSecurityGroupEgressArrayInput)(nil)).Elem(), DefaultSecurityGroupEgressArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultSecurityGroupIngressInput)(nil)).Elem(), DefaultSecurityGroupIngressArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DefaultSecurityGroupIngressArrayInput)(nil)).Elem(), DefaultSecurityGroupIngressArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetLaunchTemplateConfigInput)(nil)).Elem(), FleetLaunchTemplateConfigArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetLaunchTemplateConfigPtrInput)(nil)).Elem(), FleetLaunchTemplateConfigArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetLaunchTemplateConfigLaunchTemplateSpecificationInput)(nil)).Elem(), FleetLaunchTemplateConfigLaunchTemplateSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetLaunchTemplateConfigLaunchTemplateSpecificationPtrInput)(nil)).Elem(), FleetLaunchTemplateConfigLaunchTemplateSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetLaunchTemplateConfigOverrideInput)(nil)).Elem(), FleetLaunchTemplateConfigOverrideArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetLaunchTemplateConfigOverrideArrayInput)(nil)).Elem(), FleetLaunchTemplateConfigOverrideArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetOnDemandOptionsInput)(nil)).Elem(), FleetOnDemandOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetOnDemandOptionsPtrInput)(nil)).Elem(), FleetOnDemandOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetSpotOptionsInput)(nil)).Elem(), FleetSpotOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetSpotOptionsPtrInput)(nil)).Elem(), FleetSpotOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetSpotOptionsMaintenanceStrategiesInput)(nil)).Elem(), FleetSpotOptionsMaintenanceStrategiesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetSpotOptionsMaintenanceStrategiesPtrInput)(nil)).Elem(), FleetSpotOptionsMaintenanceStrategiesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetSpotOptionsMaintenanceStrategiesCapacityRebalanceInput)(nil)).Elem(), FleetSpotOptionsMaintenanceStrategiesCapacityRebalanceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetSpotOptionsMaintenanceStrategiesCapacityRebalancePtrInput)(nil)).Elem(), FleetSpotOptionsMaintenanceStrategiesCapacityRebalanceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetTargetCapacitySpecificationInput)(nil)).Elem(), FleetTargetCapacitySpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FleetTargetCapacitySpecificationPtrInput)(nil)).Elem(), FleetTargetCapacitySpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FlowLogDestinationOptionsInput)(nil)).Elem(), FlowLogDestinationOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FlowLogDestinationOptionsPtrInput)(nil)).Elem(), FlowLogDestinationOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceCapacityReservationSpecificationInput)(nil)).Elem(), InstanceCapacityReservationSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceCapacityReservationSpecificationPtrInput)(nil)).Elem(), InstanceCapacityReservationSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceCapacityReservationSpecificationCapacityReservationTargetInput)(nil)).Elem(), InstanceCapacityReservationSpecificationCapacityReservationTargetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceCapacityReservationSpecificationCapacityReservationTargetPtrInput)(nil)).Elem(), InstanceCapacityReservationSpecificationCapacityReservationTargetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceCreditSpecificationInput)(nil)).Elem(), InstanceCreditSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceCreditSpecificationPtrInput)(nil)).Elem(), InstanceCreditSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceEbsBlockDeviceInput)(nil)).Elem(), InstanceEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceEbsBlockDeviceArrayInput)(nil)).Elem(), InstanceEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceEnclaveOptionsInput)(nil)).Elem(), InstanceEnclaveOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceEnclaveOptionsPtrInput)(nil)).Elem(), InstanceEnclaveOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceEphemeralBlockDeviceInput)(nil)).Elem(), InstanceEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceEphemeralBlockDeviceArrayInput)(nil)).Elem(), InstanceEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceLaunchTemplateInput)(nil)).Elem(), InstanceLaunchTemplateArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceLaunchTemplatePtrInput)(nil)).Elem(), InstanceLaunchTemplateArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceMetadataOptionsInput)(nil)).Elem(), InstanceMetadataOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceMetadataOptionsPtrInput)(nil)).Elem(), InstanceMetadataOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceNetworkInterfaceInput)(nil)).Elem(), InstanceNetworkInterfaceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceNetworkInterfaceArrayInput)(nil)).Elem(), InstanceNetworkInterfaceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceRootBlockDeviceInput)(nil)).Elem(), InstanceRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InstanceRootBlockDevicePtrInput)(nil)).Elem(), InstanceRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationEbsBlockDeviceInput)(nil)).Elem(), LaunchConfigurationEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationEbsBlockDeviceArrayInput)(nil)).Elem(), LaunchConfigurationEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationEphemeralBlockDeviceInput)(nil)).Elem(), LaunchConfigurationEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationEphemeralBlockDeviceArrayInput)(nil)).Elem(), LaunchConfigurationEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationMetadataOptionsInput)(nil)).Elem(), LaunchConfigurationMetadataOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationMetadataOptionsPtrInput)(nil)).Elem(), LaunchConfigurationMetadataOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationRootBlockDeviceInput)(nil)).Elem(), LaunchConfigurationRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationRootBlockDevicePtrInput)(nil)).Elem(), LaunchConfigurationRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateBlockDeviceMappingInput)(nil)).Elem(), LaunchTemplateBlockDeviceMappingArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateBlockDeviceMappingArrayInput)(nil)).Elem(), LaunchTemplateBlockDeviceMappingArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateBlockDeviceMappingEbsInput)(nil)).Elem(), LaunchTemplateBlockDeviceMappingEbsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateBlockDeviceMappingEbsPtrInput)(nil)).Elem(), LaunchTemplateBlockDeviceMappingEbsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateCapacityReservationSpecificationInput)(nil)).Elem(), LaunchTemplateCapacityReservationSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateCapacityReservationSpecificationPtrInput)(nil)).Elem(), LaunchTemplateCapacityReservationSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateCapacityReservationSpecificationCapacityReservationTargetInput)(nil)).Elem(), LaunchTemplateCapacityReservationSpecificationCapacityReservationTargetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateCapacityReservationSpecificationCapacityReservationTargetPtrInput)(nil)).Elem(), LaunchTemplateCapacityReservationSpecificationCapacityReservationTargetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateCpuOptionsInput)(nil)).Elem(), LaunchTemplateCpuOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateCpuOptionsPtrInput)(nil)).Elem(), LaunchTemplateCpuOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateCreditSpecificationInput)(nil)).Elem(), LaunchTemplateCreditSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateCreditSpecificationPtrInput)(nil)).Elem(), LaunchTemplateCreditSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateElasticGpuSpecificationInput)(nil)).Elem(), LaunchTemplateElasticGpuSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateElasticGpuSpecificationArrayInput)(nil)).Elem(), LaunchTemplateElasticGpuSpecificationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateElasticInferenceAcceleratorInput)(nil)).Elem(), LaunchTemplateElasticInferenceAcceleratorArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateElasticInferenceAcceleratorPtrInput)(nil)).Elem(), LaunchTemplateElasticInferenceAcceleratorArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateEnclaveOptionsInput)(nil)).Elem(), LaunchTemplateEnclaveOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateEnclaveOptionsPtrInput)(nil)).Elem(), LaunchTemplateEnclaveOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateHibernationOptionsInput)(nil)).Elem(), LaunchTemplateHibernationOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateHibernationOptionsPtrInput)(nil)).Elem(), LaunchTemplateHibernationOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateIamInstanceProfileInput)(nil)).Elem(), LaunchTemplateIamInstanceProfileArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateIamInstanceProfilePtrInput)(nil)).Elem(), LaunchTemplateIamInstanceProfileArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateInstanceMarketOptionsInput)(nil)).Elem(), LaunchTemplateInstanceMarketOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateInstanceMarketOptionsPtrInput)(nil)).Elem(), LaunchTemplateInstanceMarketOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateInstanceMarketOptionsSpotOptionsInput)(nil)).Elem(), LaunchTemplateInstanceMarketOptionsSpotOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateInstanceMarketOptionsSpotOptionsPtrInput)(nil)).Elem(), LaunchTemplateInstanceMarketOptionsSpotOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateLicenseSpecificationInput)(nil)).Elem(), LaunchTemplateLicenseSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateLicenseSpecificationArrayInput)(nil)).Elem(), LaunchTemplateLicenseSpecificationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateMetadataOptionsInput)(nil)).Elem(), LaunchTemplateMetadataOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateMetadataOptionsPtrInput)(nil)).Elem(), LaunchTemplateMetadataOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateMonitoringInput)(nil)).Elem(), LaunchTemplateMonitoringArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateMonitoringPtrInput)(nil)).Elem(), LaunchTemplateMonitoringArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateNetworkInterfaceInput)(nil)).Elem(), LaunchTemplateNetworkInterfaceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateNetworkInterfaceArrayInput)(nil)).Elem(), LaunchTemplateNetworkInterfaceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplatePlacementInput)(nil)).Elem(), LaunchTemplatePlacementArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplatePlacementPtrInput)(nil)).Elem(), LaunchTemplatePlacementArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateTagSpecificationInput)(nil)).Elem(), LaunchTemplateTagSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchTemplateTagSpecificationArrayInput)(nil)).Elem(), LaunchTemplateTagSpecificationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ManagedPrefixListEntryTypeInput)(nil)).Elem(), ManagedPrefixListEntryTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ManagedPrefixListEntryTypeArrayInput)(nil)).Elem(), ManagedPrefixListEntryTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkAclEgressInput)(nil)).Elem(), NetworkAclEgressArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkAclEgressArrayInput)(nil)).Elem(), NetworkAclEgressArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkAclIngressInput)(nil)).Elem(), NetworkAclIngressArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkAclIngressArrayInput)(nil)).Elem(), NetworkAclIngressArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkInterfaceAttachmentTypeInput)(nil)).Elem(), NetworkInterfaceAttachmentTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*NetworkInterfaceAttachmentTypeArrayInput)(nil)).Elem(), NetworkInterfaceAttachmentTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PeeringConnectionOptionsAccepterInput)(nil)).Elem(), PeeringConnectionOptionsAccepterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PeeringConnectionOptionsAccepterPtrInput)(nil)).Elem(), PeeringConnectionOptionsAccepterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PeeringConnectionOptionsRequesterInput)(nil)).Elem(), PeeringConnectionOptionsRequesterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PeeringConnectionOptionsRequesterPtrInput)(nil)).Elem(), PeeringConnectionOptionsRequesterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RouteTableRouteInput)(nil)).Elem(), RouteTableRouteArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RouteTableRouteArrayInput)(nil)).Elem(), RouteTableRouteArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SecurityGroupEgressInput)(nil)).Elem(), SecurityGroupEgressArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SecurityGroupEgressArrayInput)(nil)).Elem(), SecurityGroupEgressArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SecurityGroupIngressInput)(nil)).Elem(), SecurityGroupIngressArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SecurityGroupIngressArrayInput)(nil)).Elem(), SecurityGroupIngressArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchSpecificationInput)(nil)).Elem(), SpotFleetRequestLaunchSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchSpecificationArrayInput)(nil)).Elem(), SpotFleetRequestLaunchSpecificationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchSpecificationEbsBlockDeviceInput)(nil)).Elem(), SpotFleetRequestLaunchSpecificationEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchSpecificationEbsBlockDeviceArrayInput)(nil)).Elem(), SpotFleetRequestLaunchSpecificationEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchSpecificationEphemeralBlockDeviceInput)(nil)).Elem(), SpotFleetRequestLaunchSpecificationEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchSpecificationEphemeralBlockDeviceArrayInput)(nil)).Elem(), SpotFleetRequestLaunchSpecificationEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchSpecificationRootBlockDeviceInput)(nil)).Elem(), SpotFleetRequestLaunchSpecificationRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchSpecificationRootBlockDeviceArrayInput)(nil)).Elem(), SpotFleetRequestLaunchSpecificationRootBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchTemplateConfigInput)(nil)).Elem(), SpotFleetRequestLaunchTemplateConfigArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchTemplateConfigArrayInput)(nil)).Elem(), SpotFleetRequestLaunchTemplateConfigArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecificationInput)(nil)).Elem(), SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchTemplateConfigOverrideInput)(nil)).Elem(), SpotFleetRequestLaunchTemplateConfigOverrideArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestLaunchTemplateConfigOverrideArrayInput)(nil)).Elem(), SpotFleetRequestLaunchTemplateConfigOverrideArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestSpotMaintenanceStrategiesInput)(nil)).Elem(), SpotFleetRequestSpotMaintenanceStrategiesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestSpotMaintenanceStrategiesPtrInput)(nil)).Elem(), SpotFleetRequestSpotMaintenanceStrategiesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestSpotMaintenanceStrategiesCapacityRebalanceInput)(nil)).Elem(), SpotFleetRequestSpotMaintenanceStrategiesCapacityRebalanceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestSpotMaintenanceStrategiesCapacityRebalancePtrInput)(nil)).Elem(), SpotFleetRequestSpotMaintenanceStrategiesCapacityRebalanceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestCapacityReservationSpecificationInput)(nil)).Elem(), SpotInstanceRequestCapacityReservationSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestCapacityReservationSpecificationPtrInput)(nil)).Elem(), SpotInstanceRequestCapacityReservationSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestCapacityReservationSpecificationCapacityReservationTargetInput)(nil)).Elem(), SpotInstanceRequestCapacityReservationSpecificationCapacityReservationTargetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestCapacityReservationSpecificationCapacityReservationTargetPtrInput)(nil)).Elem(), SpotInstanceRequestCapacityReservationSpecificationCapacityReservationTargetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestCreditSpecificationInput)(nil)).Elem(), SpotInstanceRequestCreditSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestCreditSpecificationPtrInput)(nil)).Elem(), SpotInstanceRequestCreditSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestEbsBlockDeviceInput)(nil)).Elem(), SpotInstanceRequestEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestEbsBlockDeviceArrayInput)(nil)).Elem(), SpotInstanceRequestEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestEnclaveOptionsInput)(nil)).Elem(), SpotInstanceRequestEnclaveOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestEnclaveOptionsPtrInput)(nil)).Elem(), SpotInstanceRequestEnclaveOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestEphemeralBlockDeviceInput)(nil)).Elem(), SpotInstanceRequestEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestEphemeralBlockDeviceArrayInput)(nil)).Elem(), SpotInstanceRequestEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestLaunchTemplateInput)(nil)).Elem(), SpotInstanceRequestLaunchTemplateArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestLaunchTemplatePtrInput)(nil)).Elem(), SpotInstanceRequestLaunchTemplateArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestMetadataOptionsInput)(nil)).Elem(), SpotInstanceRequestMetadataOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestMetadataOptionsPtrInput)(nil)).Elem(), SpotInstanceRequestMetadataOptionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestNetworkInterfaceInput)(nil)).Elem(), SpotInstanceRequestNetworkInterfaceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestNetworkInterfaceArrayInput)(nil)).Elem(), SpotInstanceRequestNetworkInterfaceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestRootBlockDeviceInput)(nil)).Elem(), SpotInstanceRequestRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotInstanceRequestRootBlockDevicePtrInput)(nil)).Elem(), SpotInstanceRequestRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorFilterRuleDestinationPortRangeInput)(nil)).Elem(), TrafficMirrorFilterRuleDestinationPortRangeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorFilterRuleDestinationPortRangePtrInput)(nil)).Elem(), TrafficMirrorFilterRuleDestinationPortRangeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorFilterRuleSourcePortRangeInput)(nil)).Elem(), TrafficMirrorFilterRuleSourcePortRangeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorFilterRuleSourcePortRangePtrInput)(nil)).Elem(), TrafficMirrorFilterRuleSourcePortRangeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcEndpointDnsEntryInput)(nil)).Elem(), VpcEndpointDnsEntryArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcEndpointDnsEntryArrayInput)(nil)).Elem(), VpcEndpointDnsEntryArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcEndpointServicePrivateDnsNameConfigurationInput)(nil)).Elem(), VpcEndpointServicePrivateDnsNameConfigurationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcEndpointServicePrivateDnsNameConfigurationArrayInput)(nil)).Elem(), VpcEndpointServicePrivateDnsNameConfigurationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcIpamOperatingRegionInput)(nil)).Elem(), VpcIpamOperatingRegionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcIpamOperatingRegionArrayInput)(nil)).Elem(), VpcIpamOperatingRegionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcIpamPoolCidrCidrAuthorizationContextInput)(nil)).Elem(), VpcIpamPoolCidrCidrAuthorizationContextArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcIpamPoolCidrCidrAuthorizationContextPtrInput)(nil)).Elem(), VpcIpamPoolCidrCidrAuthorizationContextArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionAccepterTypeInput)(nil)).Elem(), VpcPeeringConnectionAccepterTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionAccepterTypePtrInput)(nil)).Elem(), VpcPeeringConnectionAccepterTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionAccepterAccepterInput)(nil)).Elem(), VpcPeeringConnectionAccepterAccepterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionAccepterAccepterPtrInput)(nil)).Elem(), VpcPeeringConnectionAccepterAccepterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionAccepterRequesterInput)(nil)).Elem(), VpcPeeringConnectionAccepterRequesterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionAccepterRequesterPtrInput)(nil)).Elem(), VpcPeeringConnectionAccepterRequesterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionRequesterInput)(nil)).Elem(), VpcPeeringConnectionRequesterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionRequesterPtrInput)(nil)).Elem(), VpcPeeringConnectionRequesterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpnConnectionRouteTypeInput)(nil)).Elem(), VpnConnectionRouteTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpnConnectionRouteTypeArrayInput)(nil)).Elem(), VpnConnectionRouteTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpnConnectionVgwTelemetryInput)(nil)).Elem(), VpnConnectionVgwTelemetryArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpnConnectionVgwTelemetryArrayInput)(nil)).Elem(), VpnConnectionVgwTelemetryArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiBlockDeviceMappingInput)(nil)).Elem(), GetAmiBlockDeviceMappingArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiBlockDeviceMappingArrayInput)(nil)).Elem(), GetAmiBlockDeviceMappingArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiFilterInput)(nil)).Elem(), GetAmiFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiFilterArrayInput)(nil)).Elem(), GetAmiFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiIdsFilterInput)(nil)).Elem(), GetAmiIdsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiIdsFilterArrayInput)(nil)).Elem(), GetAmiIdsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiProductCodeInput)(nil)).Elem(), GetAmiProductCodeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiProductCodeArrayInput)(nil)).Elem(), GetAmiProductCodeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetCoipPoolFilterInput)(nil)).Elem(), GetCoipPoolFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetCoipPoolFilterArrayInput)(nil)).Elem(), GetCoipPoolFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetCoipPoolsFilterInput)(nil)).Elem(), GetCoipPoolsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetCoipPoolsFilterArrayInput)(nil)).Elem(), GetCoipPoolsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetCustomerGatewayFilterInput)(nil)).Elem(), GetCustomerGatewayFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetCustomerGatewayFilterArrayInput)(nil)).Elem(), GetCustomerGatewayFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetDedicatedHostFilterInput)(nil)).Elem(), GetDedicatedHostFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetDedicatedHostFilterArrayInput)(nil)).Elem(), GetDedicatedHostFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetElasticIpFilterInput)(nil)).Elem(), GetElasticIpFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetElasticIpFilterArrayInput)(nil)).Elem(), GetElasticIpFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceCreditSpecificationInput)(nil)).Elem(), GetInstanceCreditSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceCreditSpecificationArrayInput)(nil)).Elem(), GetInstanceCreditSpecificationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceEbsBlockDeviceInput)(nil)).Elem(), GetInstanceEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceEbsBlockDeviceArrayInput)(nil)).Elem(), GetInstanceEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceEnclaveOptionInput)(nil)).Elem(), GetInstanceEnclaveOptionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceEnclaveOptionArrayInput)(nil)).Elem(), GetInstanceEnclaveOptionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceEphemeralBlockDeviceInput)(nil)).Elem(), GetInstanceEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceEphemeralBlockDeviceArrayInput)(nil)).Elem(), GetInstanceEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceFilterInput)(nil)).Elem(), GetInstanceFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceFilterArrayInput)(nil)).Elem(), GetInstanceFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceMetadataOptionInput)(nil)).Elem(), GetInstanceMetadataOptionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceMetadataOptionArrayInput)(nil)).Elem(), GetInstanceMetadataOptionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceRootBlockDeviceInput)(nil)).Elem(), GetInstanceRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceRootBlockDeviceArrayInput)(nil)).Elem(), GetInstanceRootBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeFpgaInput)(nil)).Elem(), GetInstanceTypeFpgaArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeFpgaArrayInput)(nil)).Elem(), GetInstanceTypeFpgaArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeGpusInput)(nil)).Elem(), GetInstanceTypeGpusArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeGpusArrayInput)(nil)).Elem(), GetInstanceTypeGpusArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeInferenceAcceleratorInput)(nil)).Elem(), GetInstanceTypeInferenceAcceleratorArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeInferenceAcceleratorArrayInput)(nil)).Elem(), GetInstanceTypeInferenceAcceleratorArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeInstanceDiskInput)(nil)).Elem(), GetInstanceTypeInstanceDiskArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeInstanceDiskArrayInput)(nil)).Elem(), GetInstanceTypeInstanceDiskArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeOfferingFilterInput)(nil)).Elem(), GetInstanceTypeOfferingFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeOfferingFilterArrayInput)(nil)).Elem(), GetInstanceTypeOfferingFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeOfferingsFilterInput)(nil)).Elem(), GetInstanceTypeOfferingsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypeOfferingsFilterArrayInput)(nil)).Elem(), GetInstanceTypeOfferingsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypesFilterInput)(nil)).Elem(), GetInstanceTypesFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstanceTypesFilterArrayInput)(nil)).Elem(), GetInstanceTypesFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstancesFilterInput)(nil)).Elem(), GetInstancesFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInstancesFilterArrayInput)(nil)).Elem(), GetInstancesFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInternetGatewayAttachmentInput)(nil)).Elem(), GetInternetGatewayAttachmentArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInternetGatewayAttachmentArrayInput)(nil)).Elem(), GetInternetGatewayAttachmentArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInternetGatewayFilterInput)(nil)).Elem(), GetInternetGatewayFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetInternetGatewayFilterArrayInput)(nil)).Elem(), GetInternetGatewayFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetKeyPairFilterInput)(nil)).Elem(), GetKeyPairFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetKeyPairFilterArrayInput)(nil)).Elem(), GetKeyPairFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchConfigurationEbsBlockDeviceInput)(nil)).Elem(), GetLaunchConfigurationEbsBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchConfigurationEbsBlockDeviceArrayInput)(nil)).Elem(), GetLaunchConfigurationEbsBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchConfigurationEphemeralBlockDeviceInput)(nil)).Elem(), GetLaunchConfigurationEphemeralBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchConfigurationEphemeralBlockDeviceArrayInput)(nil)).Elem(), GetLaunchConfigurationEphemeralBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchConfigurationMetadataOptionInput)(nil)).Elem(), GetLaunchConfigurationMetadataOptionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchConfigurationMetadataOptionArrayInput)(nil)).Elem(), GetLaunchConfigurationMetadataOptionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchConfigurationRootBlockDeviceInput)(nil)).Elem(), GetLaunchConfigurationRootBlockDeviceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchConfigurationRootBlockDeviceArrayInput)(nil)).Elem(), GetLaunchConfigurationRootBlockDeviceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateBlockDeviceMappingInput)(nil)).Elem(), GetLaunchTemplateBlockDeviceMappingArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateBlockDeviceMappingArrayInput)(nil)).Elem(), GetLaunchTemplateBlockDeviceMappingArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateBlockDeviceMappingEbInput)(nil)).Elem(), GetLaunchTemplateBlockDeviceMappingEbArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateBlockDeviceMappingEbArrayInput)(nil)).Elem(), GetLaunchTemplateBlockDeviceMappingEbArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateCreditSpecificationInput)(nil)).Elem(), GetLaunchTemplateCreditSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateCreditSpecificationArrayInput)(nil)).Elem(), GetLaunchTemplateCreditSpecificationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateElasticGpuSpecificationInput)(nil)).Elem(), GetLaunchTemplateElasticGpuSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateElasticGpuSpecificationArrayInput)(nil)).Elem(), GetLaunchTemplateElasticGpuSpecificationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateEnclaveOptionInput)(nil)).Elem(), GetLaunchTemplateEnclaveOptionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateEnclaveOptionArrayInput)(nil)).Elem(), GetLaunchTemplateEnclaveOptionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateFilterInput)(nil)).Elem(), GetLaunchTemplateFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateFilterArrayInput)(nil)).Elem(), GetLaunchTemplateFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateHibernationOptionInput)(nil)).Elem(), GetLaunchTemplateHibernationOptionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateHibernationOptionArrayInput)(nil)).Elem(), GetLaunchTemplateHibernationOptionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateIamInstanceProfileInput)(nil)).Elem(), GetLaunchTemplateIamInstanceProfileArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateIamInstanceProfileArrayInput)(nil)).Elem(), GetLaunchTemplateIamInstanceProfileArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateInstanceMarketOptionInput)(nil)).Elem(), GetLaunchTemplateInstanceMarketOptionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateInstanceMarketOptionArrayInput)(nil)).Elem(), GetLaunchTemplateInstanceMarketOptionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateInstanceMarketOptionSpotOptionInput)(nil)).Elem(), GetLaunchTemplateInstanceMarketOptionSpotOptionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateInstanceMarketOptionSpotOptionArrayInput)(nil)).Elem(), GetLaunchTemplateInstanceMarketOptionSpotOptionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateMetadataOptionInput)(nil)).Elem(), GetLaunchTemplateMetadataOptionArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateMetadataOptionArrayInput)(nil)).Elem(), GetLaunchTemplateMetadataOptionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateMonitoringInput)(nil)).Elem(), GetLaunchTemplateMonitoringArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateMonitoringArrayInput)(nil)).Elem(), GetLaunchTemplateMonitoringArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateNetworkInterfaceInput)(nil)).Elem(), GetLaunchTemplateNetworkInterfaceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateNetworkInterfaceArrayInput)(nil)).Elem(), GetLaunchTemplateNetworkInterfaceArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplatePlacementInput)(nil)).Elem(), GetLaunchTemplatePlacementArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplatePlacementArrayInput)(nil)).Elem(), GetLaunchTemplatePlacementArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateTagSpecificationInput)(nil)).Elem(), GetLaunchTemplateTagSpecificationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLaunchTemplateTagSpecificationArrayInput)(nil)).Elem(), GetLaunchTemplateTagSpecificationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayFilterInput)(nil)).Elem(), GetLocalGatewayFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayFilterArrayInput)(nil)).Elem(), GetLocalGatewayFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayRouteTableFilterInput)(nil)).Elem(), GetLocalGatewayRouteTableFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayRouteTableFilterArrayInput)(nil)).Elem(), GetLocalGatewayRouteTableFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayRouteTablesFilterInput)(nil)).Elem(), GetLocalGatewayRouteTablesFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayRouteTablesFilterArrayInput)(nil)).Elem(), GetLocalGatewayRouteTablesFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayVirtualInterfaceFilterInput)(nil)).Elem(), GetLocalGatewayVirtualInterfaceFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayVirtualInterfaceFilterArrayInput)(nil)).Elem(), GetLocalGatewayVirtualInterfaceFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayVirtualInterfaceGroupFilterInput)(nil)).Elem(), GetLocalGatewayVirtualInterfaceGroupFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayVirtualInterfaceGroupFilterArrayInput)(nil)).Elem(), GetLocalGatewayVirtualInterfaceGroupFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayVirtualInterfaceGroupsFilterInput)(nil)).Elem(), GetLocalGatewayVirtualInterfaceGroupsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewayVirtualInterfaceGroupsFilterArrayInput)(nil)).Elem(), GetLocalGatewayVirtualInterfaceGroupsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewaysFilterInput)(nil)).Elem(), GetLocalGatewaysFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetLocalGatewaysFilterArrayInput)(nil)).Elem(), GetLocalGatewaysFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetManagedPrefixListEntryTypeInput)(nil)).Elem(), GetManagedPrefixListEntryTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetManagedPrefixListEntryTypeArrayInput)(nil)).Elem(), GetManagedPrefixListEntryTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetManagedPrefixListFilterInput)(nil)).Elem(), GetManagedPrefixListFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetManagedPrefixListFilterArrayInput)(nil)).Elem(), GetManagedPrefixListFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNatGatewayFilterInput)(nil)).Elem(), GetNatGatewayFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNatGatewayFilterArrayInput)(nil)).Elem(), GetNatGatewayFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkAclsFilterInput)(nil)).Elem(), GetNetworkAclsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkAclsFilterArrayInput)(nil)).Elem(), GetNetworkAclsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkInterfaceAssociationInput)(nil)).Elem(), GetNetworkInterfaceAssociationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkInterfaceAssociationArrayInput)(nil)).Elem(), GetNetworkInterfaceAssociationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkInterfaceAttachmentTypeInput)(nil)).Elem(), GetNetworkInterfaceAttachmentTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkInterfaceAttachmentTypeArrayInput)(nil)).Elem(), GetNetworkInterfaceAttachmentTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkInterfaceFilterInput)(nil)).Elem(), GetNetworkInterfaceFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkInterfaceFilterArrayInput)(nil)).Elem(), GetNetworkInterfaceFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkInterfacesFilterInput)(nil)).Elem(), GetNetworkInterfacesFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetNetworkInterfacesFilterArrayInput)(nil)).Elem(), GetNetworkInterfacesFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetPrefixListFilterInput)(nil)).Elem(), GetPrefixListFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetPrefixListFilterArrayInput)(nil)).Elem(), GetPrefixListFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetRouteTableAssociationTypeInput)(nil)).Elem(), GetRouteTableAssociationTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetRouteTableAssociationTypeArrayInput)(nil)).Elem(), GetRouteTableAssociationTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetRouteTableFilterInput)(nil)).Elem(), GetRouteTableFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetRouteTableFilterArrayInput)(nil)).Elem(), GetRouteTableFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetRouteTableRouteInput)(nil)).Elem(), GetRouteTableRouteArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetRouteTableRouteArrayInput)(nil)).Elem(), GetRouteTableRouteArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetRouteTablesFilterInput)(nil)).Elem(), GetRouteTablesFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetRouteTablesFilterArrayInput)(nil)).Elem(), GetRouteTablesFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSecurityGroupFilterInput)(nil)).Elem(), GetSecurityGroupFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSecurityGroupFilterArrayInput)(nil)).Elem(), GetSecurityGroupFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSecurityGroupsFilterInput)(nil)).Elem(), GetSecurityGroupsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSecurityGroupsFilterArrayInput)(nil)).Elem(), GetSecurityGroupsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSpotPriceFilterInput)(nil)).Elem(), GetSpotPriceFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSpotPriceFilterArrayInput)(nil)).Elem(), GetSpotPriceFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSubnetFilterInput)(nil)).Elem(), GetSubnetFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSubnetFilterArrayInput)(nil)).Elem(), GetSubnetFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSubnetIdsFilterInput)(nil)).Elem(), GetSubnetIdsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSubnetIdsFilterArrayInput)(nil)).Elem(), GetSubnetIdsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSubnetsFilterInput)(nil)).Elem(), GetSubnetsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetSubnetsFilterArrayInput)(nil)).Elem(), GetSubnetsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetTransitGatewayRouteTablesFilterInput)(nil)).Elem(), GetTransitGatewayRouteTablesFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetTransitGatewayRouteTablesFilterArrayInput)(nil)).Elem(), GetTransitGatewayRouteTablesFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcCidrBlockAssociationInput)(nil)).Elem(), GetVpcCidrBlockAssociationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcCidrBlockAssociationArrayInput)(nil)).Elem(), GetVpcCidrBlockAssociationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcDhcpOptionsFilterInput)(nil)).Elem(), GetVpcDhcpOptionsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcDhcpOptionsFilterArrayInput)(nil)).Elem(), GetVpcDhcpOptionsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcEndpointDnsEntryInput)(nil)).Elem(), GetVpcEndpointDnsEntryArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcEndpointDnsEntryArrayInput)(nil)).Elem(), GetVpcEndpointDnsEntryArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcEndpointFilterInput)(nil)).Elem(), GetVpcEndpointFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcEndpointFilterArrayInput)(nil)).Elem(), GetVpcEndpointFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcEndpointServiceFilterInput)(nil)).Elem(), GetVpcEndpointServiceFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcEndpointServiceFilterArrayInput)(nil)).Elem(), GetVpcEndpointServiceFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcFilterInput)(nil)).Elem(), GetVpcFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcFilterArrayInput)(nil)).Elem(), GetVpcFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcIamPoolFilterInput)(nil)).Elem(), GetVpcIamPoolFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcIamPoolFilterArrayInput)(nil)).Elem(), GetVpcIamPoolFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcPeeringConnectionCidrBlockSetInput)(nil)).Elem(), GetVpcPeeringConnectionCidrBlockSetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcPeeringConnectionCidrBlockSetArrayInput)(nil)).Elem(), GetVpcPeeringConnectionCidrBlockSetArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcPeeringConnectionFilterInput)(nil)).Elem(), GetVpcPeeringConnectionFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcPeeringConnectionFilterArrayInput)(nil)).Elem(), GetVpcPeeringConnectionFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcPeeringConnectionPeerCidrBlockSetInput)(nil)).Elem(), GetVpcPeeringConnectionPeerCidrBlockSetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcPeeringConnectionPeerCidrBlockSetArrayInput)(nil)).Elem(), GetVpcPeeringConnectionPeerCidrBlockSetArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcPeeringConnectionsFilterInput)(nil)).Elem(), GetVpcPeeringConnectionsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcPeeringConnectionsFilterArrayInput)(nil)).Elem(), GetVpcPeeringConnectionsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcsFilterInput)(nil)).Elem(), GetVpcsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpcsFilterArrayInput)(nil)).Elem(), GetVpcsFilterArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpnGatewayFilterInput)(nil)).Elem(), GetVpnGatewayFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetVpnGatewayFilterArrayInput)(nil)).Elem(), GetVpnGatewayFilterArray{})
 	pulumi.RegisterOutputType(AmiCopyEbsBlockDeviceOutput{})
 	pulumi.RegisterOutputType(AmiCopyEbsBlockDeviceArrayOutput{})
 	pulumi.RegisterOutputType(AmiCopyEphemeralBlockDeviceOutput{})
@@ -23572,6 +24910,8 @@ func init() {
 	pulumi.RegisterOutputType(FleetSpotOptionsMaintenanceStrategiesCapacityRebalancePtrOutput{})
 	pulumi.RegisterOutputType(FleetTargetCapacitySpecificationOutput{})
 	pulumi.RegisterOutputType(FleetTargetCapacitySpecificationPtrOutput{})
+	pulumi.RegisterOutputType(FlowLogDestinationOptionsOutput{})
+	pulumi.RegisterOutputType(FlowLogDestinationOptionsPtrOutput{})
 	pulumi.RegisterOutputType(InstanceCapacityReservationSpecificationOutput{})
 	pulumi.RegisterOutputType(InstanceCapacityReservationSpecificationPtrOutput{})
 	pulumi.RegisterOutputType(InstanceCapacityReservationSpecificationCapacityReservationTargetOutput{})
@@ -23638,8 +24978,8 @@ func init() {
 	pulumi.RegisterOutputType(LaunchTemplatePlacementPtrOutput{})
 	pulumi.RegisterOutputType(LaunchTemplateTagSpecificationOutput{})
 	pulumi.RegisterOutputType(LaunchTemplateTagSpecificationArrayOutput{})
-	pulumi.RegisterOutputType(ManagedPrefixListEntryOutput{})
-	pulumi.RegisterOutputType(ManagedPrefixListEntryArrayOutput{})
+	pulumi.RegisterOutputType(ManagedPrefixListEntryTypeOutput{})
+	pulumi.RegisterOutputType(ManagedPrefixListEntryTypeArrayOutput{})
 	pulumi.RegisterOutputType(NetworkAclEgressOutput{})
 	pulumi.RegisterOutputType(NetworkAclEgressArrayOutput{})
 	pulumi.RegisterOutputType(NetworkAclIngressOutput{})
@@ -23701,6 +25041,10 @@ func init() {
 	pulumi.RegisterOutputType(VpcEndpointDnsEntryArrayOutput{})
 	pulumi.RegisterOutputType(VpcEndpointServicePrivateDnsNameConfigurationOutput{})
 	pulumi.RegisterOutputType(VpcEndpointServicePrivateDnsNameConfigurationArrayOutput{})
+	pulumi.RegisterOutputType(VpcIpamOperatingRegionOutput{})
+	pulumi.RegisterOutputType(VpcIpamOperatingRegionArrayOutput{})
+	pulumi.RegisterOutputType(VpcIpamPoolCidrCidrAuthorizationContextOutput{})
+	pulumi.RegisterOutputType(VpcIpamPoolCidrCidrAuthorizationContextPtrOutput{})
 	pulumi.RegisterOutputType(VpcPeeringConnectionAccepterTypeOutput{})
 	pulumi.RegisterOutputType(VpcPeeringConnectionAccepterTypePtrOutput{})
 	pulumi.RegisterOutputType(VpcPeeringConnectionAccepterAccepterOutput{})
@@ -23727,6 +25071,8 @@ func init() {
 	pulumi.RegisterOutputType(GetCoipPoolsFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetCustomerGatewayFilterOutput{})
 	pulumi.RegisterOutputType(GetCustomerGatewayFilterArrayOutput{})
+	pulumi.RegisterOutputType(GetDedicatedHostFilterOutput{})
+	pulumi.RegisterOutputType(GetDedicatedHostFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetElasticIpFilterOutput{})
 	pulumi.RegisterOutputType(GetElasticIpFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetInstanceCreditSpecificationOutput{})
@@ -23755,12 +25101,16 @@ func init() {
 	pulumi.RegisterOutputType(GetInstanceTypeOfferingFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetInstanceTypeOfferingsFilterOutput{})
 	pulumi.RegisterOutputType(GetInstanceTypeOfferingsFilterArrayOutput{})
+	pulumi.RegisterOutputType(GetInstanceTypesFilterOutput{})
+	pulumi.RegisterOutputType(GetInstanceTypesFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetInstancesFilterOutput{})
 	pulumi.RegisterOutputType(GetInstancesFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetInternetGatewayAttachmentOutput{})
 	pulumi.RegisterOutputType(GetInternetGatewayAttachmentArrayOutput{})
 	pulumi.RegisterOutputType(GetInternetGatewayFilterOutput{})
 	pulumi.RegisterOutputType(GetInternetGatewayFilterArrayOutput{})
+	pulumi.RegisterOutputType(GetKeyPairFilterOutput{})
+	pulumi.RegisterOutputType(GetKeyPairFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetLaunchConfigurationEbsBlockDeviceOutput{})
 	pulumi.RegisterOutputType(GetLaunchConfigurationEbsBlockDeviceArrayOutput{})
 	pulumi.RegisterOutputType(GetLaunchConfigurationEphemeralBlockDeviceOutput{})
@@ -23813,8 +25163,8 @@ func init() {
 	pulumi.RegisterOutputType(GetLocalGatewayVirtualInterfaceGroupsFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetLocalGatewaysFilterOutput{})
 	pulumi.RegisterOutputType(GetLocalGatewaysFilterArrayOutput{})
-	pulumi.RegisterOutputType(GetManagedPrefixListEntryOutput{})
-	pulumi.RegisterOutputType(GetManagedPrefixListEntryArrayOutput{})
+	pulumi.RegisterOutputType(GetManagedPrefixListEntryTypeOutput{})
+	pulumi.RegisterOutputType(GetManagedPrefixListEntryTypeArrayOutput{})
 	pulumi.RegisterOutputType(GetManagedPrefixListFilterOutput{})
 	pulumi.RegisterOutputType(GetManagedPrefixListFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetNatGatewayFilterOutput{})
@@ -23865,6 +25215,8 @@ func init() {
 	pulumi.RegisterOutputType(GetVpcEndpointServiceFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetVpcFilterOutput{})
 	pulumi.RegisterOutputType(GetVpcFilterArrayOutput{})
+	pulumi.RegisterOutputType(GetVpcIamPoolFilterOutput{})
+	pulumi.RegisterOutputType(GetVpcIamPoolFilterArrayOutput{})
 	pulumi.RegisterOutputType(GetVpcPeeringConnectionCidrBlockSetOutput{})
 	pulumi.RegisterOutputType(GetVpcPeeringConnectionCidrBlockSetArrayOutput{})
 	pulumi.RegisterOutputType(GetVpcPeeringConnectionFilterOutput{})

@@ -69,7 +69,7 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, export ex
 	serverArgs := hcloud.ServerArgs{
 		//TODO handle multiple images like in the aws modul
 		Image: pulumi.String(computeArgs.Images[0].Name),
-		Labels: pulumi.Map{
+		Labels: pulumi.StringMap{
 			"Name": pulumi.String(computeArgs.Name),
 		},
 		Location:   pulumi.String("nbg1"),

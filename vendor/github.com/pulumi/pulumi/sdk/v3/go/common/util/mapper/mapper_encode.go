@@ -22,8 +22,16 @@ import (
 
 // Encode encodes a strongly typed struct into a weakly typed JSON-like property bag.
 func (md *mapper) Encode(source interface{}) (map[string]interface{}, MappingError) {
-	// Fetch the type and value; if it's a pointer, do a quick nil check, otherwise operate on its underlying type.
-	vsrc := reflect.ValueOf(source)
+	if source == nil {
+		return nil, nil
+	}
+	return md.encode(reflect.ValueOf(source))
+}
+
+func (md *mapper) encode(vsrc reflect.Value) (map[string]interface{}, MappingError) {
+	contract.Requiref(vsrc.IsValid(), "vsrc", "value must be valid")
+
+	// Fetch the type; if it's a pointer, do a quick nil check, otherwise operate on its underlying type.
 	vsrcType := vsrc.Type()
 	if vsrcType.Kind() == reflect.Ptr {
 		if vsrc.IsNil() {
@@ -43,7 +51,7 @@ func (md *mapper) Encode(source interface{}) (map[string]interface{}, MappingErr
 		if !fldtag.Skip {
 			key := fldtag.Key
 			fld := vsrc.FieldByName(fldtag.Info.Name)
-			v, err := md.EncodeValue(fld.Interface())
+			v, err := md.encodeValue(fld)
 			if err != nil {
 				errs = append(errs, err.Failures()...)
 			} else if v == nil {
@@ -67,8 +75,14 @@ func (md *mapper) Encode(source interface{}) (map[string]interface{}, MappingErr
 
 // EncodeValue decodes primitive type fields.  For fields of complex types, we use custom deserialization.
 func (md *mapper) EncodeValue(v interface{}) (interface{}, MappingError) {
-	vsrc := reflect.ValueOf(v)
-	contract.Assert(vsrc.IsValid())
+	if v == nil {
+		return nil, nil
+	}
+	return md.encodeValue(reflect.ValueOf(v))
+}
+
+func (md *mapper) encodeValue(vsrc reflect.Value) (interface{}, MappingError) {
+	contract.Requiref(vsrc.IsValid(), "vsrc", "value must be valid")
 
 	// Otherwise, try to map to the closest JSON-like destination type we can.
 	switch k := vsrc.Kind(); k {
@@ -89,18 +103,22 @@ func (md *mapper) EncodeValue(v interface{}) (interface{}, MappingError) {
 		if vsrc.IsNil() {
 			return nil, nil
 		}
-		return md.EncodeValue(vsrc.Elem().Interface())
+		return md.encodeValue(vsrc.Elem())
 
 	// Slices and maps:
 	case reflect.Slice:
-		var slice []interface{}
+		if vsrc.IsNil() {
+			return nil, nil
+		}
+
+		slice := make([]interface{}, vsrc.Len())
 		var errs []error
 		for i := 0; i < vsrc.Len(); i++ {
-			ev := vsrc.Index(i).Interface()
-			if elem, err := md.EncodeValue(ev); err != nil {
+			ev := vsrc.Index(i)
+			if elem, err := md.encodeValue(ev); err != nil {
 				errs = append(errs, err.Failures()...)
 			} else {
-				slice = append(slice, elem)
+				slice[i] = elem
 			}
 		}
 		if errs == nil {
@@ -108,15 +126,20 @@ func (md *mapper) EncodeValue(v interface{}) (interface{}, MappingError) {
 		}
 		return nil, NewMappingError(errs)
 	case reflect.Map:
-		keys := vsrc.MapKeys()
-		mmap := make(map[string]interface{})
+		if vsrc.IsNil() {
+			return nil, nil
+		}
+		ktype := vsrc.Type().Key()
+		contract.Assertf(ktype.Kind() == reflect.String, "expected map with string keys, got %v (%v)", ktype, ktype.Kind())
+
+		iter := vsrc.MapRange()
+		mmap := make(map[string]interface{}, vsrc.Len())
 		var errs []error
-		for _, key := range keys {
-			contract.Assert(key.Kind() == reflect.String)
-			if val, err := md.EncodeValue(vsrc.MapIndex(key).Interface()); err != nil {
+		for iter.Next() {
+			if val, err := md.encodeValue(iter.Value()); err != nil {
 				errs = append(errs, err.Failures()...)
 			} else {
-				mmap[key.String()] = val
+				mmap[iter.Key().String()] = val
 			}
 		}
 		if errs == nil {
@@ -126,9 +149,16 @@ func (md *mapper) EncodeValue(v interface{}) (interface{}, MappingError) {
 
 	// Structs and interface{}:
 	case reflect.Struct:
-		return md.Encode(vsrc.Interface())
+		return md.encode(vsrc)
 	case reflect.Interface:
-		return md.EncodeValue(vsrc.Elem().Interface())
+		if vsrc.IsNil() {
+			return nil, nil
+		}
+		return md.encodeValue(vsrc.Elem())
+	// Cases we don't handle
+	case reflect.Invalid, reflect.Complex64, reflect.Complex128, reflect.Array,
+		reflect.Chan, reflect.Func, reflect.UnsafePointer:
+		contract.Failf("Unrecognized field type '%v' during encoding", k)
 	default:
 		contract.Failf("Unrecognized field type '%v' during encoding", k)
 	}

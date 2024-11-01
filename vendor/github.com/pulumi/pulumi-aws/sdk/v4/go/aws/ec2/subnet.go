@@ -78,7 +78,7 @@ import (
 //
 // ## Import
 //
-// Subnets can be imported using the `subnet id`, e.g.
+// Subnets can be imported using the `subnet id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/subnet:Subnet public_subnet subnet-9d4a7b6c
@@ -92,19 +92,27 @@ type Subnet struct {
 	// that network interfaces created in the specified subnet should be
 	// assigned an IPv6 address. Default is `false`
 	AssignIpv6AddressOnCreation pulumi.BoolPtrOutput `pulumi:"assignIpv6AddressOnCreation"`
-	// The AZ for the subnet.
+	// AZ for the subnet.
 	AvailabilityZone pulumi.StringOutput `pulumi:"availabilityZone"`
-	// The AZ ID of the subnet.
+	// AZ ID of the subnet. This argument is not supported in all regions or partitions. If necessary, use `availabilityZone` instead.
 	AvailabilityZoneId pulumi.StringOutput `pulumi:"availabilityZoneId"`
-	// The CIDR block for the subnet.
-	CidrBlock pulumi.StringOutput `pulumi:"cidrBlock"`
+	// The IPv4 CIDR block for the subnet.
+	CidrBlock pulumi.StringPtrOutput `pulumi:"cidrBlock"`
 	// The customer owned IPv4 address pool. Typically used with the `mapCustomerOwnedIpOnLaunch` argument. The `outpostArn` argument must be specified when configured.
 	CustomerOwnedIpv4Pool pulumi.StringPtrOutput `pulumi:"customerOwnedIpv4Pool"`
+	// Indicates whether DNS queries made to the Amazon-provided DNS Resolver in this subnet should return synthetic IPv6 addresses for IPv4-only destinations. Default: `false`.
+	EnableDns64 pulumi.BoolPtrOutput `pulumi:"enableDns64"`
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS A records. Default: `false`.
+	EnableResourceNameDnsARecordOnLaunch pulumi.BoolPtrOutput `pulumi:"enableResourceNameDnsARecordOnLaunch"`
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS AAAA records. Default: `false`.
+	EnableResourceNameDnsAaaaRecordOnLaunch pulumi.BoolPtrOutput `pulumi:"enableResourceNameDnsAaaaRecordOnLaunch"`
 	// The IPv6 network range for the subnet,
 	// in CIDR notation. The subnet size must use a /64 prefix length.
 	Ipv6CidrBlock pulumi.StringPtrOutput `pulumi:"ipv6CidrBlock"`
 	// The association ID for the IPv6 CIDR block.
 	Ipv6CidrBlockAssociationId pulumi.StringOutput `pulumi:"ipv6CidrBlockAssociationId"`
+	// Indicates whether to create an IPv6-only subnet. Default: `false`.
+	Ipv6Native pulumi.BoolPtrOutput `pulumi:"ipv6Native"`
 	// Specify `true` to indicate that network interfaces created in the subnet should be assigned a customer owned IP address. The `customerOwnedIpv4Pool` and `outpostArn` arguments must be specified when set to `true`. Default is `false`.
 	MapCustomerOwnedIpOnLaunch pulumi.BoolPtrOutput `pulumi:"mapCustomerOwnedIpOnLaunch"`
 	// Specify true to indicate
@@ -115,6 +123,8 @@ type Subnet struct {
 	OutpostArn pulumi.StringPtrOutput `pulumi:"outpostArn"`
 	// The ID of the AWS account that owns the subnet.
 	OwnerId pulumi.StringOutput `pulumi:"ownerId"`
+	// The type of hostnames to assign to instances in the subnet at launch. For IPv4-only subnets, an instance DNS name must be based on the instance IPv4 address. For IPv6-only subnets, an instance DNS name must be based on the instance ID. For dual-stack subnets, you can specify whether DNS names use the instance IPv4 address or the instance ID. Valid values: `ip-name`, `resource-name`.
+	PrivateDnsHostnameTypeOnLaunch pulumi.StringOutput `pulumi:"privateDnsHostnameTypeOnLaunch"`
 	// A map of tags to assign to the resource. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapOutput `pulumi:"tags"`
 	// A map of tags assigned to the resource, including those inherited from the provider .
@@ -130,9 +140,6 @@ func NewSubnet(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.CidrBlock == nil {
-		return nil, errors.New("invalid value for required argument 'CidrBlock'")
-	}
 	if args.VpcId == nil {
 		return nil, errors.New("invalid value for required argument 'VpcId'")
 	}
@@ -164,19 +171,27 @@ type subnetState struct {
 	// that network interfaces created in the specified subnet should be
 	// assigned an IPv6 address. Default is `false`
 	AssignIpv6AddressOnCreation *bool `pulumi:"assignIpv6AddressOnCreation"`
-	// The AZ for the subnet.
+	// AZ for the subnet.
 	AvailabilityZone *string `pulumi:"availabilityZone"`
-	// The AZ ID of the subnet.
+	// AZ ID of the subnet. This argument is not supported in all regions or partitions. If necessary, use `availabilityZone` instead.
 	AvailabilityZoneId *string `pulumi:"availabilityZoneId"`
-	// The CIDR block for the subnet.
+	// The IPv4 CIDR block for the subnet.
 	CidrBlock *string `pulumi:"cidrBlock"`
 	// The customer owned IPv4 address pool. Typically used with the `mapCustomerOwnedIpOnLaunch` argument. The `outpostArn` argument must be specified when configured.
 	CustomerOwnedIpv4Pool *string `pulumi:"customerOwnedIpv4Pool"`
+	// Indicates whether DNS queries made to the Amazon-provided DNS Resolver in this subnet should return synthetic IPv6 addresses for IPv4-only destinations. Default: `false`.
+	EnableDns64 *bool `pulumi:"enableDns64"`
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS A records. Default: `false`.
+	EnableResourceNameDnsARecordOnLaunch *bool `pulumi:"enableResourceNameDnsARecordOnLaunch"`
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS AAAA records. Default: `false`.
+	EnableResourceNameDnsAaaaRecordOnLaunch *bool `pulumi:"enableResourceNameDnsAaaaRecordOnLaunch"`
 	// The IPv6 network range for the subnet,
 	// in CIDR notation. The subnet size must use a /64 prefix length.
 	Ipv6CidrBlock *string `pulumi:"ipv6CidrBlock"`
 	// The association ID for the IPv6 CIDR block.
 	Ipv6CidrBlockAssociationId *string `pulumi:"ipv6CidrBlockAssociationId"`
+	// Indicates whether to create an IPv6-only subnet. Default: `false`.
+	Ipv6Native *bool `pulumi:"ipv6Native"`
 	// Specify `true` to indicate that network interfaces created in the subnet should be assigned a customer owned IP address. The `customerOwnedIpv4Pool` and `outpostArn` arguments must be specified when set to `true`. Default is `false`.
 	MapCustomerOwnedIpOnLaunch *bool `pulumi:"mapCustomerOwnedIpOnLaunch"`
 	// Specify true to indicate
@@ -187,6 +202,8 @@ type subnetState struct {
 	OutpostArn *string `pulumi:"outpostArn"`
 	// The ID of the AWS account that owns the subnet.
 	OwnerId *string `pulumi:"ownerId"`
+	// The type of hostnames to assign to instances in the subnet at launch. For IPv4-only subnets, an instance DNS name must be based on the instance IPv4 address. For IPv6-only subnets, an instance DNS name must be based on the instance ID. For dual-stack subnets, you can specify whether DNS names use the instance IPv4 address or the instance ID. Valid values: `ip-name`, `resource-name`.
+	PrivateDnsHostnameTypeOnLaunch *string `pulumi:"privateDnsHostnameTypeOnLaunch"`
 	// A map of tags to assign to the resource. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags map[string]string `pulumi:"tags"`
 	// A map of tags assigned to the resource, including those inherited from the provider .
@@ -202,19 +219,27 @@ type SubnetState struct {
 	// that network interfaces created in the specified subnet should be
 	// assigned an IPv6 address. Default is `false`
 	AssignIpv6AddressOnCreation pulumi.BoolPtrInput
-	// The AZ for the subnet.
+	// AZ for the subnet.
 	AvailabilityZone pulumi.StringPtrInput
-	// The AZ ID of the subnet.
+	// AZ ID of the subnet. This argument is not supported in all regions or partitions. If necessary, use `availabilityZone` instead.
 	AvailabilityZoneId pulumi.StringPtrInput
-	// The CIDR block for the subnet.
+	// The IPv4 CIDR block for the subnet.
 	CidrBlock pulumi.StringPtrInput
 	// The customer owned IPv4 address pool. Typically used with the `mapCustomerOwnedIpOnLaunch` argument. The `outpostArn` argument must be specified when configured.
 	CustomerOwnedIpv4Pool pulumi.StringPtrInput
+	// Indicates whether DNS queries made to the Amazon-provided DNS Resolver in this subnet should return synthetic IPv6 addresses for IPv4-only destinations. Default: `false`.
+	EnableDns64 pulumi.BoolPtrInput
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS A records. Default: `false`.
+	EnableResourceNameDnsARecordOnLaunch pulumi.BoolPtrInput
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS AAAA records. Default: `false`.
+	EnableResourceNameDnsAaaaRecordOnLaunch pulumi.BoolPtrInput
 	// The IPv6 network range for the subnet,
 	// in CIDR notation. The subnet size must use a /64 prefix length.
 	Ipv6CidrBlock pulumi.StringPtrInput
 	// The association ID for the IPv6 CIDR block.
 	Ipv6CidrBlockAssociationId pulumi.StringPtrInput
+	// Indicates whether to create an IPv6-only subnet. Default: `false`.
+	Ipv6Native pulumi.BoolPtrInput
 	// Specify `true` to indicate that network interfaces created in the subnet should be assigned a customer owned IP address. The `customerOwnedIpv4Pool` and `outpostArn` arguments must be specified when set to `true`. Default is `false`.
 	MapCustomerOwnedIpOnLaunch pulumi.BoolPtrInput
 	// Specify true to indicate
@@ -225,6 +250,8 @@ type SubnetState struct {
 	OutpostArn pulumi.StringPtrInput
 	// The ID of the AWS account that owns the subnet.
 	OwnerId pulumi.StringPtrInput
+	// The type of hostnames to assign to instances in the subnet at launch. For IPv4-only subnets, an instance DNS name must be based on the instance IPv4 address. For IPv6-only subnets, an instance DNS name must be based on the instance ID. For dual-stack subnets, you can specify whether DNS names use the instance IPv4 address or the instance ID. Valid values: `ip-name`, `resource-name`.
+	PrivateDnsHostnameTypeOnLaunch pulumi.StringPtrInput
 	// A map of tags to assign to the resource. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapInput
 	// A map of tags assigned to the resource, including those inherited from the provider .
@@ -242,17 +269,25 @@ type subnetArgs struct {
 	// that network interfaces created in the specified subnet should be
 	// assigned an IPv6 address. Default is `false`
 	AssignIpv6AddressOnCreation *bool `pulumi:"assignIpv6AddressOnCreation"`
-	// The AZ for the subnet.
+	// AZ for the subnet.
 	AvailabilityZone *string `pulumi:"availabilityZone"`
-	// The AZ ID of the subnet.
+	// AZ ID of the subnet. This argument is not supported in all regions or partitions. If necessary, use `availabilityZone` instead.
 	AvailabilityZoneId *string `pulumi:"availabilityZoneId"`
-	// The CIDR block for the subnet.
-	CidrBlock string `pulumi:"cidrBlock"`
+	// The IPv4 CIDR block for the subnet.
+	CidrBlock *string `pulumi:"cidrBlock"`
 	// The customer owned IPv4 address pool. Typically used with the `mapCustomerOwnedIpOnLaunch` argument. The `outpostArn` argument must be specified when configured.
 	CustomerOwnedIpv4Pool *string `pulumi:"customerOwnedIpv4Pool"`
+	// Indicates whether DNS queries made to the Amazon-provided DNS Resolver in this subnet should return synthetic IPv6 addresses for IPv4-only destinations. Default: `false`.
+	EnableDns64 *bool `pulumi:"enableDns64"`
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS A records. Default: `false`.
+	EnableResourceNameDnsARecordOnLaunch *bool `pulumi:"enableResourceNameDnsARecordOnLaunch"`
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS AAAA records. Default: `false`.
+	EnableResourceNameDnsAaaaRecordOnLaunch *bool `pulumi:"enableResourceNameDnsAaaaRecordOnLaunch"`
 	// The IPv6 network range for the subnet,
 	// in CIDR notation. The subnet size must use a /64 prefix length.
 	Ipv6CidrBlock *string `pulumi:"ipv6CidrBlock"`
+	// Indicates whether to create an IPv6-only subnet. Default: `false`.
+	Ipv6Native *bool `pulumi:"ipv6Native"`
 	// Specify `true` to indicate that network interfaces created in the subnet should be assigned a customer owned IP address. The `customerOwnedIpv4Pool` and `outpostArn` arguments must be specified when set to `true`. Default is `false`.
 	MapCustomerOwnedIpOnLaunch *bool `pulumi:"mapCustomerOwnedIpOnLaunch"`
 	// Specify true to indicate
@@ -261,6 +296,8 @@ type subnetArgs struct {
 	MapPublicIpOnLaunch *bool `pulumi:"mapPublicIpOnLaunch"`
 	// The Amazon Resource Name (ARN) of the Outpost.
 	OutpostArn *string `pulumi:"outpostArn"`
+	// The type of hostnames to assign to instances in the subnet at launch. For IPv4-only subnets, an instance DNS name must be based on the instance IPv4 address. For IPv6-only subnets, an instance DNS name must be based on the instance ID. For dual-stack subnets, you can specify whether DNS names use the instance IPv4 address or the instance ID. Valid values: `ip-name`, `resource-name`.
+	PrivateDnsHostnameTypeOnLaunch *string `pulumi:"privateDnsHostnameTypeOnLaunch"`
 	// A map of tags to assign to the resource. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags map[string]string `pulumi:"tags"`
 	// The VPC ID.
@@ -273,17 +310,25 @@ type SubnetArgs struct {
 	// that network interfaces created in the specified subnet should be
 	// assigned an IPv6 address. Default is `false`
 	AssignIpv6AddressOnCreation pulumi.BoolPtrInput
-	// The AZ for the subnet.
+	// AZ for the subnet.
 	AvailabilityZone pulumi.StringPtrInput
-	// The AZ ID of the subnet.
+	// AZ ID of the subnet. This argument is not supported in all regions or partitions. If necessary, use `availabilityZone` instead.
 	AvailabilityZoneId pulumi.StringPtrInput
-	// The CIDR block for the subnet.
-	CidrBlock pulumi.StringInput
+	// The IPv4 CIDR block for the subnet.
+	CidrBlock pulumi.StringPtrInput
 	// The customer owned IPv4 address pool. Typically used with the `mapCustomerOwnedIpOnLaunch` argument. The `outpostArn` argument must be specified when configured.
 	CustomerOwnedIpv4Pool pulumi.StringPtrInput
+	// Indicates whether DNS queries made to the Amazon-provided DNS Resolver in this subnet should return synthetic IPv6 addresses for IPv4-only destinations. Default: `false`.
+	EnableDns64 pulumi.BoolPtrInput
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS A records. Default: `false`.
+	EnableResourceNameDnsARecordOnLaunch pulumi.BoolPtrInput
+	// Indicates whether to respond to DNS queries for instance hostnames with DNS AAAA records. Default: `false`.
+	EnableResourceNameDnsAaaaRecordOnLaunch pulumi.BoolPtrInput
 	// The IPv6 network range for the subnet,
 	// in CIDR notation. The subnet size must use a /64 prefix length.
 	Ipv6CidrBlock pulumi.StringPtrInput
+	// Indicates whether to create an IPv6-only subnet. Default: `false`.
+	Ipv6Native pulumi.BoolPtrInput
 	// Specify `true` to indicate that network interfaces created in the subnet should be assigned a customer owned IP address. The `customerOwnedIpv4Pool` and `outpostArn` arguments must be specified when set to `true`. Default is `false`.
 	MapCustomerOwnedIpOnLaunch pulumi.BoolPtrInput
 	// Specify true to indicate
@@ -292,6 +337,8 @@ type SubnetArgs struct {
 	MapPublicIpOnLaunch pulumi.BoolPtrInput
 	// The Amazon Resource Name (ARN) of the Outpost.
 	OutpostArn pulumi.StringPtrInput
+	// The type of hostnames to assign to instances in the subnet at launch. For IPv4-only subnets, an instance DNS name must be based on the instance IPv4 address. For IPv6-only subnets, an instance DNS name must be based on the instance ID. For dual-stack subnets, you can specify whether DNS names use the instance IPv4 address or the instance ID. Valid values: `ip-name`, `resource-name`.
+	PrivateDnsHostnameTypeOnLaunch pulumi.StringPtrInput
 	// A map of tags to assign to the resource. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapInput
 	// The VPC ID.
@@ -310,7 +357,7 @@ type SubnetInput interface {
 }
 
 func (*Subnet) ElementType() reflect.Type {
-	return reflect.TypeOf((*Subnet)(nil))
+	return reflect.TypeOf((**Subnet)(nil)).Elem()
 }
 
 func (i *Subnet) ToSubnetOutput() SubnetOutput {
@@ -319,35 +366,6 @@ func (i *Subnet) ToSubnetOutput() SubnetOutput {
 
 func (i *Subnet) ToSubnetOutputWithContext(ctx context.Context) SubnetOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(SubnetOutput)
-}
-
-func (i *Subnet) ToSubnetPtrOutput() SubnetPtrOutput {
-	return i.ToSubnetPtrOutputWithContext(context.Background())
-}
-
-func (i *Subnet) ToSubnetPtrOutputWithContext(ctx context.Context) SubnetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(SubnetPtrOutput)
-}
-
-type SubnetPtrInput interface {
-	pulumi.Input
-
-	ToSubnetPtrOutput() SubnetPtrOutput
-	ToSubnetPtrOutputWithContext(ctx context.Context) SubnetPtrOutput
-}
-
-type subnetPtrType SubnetArgs
-
-func (*subnetPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Subnet)(nil))
-}
-
-func (i *subnetPtrType) ToSubnetPtrOutput() SubnetPtrOutput {
-	return i.ToSubnetPtrOutputWithContext(context.Background())
-}
-
-func (i *subnetPtrType) ToSubnetPtrOutputWithContext(ctx context.Context) SubnetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(SubnetPtrOutput)
 }
 
 // SubnetArrayInput is an input type that accepts SubnetArray and SubnetArrayOutput values.
@@ -403,7 +421,7 @@ func (i SubnetMap) ToSubnetMapOutputWithContext(ctx context.Context) SubnetMapOu
 type SubnetOutput struct{ *pulumi.OutputState }
 
 func (SubnetOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Subnet)(nil))
+	return reflect.TypeOf((**Subnet)(nil)).Elem()
 }
 
 func (o SubnetOutput) ToSubnetOutput() SubnetOutput {
@@ -414,44 +432,10 @@ func (o SubnetOutput) ToSubnetOutputWithContext(ctx context.Context) SubnetOutpu
 	return o
 }
 
-func (o SubnetOutput) ToSubnetPtrOutput() SubnetPtrOutput {
-	return o.ToSubnetPtrOutputWithContext(context.Background())
-}
-
-func (o SubnetOutput) ToSubnetPtrOutputWithContext(ctx context.Context) SubnetPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Subnet) *Subnet {
-		return &v
-	}).(SubnetPtrOutput)
-}
-
-type SubnetPtrOutput struct{ *pulumi.OutputState }
-
-func (SubnetPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Subnet)(nil))
-}
-
-func (o SubnetPtrOutput) ToSubnetPtrOutput() SubnetPtrOutput {
-	return o
-}
-
-func (o SubnetPtrOutput) ToSubnetPtrOutputWithContext(ctx context.Context) SubnetPtrOutput {
-	return o
-}
-
-func (o SubnetPtrOutput) Elem() SubnetOutput {
-	return o.ApplyT(func(v *Subnet) Subnet {
-		if v != nil {
-			return *v
-		}
-		var ret Subnet
-		return ret
-	}).(SubnetOutput)
-}
-
 type SubnetArrayOutput struct{ *pulumi.OutputState }
 
 func (SubnetArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Subnet)(nil))
+	return reflect.TypeOf((*[]*Subnet)(nil)).Elem()
 }
 
 func (o SubnetArrayOutput) ToSubnetArrayOutput() SubnetArrayOutput {
@@ -463,15 +447,15 @@ func (o SubnetArrayOutput) ToSubnetArrayOutputWithContext(ctx context.Context) S
 }
 
 func (o SubnetArrayOutput) Index(i pulumi.IntInput) SubnetOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Subnet {
-		return vs[0].([]Subnet)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Subnet {
+		return vs[0].([]*Subnet)[vs[1].(int)]
 	}).(SubnetOutput)
 }
 
 type SubnetMapOutput struct{ *pulumi.OutputState }
 
 func (SubnetMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Subnet)(nil))
+	return reflect.TypeOf((*map[string]*Subnet)(nil)).Elem()
 }
 
 func (o SubnetMapOutput) ToSubnetMapOutput() SubnetMapOutput {
@@ -483,14 +467,16 @@ func (o SubnetMapOutput) ToSubnetMapOutputWithContext(ctx context.Context) Subne
 }
 
 func (o SubnetMapOutput) MapIndex(k pulumi.StringInput) SubnetOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Subnet {
-		return vs[0].(map[string]Subnet)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Subnet {
+		return vs[0].(map[string]*Subnet)[vs[1].(string)]
 	}).(SubnetOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*SubnetInput)(nil)).Elem(), &Subnet{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SubnetArrayInput)(nil)).Elem(), SubnetArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SubnetMapInput)(nil)).Elem(), SubnetMap{})
 	pulumi.RegisterOutputType(SubnetOutput{})
-	pulumi.RegisterOutputType(SubnetPtrOutput{})
 	pulumi.RegisterOutputType(SubnetArrayOutput{})
 	pulumi.RegisterOutputType(SubnetMapOutput{})
 }

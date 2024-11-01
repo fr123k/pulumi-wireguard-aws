@@ -103,7 +103,7 @@ import (
 //
 // ## Import
 //
-// Security Group Rules can be imported using the `security_group_id`, `type`, `protocol`, `from_port`, `to_port`, and source(s)/destination(s) (e.g. `cidr_block`) separated by underscores (`_`). All parts are required. Not all rule permissions (e.g., not all of a rule's CIDR blocks) need to be imported for this provider to manage rule permissions. However, importing some of a rule's permissions but not others, and then making changes to the rule will result in the creation of an additional rule to capture the updated permissions. Rule permissions that were not imported are left intact in the original rule. Import an ingress rule in security group `sg-6e616f6d69` for TCP port 8000 with an IPv4 destination CIDR of `10.0.3.0/24`console
+// Security Group Rules can be imported using the `security_group_id`, `type`, `protocol`, `from_port`, `to_port`, and source(s)/destination(s) (e.g., `cidr_block`) separated by underscores (`_`). All parts are required. Not all rule permissions (e.g., not all of a rule's CIDR blocks) need to be imported for this provider to manage rule permissions. However, importing some of a rule's permissions but not others, and then making changes to the rule will result in the creation of an additional rule to capture the updated permissions. Rule permissions that were not imported are left intact in the original rule. Import an ingress rule in security group `sg-6e616f6d69` for TCP port 8000 with an IPv4 destination CIDR of `10.0.3.0/24`console
 //
 // ```sh
 //  $ pulumi import aws:ec2/securityGroupRule:SecurityGroupRule ingress sg-6e616f6d69_ingress_tcp_8000_8000_10.0.3.0/24
@@ -115,10 +115,16 @@ import (
 //  $ pulumi import aws:ec2/securityGroupRule:SecurityGroupRule ingress sg-4973616163_ingress_tcp_100_121_10.1.0.0/16_2001:db8::/48_10.2.0.0/16_2002:db8::/48
 // ```
 //
-//  Import a rule, applicable to all ports, with a protocol other than TCP/UDP/ICMP/ALL, e.g., Multicast Transport Protocol (MTP), using the IANA protocol number, e.g., 92. console
+//  Import a rule, applicable to all ports, with a protocol other than TCP/UDP/ICMP/ICMPV6/ALL, e.g., Multicast Transport Protocol (MTP), using the IANA protocol number, e.g., 92. console
 //
 // ```sh
 //  $ pulumi import aws:ec2/securityGroupRule:SecurityGroupRule ingress sg-6777656e646f6c796e_ingress_92_0_65536_10.0.3.0/24_10.0.4.0/24
+// ```
+//
+//  Import a default any/any egress rule to 0.0.0.0/0console
+//
+// ```sh
+//  $ pulumi import aws:ec2/securityGroupRule:SecurityGroupRule default_egress sg-6777656e646f6c796e_egress_all_0_0_0.0.0.0/0
 // ```
 //
 //  Import an egress rule with a prefix list ID destinationconsole
@@ -330,7 +336,7 @@ type SecurityGroupRuleInput interface {
 }
 
 func (*SecurityGroupRule) ElementType() reflect.Type {
-	return reflect.TypeOf((*SecurityGroupRule)(nil))
+	return reflect.TypeOf((**SecurityGroupRule)(nil)).Elem()
 }
 
 func (i *SecurityGroupRule) ToSecurityGroupRuleOutput() SecurityGroupRuleOutput {
@@ -339,35 +345,6 @@ func (i *SecurityGroupRule) ToSecurityGroupRuleOutput() SecurityGroupRuleOutput 
 
 func (i *SecurityGroupRule) ToSecurityGroupRuleOutputWithContext(ctx context.Context) SecurityGroupRuleOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(SecurityGroupRuleOutput)
-}
-
-func (i *SecurityGroupRule) ToSecurityGroupRulePtrOutput() SecurityGroupRulePtrOutput {
-	return i.ToSecurityGroupRulePtrOutputWithContext(context.Background())
-}
-
-func (i *SecurityGroupRule) ToSecurityGroupRulePtrOutputWithContext(ctx context.Context) SecurityGroupRulePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(SecurityGroupRulePtrOutput)
-}
-
-type SecurityGroupRulePtrInput interface {
-	pulumi.Input
-
-	ToSecurityGroupRulePtrOutput() SecurityGroupRulePtrOutput
-	ToSecurityGroupRulePtrOutputWithContext(ctx context.Context) SecurityGroupRulePtrOutput
-}
-
-type securityGroupRulePtrType SecurityGroupRuleArgs
-
-func (*securityGroupRulePtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**SecurityGroupRule)(nil))
-}
-
-func (i *securityGroupRulePtrType) ToSecurityGroupRulePtrOutput() SecurityGroupRulePtrOutput {
-	return i.ToSecurityGroupRulePtrOutputWithContext(context.Background())
-}
-
-func (i *securityGroupRulePtrType) ToSecurityGroupRulePtrOutputWithContext(ctx context.Context) SecurityGroupRulePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(SecurityGroupRulePtrOutput)
 }
 
 // SecurityGroupRuleArrayInput is an input type that accepts SecurityGroupRuleArray and SecurityGroupRuleArrayOutput values.
@@ -423,7 +400,7 @@ func (i SecurityGroupRuleMap) ToSecurityGroupRuleMapOutputWithContext(ctx contex
 type SecurityGroupRuleOutput struct{ *pulumi.OutputState }
 
 func (SecurityGroupRuleOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SecurityGroupRule)(nil))
+	return reflect.TypeOf((**SecurityGroupRule)(nil)).Elem()
 }
 
 func (o SecurityGroupRuleOutput) ToSecurityGroupRuleOutput() SecurityGroupRuleOutput {
@@ -434,44 +411,10 @@ func (o SecurityGroupRuleOutput) ToSecurityGroupRuleOutputWithContext(ctx contex
 	return o
 }
 
-func (o SecurityGroupRuleOutput) ToSecurityGroupRulePtrOutput() SecurityGroupRulePtrOutput {
-	return o.ToSecurityGroupRulePtrOutputWithContext(context.Background())
-}
-
-func (o SecurityGroupRuleOutput) ToSecurityGroupRulePtrOutputWithContext(ctx context.Context) SecurityGroupRulePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v SecurityGroupRule) *SecurityGroupRule {
-		return &v
-	}).(SecurityGroupRulePtrOutput)
-}
-
-type SecurityGroupRulePtrOutput struct{ *pulumi.OutputState }
-
-func (SecurityGroupRulePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**SecurityGroupRule)(nil))
-}
-
-func (o SecurityGroupRulePtrOutput) ToSecurityGroupRulePtrOutput() SecurityGroupRulePtrOutput {
-	return o
-}
-
-func (o SecurityGroupRulePtrOutput) ToSecurityGroupRulePtrOutputWithContext(ctx context.Context) SecurityGroupRulePtrOutput {
-	return o
-}
-
-func (o SecurityGroupRulePtrOutput) Elem() SecurityGroupRuleOutput {
-	return o.ApplyT(func(v *SecurityGroupRule) SecurityGroupRule {
-		if v != nil {
-			return *v
-		}
-		var ret SecurityGroupRule
-		return ret
-	}).(SecurityGroupRuleOutput)
-}
-
 type SecurityGroupRuleArrayOutput struct{ *pulumi.OutputState }
 
 func (SecurityGroupRuleArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]SecurityGroupRule)(nil))
+	return reflect.TypeOf((*[]*SecurityGroupRule)(nil)).Elem()
 }
 
 func (o SecurityGroupRuleArrayOutput) ToSecurityGroupRuleArrayOutput() SecurityGroupRuleArrayOutput {
@@ -483,15 +426,15 @@ func (o SecurityGroupRuleArrayOutput) ToSecurityGroupRuleArrayOutputWithContext(
 }
 
 func (o SecurityGroupRuleArrayOutput) Index(i pulumi.IntInput) SecurityGroupRuleOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SecurityGroupRule {
-		return vs[0].([]SecurityGroupRule)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *SecurityGroupRule {
+		return vs[0].([]*SecurityGroupRule)[vs[1].(int)]
 	}).(SecurityGroupRuleOutput)
 }
 
 type SecurityGroupRuleMapOutput struct{ *pulumi.OutputState }
 
 func (SecurityGroupRuleMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]SecurityGroupRule)(nil))
+	return reflect.TypeOf((*map[string]*SecurityGroupRule)(nil)).Elem()
 }
 
 func (o SecurityGroupRuleMapOutput) ToSecurityGroupRuleMapOutput() SecurityGroupRuleMapOutput {
@@ -503,14 +446,16 @@ func (o SecurityGroupRuleMapOutput) ToSecurityGroupRuleMapOutputWithContext(ctx 
 }
 
 func (o SecurityGroupRuleMapOutput) MapIndex(k pulumi.StringInput) SecurityGroupRuleOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) SecurityGroupRule {
-		return vs[0].(map[string]SecurityGroupRule)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *SecurityGroupRule {
+		return vs[0].(map[string]*SecurityGroupRule)[vs[1].(string)]
 	}).(SecurityGroupRuleOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*SecurityGroupRuleInput)(nil)).Elem(), &SecurityGroupRule{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SecurityGroupRuleArrayInput)(nil)).Elem(), SecurityGroupRuleArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SecurityGroupRuleMapInput)(nil)).Elem(), SecurityGroupRuleMap{})
 	pulumi.RegisterOutputType(SecurityGroupRuleOutput{})
-	pulumi.RegisterOutputType(SecurityGroupRulePtrOutput{})
 	pulumi.RegisterOutputType(SecurityGroupRuleArrayOutput{})
 	pulumi.RegisterOutputType(SecurityGroupRuleMapOutput{})
 }

@@ -20,12 +20,13 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -63,15 +64,15 @@ func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, erro
 func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 	// TODO: check the name to ensure that it does not contain path traversal characters.
 	//
-	//nolint: gosec
+	//nolint:gosec
 	path := filepath.Join(dir, header.Name)
 
 	switch header.Typeflag {
 	case tar.TypeDir:
 		// Create any directories as needed.
 		if _, err := os.Stat(path); err != nil {
-			if err = os.MkdirAll(path, 0700); err != nil {
-				return errors.Wrapf(err, "extracting dir %s", path)
+			if err = os.MkdirAll(path, 0o0700); err != nil {
+				return fmt.Errorf("extracting dir %s: %w", path, err)
 			}
 		}
 	case tar.TypeReg:
@@ -80,25 +81,29 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		// to create it here.
 		dir := filepath.Dir(path)
 		if _, err := os.Stat(dir); err != nil {
-			if err = os.MkdirAll(dir, 0700); err != nil {
-				return errors.Wrapf(err, "extracting dir %s", dir)
+			if err = os.MkdirAll(dir, 0o0700); err != nil {
+				return fmt.Errorf("extracting dir %s: %w", dir, err)
 			}
 		}
 
 		// Expand files into the target directory.
+		if header.Mode > math.MaxUint32 {
+			return fmt.Errorf("unexpected file mode %v for %s", header.Mode, header.Name)
+		}
+		//nolint:gosec // int64 -> uint32 conversion guarded above
 		dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 		if err != nil {
-			return errors.Wrapf(err, "opening file %s for extraction", path)
+			return fmt.Errorf("opening file %s for extraction: %w", path, err)
 		}
 		defer contract.IgnoreClose(dst)
 
 		// We're not concerned with potential tarbombs, so disable gosec.
-		// nolint:gosec
+		//nolint:gosec
 		if _, err = io.Copy(dst, r); err != nil {
-			return errors.Wrapf(err, "untarring file %s", path)
+			return fmt.Errorf("untarring file %s: %w", path, err)
 		}
 	default:
-		return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
+		return fmt.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 	}
 
 	return nil
@@ -108,7 +113,7 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 func ExtractTGZ(r io.Reader, dir string) error {
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
-		return errors.Wrapf(err, "uncompressing")
+		return fmt.Errorf("uncompressing: %w", err)
 	}
 	tr := tar.NewReader(gzr)
 	for {
@@ -117,7 +122,7 @@ func ExtractTGZ(r io.Reader, dir string) error {
 			if err == io.EOF {
 				return nil
 			}
-			return errors.Wrapf(err, "extracting")
+			return fmt.Errorf("extracting: %w", err)
 		}
 
 		if err = extractFile(tr, header, dir); err != nil {
@@ -132,7 +137,8 @@ const (
 )
 
 func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string,
-	useDefaultIgnores bool, ignores *ignoreState) error {
+	useDefaultIgnores bool, ignores *ignoreState,
+) error {
 	ignoreFilePath := filepath.Join(dir, gitIgnoreFile)
 
 	// If there is an ignorefile, process it before looking at any child paths.
@@ -141,10 +147,30 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 
 		ignore, err := newGitIgnoreIgnorer(ignoreFilePath)
 		if err != nil {
-			return errors.Wrapf(err, "could not read ignore file in %v", dir)
+			return fmt.Errorf("could not read ignore file in %v: %w", dir, err)
 		}
 
 		ignores = ignores.Append(ignore)
+	}
+
+	// If we're at root, also add any .gitignores above us
+	if root == dir {
+		parent := filepath.Dir(dir)
+		// Keep going up till we hit the root of the file system
+		for ; parent != filepath.Dir(parent); parent = filepath.Dir(parent) {
+			// If there is an ignorefile, process it before looking at any child paths.
+			ignoreFilePath := filepath.Join(parent, gitIgnoreFile)
+			if stat, err := os.Stat(ignoreFilePath); err == nil && !stat.IsDir() {
+				logging.V(9).Infof("processing ignore file in %v", dir)
+
+				ignore, err := newGitIgnoreIgnorer(ignoreFilePath)
+				if err != nil {
+					return fmt.Errorf("could not read ignore file in %v: %w", dir, err)
+				}
+
+				ignores = ignores.Append(ignore)
+			}
+		}
 	}
 
 	if useDefaultIgnores {
@@ -214,10 +240,13 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 			}
 			// no defer because we want to close file as soon as possible (right after we call Copy)
 
-			_, err = io.Copy(writer, file)
+			n, err := io.Copy(writer, file)
 			contract.IgnoreClose(file)
 			if err != nil {
 				return err
+			}
+			if n != header.Size {
+				return fmt.Errorf("failed to copy all bytes from %v to tar file", fullName)
 			}
 		} else {
 			logging.V(9).Infof("ignoring special file %v with mode %v", fullName, info.Mode())

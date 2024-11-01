@@ -15,7 +15,7 @@
 package fsutil
 
 import (
-	"io/ioutil"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -28,11 +28,18 @@ func WalkUp(path string, walkFn func(string) bool, visitParentFn func(string) bo
 		visitParentFn = func(dir string) bool { return true }
 	}
 
+	// This needs to be an absolute path otherwise we will get stuck in an infinite loop of the parent
+	// directory of "." being ".".
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("abs: %w", err)
+	}
+
 	curr := pathDir(path)
 
 	for {
 		// visit each file
-		files, err := ioutil.ReadDir(curr)
+		files, err := os.ReadDir(curr)
 		if err != nil {
 			return "", err
 		}

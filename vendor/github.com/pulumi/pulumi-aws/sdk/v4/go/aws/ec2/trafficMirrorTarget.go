@@ -48,7 +48,7 @@ import (
 //
 // ## Import
 //
-// Traffic mirror targets can be imported using the `id`, e.g.
+// Traffic mirror targets can be imported using the `id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/trafficMirrorTarget:TrafficMirrorTarget target tmt-0c13a005422b86606
@@ -65,8 +65,10 @@ type TrafficMirrorTarget struct {
 	// The Amazon Resource Name (ARN) of the Network Load Balancer that is associated with the target.
 	NetworkLoadBalancerArn pulumi.StringPtrOutput `pulumi:"networkLoadBalancerArn"`
 	// The ID of the AWS account that owns the traffic mirror target.
-	OwnerId pulumi.StringOutput    `pulumi:"ownerId"`
-	Tags    pulumi.StringMapOutput `pulumi:"tags"`
+	OwnerId pulumi.StringOutput `pulumi:"ownerId"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapOutput `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
 	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
 }
 
@@ -108,8 +110,10 @@ type trafficMirrorTargetState struct {
 	// The Amazon Resource Name (ARN) of the Network Load Balancer that is associated with the target.
 	NetworkLoadBalancerArn *string `pulumi:"networkLoadBalancerArn"`
 	// The ID of the AWS account that owns the traffic mirror target.
-	OwnerId *string           `pulumi:"ownerId"`
-	Tags    map[string]string `pulumi:"tags"`
+	OwnerId *string `pulumi:"ownerId"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
 	TagsAll map[string]string `pulumi:"tagsAll"`
 }
 
@@ -124,7 +128,9 @@ type TrafficMirrorTargetState struct {
 	NetworkLoadBalancerArn pulumi.StringPtrInput
 	// The ID of the AWS account that owns the traffic mirror target.
 	OwnerId pulumi.StringPtrInput
-	Tags    pulumi.StringMapInput
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
 	TagsAll pulumi.StringMapInput
 }
 
@@ -138,8 +144,9 @@ type trafficMirrorTargetArgs struct {
 	// The network interface ID that is associated with the target.
 	NetworkInterfaceId *string `pulumi:"networkInterfaceId"`
 	// The Amazon Resource Name (ARN) of the Network Load Balancer that is associated with the target.
-	NetworkLoadBalancerArn *string           `pulumi:"networkLoadBalancerArn"`
-	Tags                   map[string]string `pulumi:"tags"`
+	NetworkLoadBalancerArn *string `pulumi:"networkLoadBalancerArn"`
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
 }
 
 // The set of arguments for constructing a TrafficMirrorTarget resource.
@@ -150,7 +157,8 @@ type TrafficMirrorTargetArgs struct {
 	NetworkInterfaceId pulumi.StringPtrInput
 	// The Amazon Resource Name (ARN) of the Network Load Balancer that is associated with the target.
 	NetworkLoadBalancerArn pulumi.StringPtrInput
-	Tags                   pulumi.StringMapInput
+	// Key-value map of resource tags. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
 }
 
 func (TrafficMirrorTargetArgs) ElementType() reflect.Type {
@@ -165,7 +173,7 @@ type TrafficMirrorTargetInput interface {
 }
 
 func (*TrafficMirrorTarget) ElementType() reflect.Type {
-	return reflect.TypeOf((*TrafficMirrorTarget)(nil))
+	return reflect.TypeOf((**TrafficMirrorTarget)(nil)).Elem()
 }
 
 func (i *TrafficMirrorTarget) ToTrafficMirrorTargetOutput() TrafficMirrorTargetOutput {
@@ -174,35 +182,6 @@ func (i *TrafficMirrorTarget) ToTrafficMirrorTargetOutput() TrafficMirrorTargetO
 
 func (i *TrafficMirrorTarget) ToTrafficMirrorTargetOutputWithContext(ctx context.Context) TrafficMirrorTargetOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(TrafficMirrorTargetOutput)
-}
-
-func (i *TrafficMirrorTarget) ToTrafficMirrorTargetPtrOutput() TrafficMirrorTargetPtrOutput {
-	return i.ToTrafficMirrorTargetPtrOutputWithContext(context.Background())
-}
-
-func (i *TrafficMirrorTarget) ToTrafficMirrorTargetPtrOutputWithContext(ctx context.Context) TrafficMirrorTargetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(TrafficMirrorTargetPtrOutput)
-}
-
-type TrafficMirrorTargetPtrInput interface {
-	pulumi.Input
-
-	ToTrafficMirrorTargetPtrOutput() TrafficMirrorTargetPtrOutput
-	ToTrafficMirrorTargetPtrOutputWithContext(ctx context.Context) TrafficMirrorTargetPtrOutput
-}
-
-type trafficMirrorTargetPtrType TrafficMirrorTargetArgs
-
-func (*trafficMirrorTargetPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**TrafficMirrorTarget)(nil))
-}
-
-func (i *trafficMirrorTargetPtrType) ToTrafficMirrorTargetPtrOutput() TrafficMirrorTargetPtrOutput {
-	return i.ToTrafficMirrorTargetPtrOutputWithContext(context.Background())
-}
-
-func (i *trafficMirrorTargetPtrType) ToTrafficMirrorTargetPtrOutputWithContext(ctx context.Context) TrafficMirrorTargetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(TrafficMirrorTargetPtrOutput)
 }
 
 // TrafficMirrorTargetArrayInput is an input type that accepts TrafficMirrorTargetArray and TrafficMirrorTargetArrayOutput values.
@@ -258,7 +237,7 @@ func (i TrafficMirrorTargetMap) ToTrafficMirrorTargetMapOutputWithContext(ctx co
 type TrafficMirrorTargetOutput struct{ *pulumi.OutputState }
 
 func (TrafficMirrorTargetOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*TrafficMirrorTarget)(nil))
+	return reflect.TypeOf((**TrafficMirrorTarget)(nil)).Elem()
 }
 
 func (o TrafficMirrorTargetOutput) ToTrafficMirrorTargetOutput() TrafficMirrorTargetOutput {
@@ -269,44 +248,10 @@ func (o TrafficMirrorTargetOutput) ToTrafficMirrorTargetOutputWithContext(ctx co
 	return o
 }
 
-func (o TrafficMirrorTargetOutput) ToTrafficMirrorTargetPtrOutput() TrafficMirrorTargetPtrOutput {
-	return o.ToTrafficMirrorTargetPtrOutputWithContext(context.Background())
-}
-
-func (o TrafficMirrorTargetOutput) ToTrafficMirrorTargetPtrOutputWithContext(ctx context.Context) TrafficMirrorTargetPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficMirrorTarget) *TrafficMirrorTarget {
-		return &v
-	}).(TrafficMirrorTargetPtrOutput)
-}
-
-type TrafficMirrorTargetPtrOutput struct{ *pulumi.OutputState }
-
-func (TrafficMirrorTargetPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**TrafficMirrorTarget)(nil))
-}
-
-func (o TrafficMirrorTargetPtrOutput) ToTrafficMirrorTargetPtrOutput() TrafficMirrorTargetPtrOutput {
-	return o
-}
-
-func (o TrafficMirrorTargetPtrOutput) ToTrafficMirrorTargetPtrOutputWithContext(ctx context.Context) TrafficMirrorTargetPtrOutput {
-	return o
-}
-
-func (o TrafficMirrorTargetPtrOutput) Elem() TrafficMirrorTargetOutput {
-	return o.ApplyT(func(v *TrafficMirrorTarget) TrafficMirrorTarget {
-		if v != nil {
-			return *v
-		}
-		var ret TrafficMirrorTarget
-		return ret
-	}).(TrafficMirrorTargetOutput)
-}
-
 type TrafficMirrorTargetArrayOutput struct{ *pulumi.OutputState }
 
 func (TrafficMirrorTargetArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]TrafficMirrorTarget)(nil))
+	return reflect.TypeOf((*[]*TrafficMirrorTarget)(nil)).Elem()
 }
 
 func (o TrafficMirrorTargetArrayOutput) ToTrafficMirrorTargetArrayOutput() TrafficMirrorTargetArrayOutput {
@@ -318,15 +263,15 @@ func (o TrafficMirrorTargetArrayOutput) ToTrafficMirrorTargetArrayOutputWithCont
 }
 
 func (o TrafficMirrorTargetArrayOutput) Index(i pulumi.IntInput) TrafficMirrorTargetOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficMirrorTarget {
-		return vs[0].([]TrafficMirrorTarget)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *TrafficMirrorTarget {
+		return vs[0].([]*TrafficMirrorTarget)[vs[1].(int)]
 	}).(TrafficMirrorTargetOutput)
 }
 
 type TrafficMirrorTargetMapOutput struct{ *pulumi.OutputState }
 
 func (TrafficMirrorTargetMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]TrafficMirrorTarget)(nil))
+	return reflect.TypeOf((*map[string]*TrafficMirrorTarget)(nil)).Elem()
 }
 
 func (o TrafficMirrorTargetMapOutput) ToTrafficMirrorTargetMapOutput() TrafficMirrorTargetMapOutput {
@@ -338,14 +283,16 @@ func (o TrafficMirrorTargetMapOutput) ToTrafficMirrorTargetMapOutputWithContext(
 }
 
 func (o TrafficMirrorTargetMapOutput) MapIndex(k pulumi.StringInput) TrafficMirrorTargetOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) TrafficMirrorTarget {
-		return vs[0].(map[string]TrafficMirrorTarget)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *TrafficMirrorTarget {
+		return vs[0].(map[string]*TrafficMirrorTarget)[vs[1].(string)]
 	}).(TrafficMirrorTargetOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorTargetInput)(nil)).Elem(), &TrafficMirrorTarget{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorTargetArrayInput)(nil)).Elem(), TrafficMirrorTargetArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficMirrorTargetMapInput)(nil)).Elem(), TrafficMirrorTargetMap{})
 	pulumi.RegisterOutputType(TrafficMirrorTargetOutput{})
-	pulumi.RegisterOutputType(TrafficMirrorTargetPtrOutput{})
 	pulumi.RegisterOutputType(TrafficMirrorTargetArrayOutput{})
 	pulumi.RegisterOutputType(TrafficMirrorTargetMapOutput{})
 }

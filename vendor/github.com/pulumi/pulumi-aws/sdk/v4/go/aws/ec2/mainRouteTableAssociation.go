@@ -11,6 +11,41 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// ## Example Usage
+//
+// ```go
+// package main
+//
+// import (
+// 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+// )
+//
+// func main() {
+// 	pulumi.Run(func(ctx *pulumi.Context) error {
+// 		_, err := ec2.NewMainRouteTableAssociation(ctx, "mainRouteTableAssociation", &ec2.MainRouteTableAssociationArgs{
+// 			VpcId:        pulumi.Any(aws_vpc.Foo.Id),
+// 			RouteTableId: pulumi.Any(aws_route_table.Bar.Id),
+// 		})
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	})
+// }
+// ```
+// ## Notes
+//
+// On VPC creation, the AWS API always creates an initial Main Route Table. This
+// resource records the ID of that Route Table under `originalRouteTableId`.
+// The "Delete" action for a `mainRouteTableAssociation` consists of resetting
+// this original table as the Main Route Table for the VPC. You'll see this
+// additional Route Table in the AWS console; it must remain intact in order for
+// the `mainRouteTableAssociation` delete to work properly.
+//
+// [aws-route-tables]: http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Route_Tables.html#Route_Replacing_Main_Table
+// [tf-route-tables]: /docs/providers/aws/r/route_table.html
+// [tf-default-route-table]: /docs/providers/aws/r/default_route_table.html
 type MainRouteTableAssociation struct {
 	pulumi.CustomResourceState
 
@@ -110,7 +145,7 @@ type MainRouteTableAssociationInput interface {
 }
 
 func (*MainRouteTableAssociation) ElementType() reflect.Type {
-	return reflect.TypeOf((*MainRouteTableAssociation)(nil))
+	return reflect.TypeOf((**MainRouteTableAssociation)(nil)).Elem()
 }
 
 func (i *MainRouteTableAssociation) ToMainRouteTableAssociationOutput() MainRouteTableAssociationOutput {
@@ -119,35 +154,6 @@ func (i *MainRouteTableAssociation) ToMainRouteTableAssociationOutput() MainRout
 
 func (i *MainRouteTableAssociation) ToMainRouteTableAssociationOutputWithContext(ctx context.Context) MainRouteTableAssociationOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(MainRouteTableAssociationOutput)
-}
-
-func (i *MainRouteTableAssociation) ToMainRouteTableAssociationPtrOutput() MainRouteTableAssociationPtrOutput {
-	return i.ToMainRouteTableAssociationPtrOutputWithContext(context.Background())
-}
-
-func (i *MainRouteTableAssociation) ToMainRouteTableAssociationPtrOutputWithContext(ctx context.Context) MainRouteTableAssociationPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(MainRouteTableAssociationPtrOutput)
-}
-
-type MainRouteTableAssociationPtrInput interface {
-	pulumi.Input
-
-	ToMainRouteTableAssociationPtrOutput() MainRouteTableAssociationPtrOutput
-	ToMainRouteTableAssociationPtrOutputWithContext(ctx context.Context) MainRouteTableAssociationPtrOutput
-}
-
-type mainRouteTableAssociationPtrType MainRouteTableAssociationArgs
-
-func (*mainRouteTableAssociationPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**MainRouteTableAssociation)(nil))
-}
-
-func (i *mainRouteTableAssociationPtrType) ToMainRouteTableAssociationPtrOutput() MainRouteTableAssociationPtrOutput {
-	return i.ToMainRouteTableAssociationPtrOutputWithContext(context.Background())
-}
-
-func (i *mainRouteTableAssociationPtrType) ToMainRouteTableAssociationPtrOutputWithContext(ctx context.Context) MainRouteTableAssociationPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(MainRouteTableAssociationPtrOutput)
 }
 
 // MainRouteTableAssociationArrayInput is an input type that accepts MainRouteTableAssociationArray and MainRouteTableAssociationArrayOutput values.
@@ -203,7 +209,7 @@ func (i MainRouteTableAssociationMap) ToMainRouteTableAssociationMapOutputWithCo
 type MainRouteTableAssociationOutput struct{ *pulumi.OutputState }
 
 func (MainRouteTableAssociationOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*MainRouteTableAssociation)(nil))
+	return reflect.TypeOf((**MainRouteTableAssociation)(nil)).Elem()
 }
 
 func (o MainRouteTableAssociationOutput) ToMainRouteTableAssociationOutput() MainRouteTableAssociationOutput {
@@ -214,44 +220,10 @@ func (o MainRouteTableAssociationOutput) ToMainRouteTableAssociationOutputWithCo
 	return o
 }
 
-func (o MainRouteTableAssociationOutput) ToMainRouteTableAssociationPtrOutput() MainRouteTableAssociationPtrOutput {
-	return o.ToMainRouteTableAssociationPtrOutputWithContext(context.Background())
-}
-
-func (o MainRouteTableAssociationOutput) ToMainRouteTableAssociationPtrOutputWithContext(ctx context.Context) MainRouteTableAssociationPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v MainRouteTableAssociation) *MainRouteTableAssociation {
-		return &v
-	}).(MainRouteTableAssociationPtrOutput)
-}
-
-type MainRouteTableAssociationPtrOutput struct{ *pulumi.OutputState }
-
-func (MainRouteTableAssociationPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**MainRouteTableAssociation)(nil))
-}
-
-func (o MainRouteTableAssociationPtrOutput) ToMainRouteTableAssociationPtrOutput() MainRouteTableAssociationPtrOutput {
-	return o
-}
-
-func (o MainRouteTableAssociationPtrOutput) ToMainRouteTableAssociationPtrOutputWithContext(ctx context.Context) MainRouteTableAssociationPtrOutput {
-	return o
-}
-
-func (o MainRouteTableAssociationPtrOutput) Elem() MainRouteTableAssociationOutput {
-	return o.ApplyT(func(v *MainRouteTableAssociation) MainRouteTableAssociation {
-		if v != nil {
-			return *v
-		}
-		var ret MainRouteTableAssociation
-		return ret
-	}).(MainRouteTableAssociationOutput)
-}
-
 type MainRouteTableAssociationArrayOutput struct{ *pulumi.OutputState }
 
 func (MainRouteTableAssociationArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]MainRouteTableAssociation)(nil))
+	return reflect.TypeOf((*[]*MainRouteTableAssociation)(nil)).Elem()
 }
 
 func (o MainRouteTableAssociationArrayOutput) ToMainRouteTableAssociationArrayOutput() MainRouteTableAssociationArrayOutput {
@@ -263,15 +235,15 @@ func (o MainRouteTableAssociationArrayOutput) ToMainRouteTableAssociationArrayOu
 }
 
 func (o MainRouteTableAssociationArrayOutput) Index(i pulumi.IntInput) MainRouteTableAssociationOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) MainRouteTableAssociation {
-		return vs[0].([]MainRouteTableAssociation)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *MainRouteTableAssociation {
+		return vs[0].([]*MainRouteTableAssociation)[vs[1].(int)]
 	}).(MainRouteTableAssociationOutput)
 }
 
 type MainRouteTableAssociationMapOutput struct{ *pulumi.OutputState }
 
 func (MainRouteTableAssociationMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]MainRouteTableAssociation)(nil))
+	return reflect.TypeOf((*map[string]*MainRouteTableAssociation)(nil)).Elem()
 }
 
 func (o MainRouteTableAssociationMapOutput) ToMainRouteTableAssociationMapOutput() MainRouteTableAssociationMapOutput {
@@ -283,14 +255,16 @@ func (o MainRouteTableAssociationMapOutput) ToMainRouteTableAssociationMapOutput
 }
 
 func (o MainRouteTableAssociationMapOutput) MapIndex(k pulumi.StringInput) MainRouteTableAssociationOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) MainRouteTableAssociation {
-		return vs[0].(map[string]MainRouteTableAssociation)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *MainRouteTableAssociation {
+		return vs[0].(map[string]*MainRouteTableAssociation)[vs[1].(string)]
 	}).(MainRouteTableAssociationOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*MainRouteTableAssociationInput)(nil)).Elem(), &MainRouteTableAssociation{})
+	pulumi.RegisterInputType(reflect.TypeOf((*MainRouteTableAssociationArrayInput)(nil)).Elem(), MainRouteTableAssociationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*MainRouteTableAssociationMapInput)(nil)).Elem(), MainRouteTableAssociationMap{})
 	pulumi.RegisterOutputType(MainRouteTableAssociationOutput{})
-	pulumi.RegisterOutputType(MainRouteTableAssociationPtrOutput{})
 	pulumi.RegisterOutputType(MainRouteTableAssociationArrayOutput{})
 	pulumi.RegisterOutputType(MainRouteTableAssociationMapOutput{})
 }

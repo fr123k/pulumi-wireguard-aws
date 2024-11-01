@@ -11,7 +11,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Manages an EC2 VPN connection. These objects can be connected to customer gateways, and allow you to establish tunnels between your network and Amazon.
+// Manages a Site-to-Site VPN connection. A Site-to-Site VPN connection is an Internet Protocol security (IPsec) VPN connection between a VPC and an on-premises network.
+// Any new Site-to-Site VPN connection that you create is an [AWS VPN connection](https://docs.aws.amazon.com/vpn/latest/s2svpn/vpn-categories.html).
 //
 // > **Note:** The CIDR blocks in the arguments `tunnel1InsideCidr` and `tunnel2InsideCidr` must have a prefix of /30 and be a part of a specific range.
 // [Read more about this in the AWS documentation](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_VpnTunnelOptionsSpecification.html).
@@ -102,7 +103,7 @@ import (
 //
 // ## Import
 //
-// VPN Connections can be imported using the `vpn connection id`, e.g.
+// VPN Connections can be imported using the `vpn connection id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/vpnConnection:VpnConnection testvpnconnection vpn-40f41529
@@ -125,8 +126,9 @@ type VpnConnection struct {
 	// The IPv4 CIDR on the AWS side of the VPN connection.
 	RemoteIpv4NetworkCidr pulumi.StringOutput `pulumi:"remoteIpv4NetworkCidr"`
 	// The IPv6 CIDR on the customer gateway (on-premises) side of the VPN connection.
-	RemoteIpv6NetworkCidr pulumi.StringOutput               `pulumi:"remoteIpv6NetworkCidr"`
-	Routes                VpnConnectionRouteTypeArrayOutput `pulumi:"routes"`
+	RemoteIpv6NetworkCidr pulumi.StringOutput `pulumi:"remoteIpv6NetworkCidr"`
+	// The static routes associated with the VPN connection. Detailed below.
+	Routes VpnConnectionRouteTypeArrayOutput `pulumi:"routes"`
 	// Whether the VPN connection uses static routes exclusively. Static routes must be used for devices that don't support BGP.
 	StaticRoutesOnly pulumi.BoolOutput `pulumi:"staticRoutesOnly"`
 	// Tags to apply to the connection. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
@@ -232,7 +234,8 @@ type VpnConnection struct {
 	// Indicate whether the VPN tunnels process IPv4 or IPv6 traffic. Valid values are `ipv4 | ipv6`. `ipv6` Supports only EC2 Transit Gateway.
 	TunnelInsideIpVersion pulumi.StringOutput `pulumi:"tunnelInsideIpVersion"`
 	// The type of VPN connection. The only type AWS supports at this time is "ipsec.1".
-	Type           pulumi.StringOutput                  `pulumi:"type"`
+	Type pulumi.StringOutput `pulumi:"type"`
+	// Telemetry for the VPN tunnels. Detailed below.
 	VgwTelemetries VpnConnectionVgwTelemetryArrayOutput `pulumi:"vgwTelemetries"`
 	// The ID of the Virtual Private Gateway.
 	VpnGatewayId pulumi.StringPtrOutput `pulumi:"vpnGatewayId"`
@@ -288,8 +291,9 @@ type vpnConnectionState struct {
 	// The IPv4 CIDR on the AWS side of the VPN connection.
 	RemoteIpv4NetworkCidr *string `pulumi:"remoteIpv4NetworkCidr"`
 	// The IPv6 CIDR on the customer gateway (on-premises) side of the VPN connection.
-	RemoteIpv6NetworkCidr *string                  `pulumi:"remoteIpv6NetworkCidr"`
-	Routes                []VpnConnectionRouteType `pulumi:"routes"`
+	RemoteIpv6NetworkCidr *string `pulumi:"remoteIpv6NetworkCidr"`
+	// The static routes associated with the VPN connection. Detailed below.
+	Routes []VpnConnectionRouteType `pulumi:"routes"`
 	// Whether the VPN connection uses static routes exclusively. Static routes must be used for devices that don't support BGP.
 	StaticRoutesOnly *bool `pulumi:"staticRoutesOnly"`
 	// Tags to apply to the connection. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
@@ -395,7 +399,8 @@ type vpnConnectionState struct {
 	// Indicate whether the VPN tunnels process IPv4 or IPv6 traffic. Valid values are `ipv4 | ipv6`. `ipv6` Supports only EC2 Transit Gateway.
 	TunnelInsideIpVersion *string `pulumi:"tunnelInsideIpVersion"`
 	// The type of VPN connection. The only type AWS supports at this time is "ipsec.1".
-	Type           *string                     `pulumi:"type"`
+	Type *string `pulumi:"type"`
+	// Telemetry for the VPN tunnels. Detailed below.
 	VgwTelemetries []VpnConnectionVgwTelemetry `pulumi:"vgwTelemetries"`
 	// The ID of the Virtual Private Gateway.
 	VpnGatewayId *string `pulumi:"vpnGatewayId"`
@@ -418,7 +423,8 @@ type VpnConnectionState struct {
 	RemoteIpv4NetworkCidr pulumi.StringPtrInput
 	// The IPv6 CIDR on the customer gateway (on-premises) side of the VPN connection.
 	RemoteIpv6NetworkCidr pulumi.StringPtrInput
-	Routes                VpnConnectionRouteTypeArrayInput
+	// The static routes associated with the VPN connection. Detailed below.
+	Routes VpnConnectionRouteTypeArrayInput
 	// Whether the VPN connection uses static routes exclusively. Static routes must be used for devices that don't support BGP.
 	StaticRoutesOnly pulumi.BoolPtrInput
 	// Tags to apply to the connection. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
@@ -524,7 +530,8 @@ type VpnConnectionState struct {
 	// Indicate whether the VPN tunnels process IPv4 or IPv6 traffic. Valid values are `ipv4 | ipv6`. `ipv6` Supports only EC2 Transit Gateway.
 	TunnelInsideIpVersion pulumi.StringPtrInput
 	// The type of VPN connection. The only type AWS supports at this time is "ipsec.1".
-	Type           pulumi.StringPtrInput
+	Type pulumi.StringPtrInput
+	// Telemetry for the VPN tunnels. Detailed below.
 	VgwTelemetries VpnConnectionVgwTelemetryArrayInput
 	// The ID of the Virtual Private Gateway.
 	VpnGatewayId pulumi.StringPtrInput
@@ -745,7 +752,7 @@ type VpnConnectionInput interface {
 }
 
 func (*VpnConnection) ElementType() reflect.Type {
-	return reflect.TypeOf((*VpnConnection)(nil))
+	return reflect.TypeOf((**VpnConnection)(nil)).Elem()
 }
 
 func (i *VpnConnection) ToVpnConnectionOutput() VpnConnectionOutput {
@@ -754,35 +761,6 @@ func (i *VpnConnection) ToVpnConnectionOutput() VpnConnectionOutput {
 
 func (i *VpnConnection) ToVpnConnectionOutputWithContext(ctx context.Context) VpnConnectionOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(VpnConnectionOutput)
-}
-
-func (i *VpnConnection) ToVpnConnectionPtrOutput() VpnConnectionPtrOutput {
-	return i.ToVpnConnectionPtrOutputWithContext(context.Background())
-}
-
-func (i *VpnConnection) ToVpnConnectionPtrOutputWithContext(ctx context.Context) VpnConnectionPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(VpnConnectionPtrOutput)
-}
-
-type VpnConnectionPtrInput interface {
-	pulumi.Input
-
-	ToVpnConnectionPtrOutput() VpnConnectionPtrOutput
-	ToVpnConnectionPtrOutputWithContext(ctx context.Context) VpnConnectionPtrOutput
-}
-
-type vpnConnectionPtrType VpnConnectionArgs
-
-func (*vpnConnectionPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**VpnConnection)(nil))
-}
-
-func (i *vpnConnectionPtrType) ToVpnConnectionPtrOutput() VpnConnectionPtrOutput {
-	return i.ToVpnConnectionPtrOutputWithContext(context.Background())
-}
-
-func (i *vpnConnectionPtrType) ToVpnConnectionPtrOutputWithContext(ctx context.Context) VpnConnectionPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(VpnConnectionPtrOutput)
 }
 
 // VpnConnectionArrayInput is an input type that accepts VpnConnectionArray and VpnConnectionArrayOutput values.
@@ -838,7 +816,7 @@ func (i VpnConnectionMap) ToVpnConnectionMapOutputWithContext(ctx context.Contex
 type VpnConnectionOutput struct{ *pulumi.OutputState }
 
 func (VpnConnectionOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*VpnConnection)(nil))
+	return reflect.TypeOf((**VpnConnection)(nil)).Elem()
 }
 
 func (o VpnConnectionOutput) ToVpnConnectionOutput() VpnConnectionOutput {
@@ -849,44 +827,10 @@ func (o VpnConnectionOutput) ToVpnConnectionOutputWithContext(ctx context.Contex
 	return o
 }
 
-func (o VpnConnectionOutput) ToVpnConnectionPtrOutput() VpnConnectionPtrOutput {
-	return o.ToVpnConnectionPtrOutputWithContext(context.Background())
-}
-
-func (o VpnConnectionOutput) ToVpnConnectionPtrOutputWithContext(ctx context.Context) VpnConnectionPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v VpnConnection) *VpnConnection {
-		return &v
-	}).(VpnConnectionPtrOutput)
-}
-
-type VpnConnectionPtrOutput struct{ *pulumi.OutputState }
-
-func (VpnConnectionPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**VpnConnection)(nil))
-}
-
-func (o VpnConnectionPtrOutput) ToVpnConnectionPtrOutput() VpnConnectionPtrOutput {
-	return o
-}
-
-func (o VpnConnectionPtrOutput) ToVpnConnectionPtrOutputWithContext(ctx context.Context) VpnConnectionPtrOutput {
-	return o
-}
-
-func (o VpnConnectionPtrOutput) Elem() VpnConnectionOutput {
-	return o.ApplyT(func(v *VpnConnection) VpnConnection {
-		if v != nil {
-			return *v
-		}
-		var ret VpnConnection
-		return ret
-	}).(VpnConnectionOutput)
-}
-
 type VpnConnectionArrayOutput struct{ *pulumi.OutputState }
 
 func (VpnConnectionArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]VpnConnection)(nil))
+	return reflect.TypeOf((*[]*VpnConnection)(nil)).Elem()
 }
 
 func (o VpnConnectionArrayOutput) ToVpnConnectionArrayOutput() VpnConnectionArrayOutput {
@@ -898,15 +842,15 @@ func (o VpnConnectionArrayOutput) ToVpnConnectionArrayOutputWithContext(ctx cont
 }
 
 func (o VpnConnectionArrayOutput) Index(i pulumi.IntInput) VpnConnectionOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) VpnConnection {
-		return vs[0].([]VpnConnection)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *VpnConnection {
+		return vs[0].([]*VpnConnection)[vs[1].(int)]
 	}).(VpnConnectionOutput)
 }
 
 type VpnConnectionMapOutput struct{ *pulumi.OutputState }
 
 func (VpnConnectionMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]VpnConnection)(nil))
+	return reflect.TypeOf((*map[string]*VpnConnection)(nil)).Elem()
 }
 
 func (o VpnConnectionMapOutput) ToVpnConnectionMapOutput() VpnConnectionMapOutput {
@@ -918,14 +862,16 @@ func (o VpnConnectionMapOutput) ToVpnConnectionMapOutputWithContext(ctx context.
 }
 
 func (o VpnConnectionMapOutput) MapIndex(k pulumi.StringInput) VpnConnectionOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) VpnConnection {
-		return vs[0].(map[string]VpnConnection)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *VpnConnection {
+		return vs[0].(map[string]*VpnConnection)[vs[1].(string)]
 	}).(VpnConnectionOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*VpnConnectionInput)(nil)).Elem(), &VpnConnection{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpnConnectionArrayInput)(nil)).Elem(), VpnConnectionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpnConnectionMapInput)(nil)).Elem(), VpnConnectionMap{})
 	pulumi.RegisterOutputType(VpnConnectionOutput{})
-	pulumi.RegisterOutputType(VpnConnectionPtrOutput{})
 	pulumi.RegisterOutputType(VpnConnectionArrayOutput{})
 	pulumi.RegisterOutputType(VpnConnectionMapOutput{})
 }

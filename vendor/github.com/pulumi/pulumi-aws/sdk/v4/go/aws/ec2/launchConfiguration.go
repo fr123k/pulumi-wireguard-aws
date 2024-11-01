@@ -25,9 +25,8 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		opt0 := true
 // 		ubuntu, err := ec2.LookupAmi(ctx, &ec2.LookupAmiArgs{
-// 			MostRecent: &opt0,
+// 			MostRecent: pulumi.BoolRef(true),
 // 			Filters: []ec2.GetAmiFilter{
 // 				ec2.GetAmiFilter{
 // 					Name: "name",
@@ -81,9 +80,8 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		opt0 := true
 // 		ubuntu, err := ec2.LookupAmi(ctx, &ec2.LookupAmiArgs{
-// 			MostRecent: &opt0,
+// 			MostRecent: pulumi.BoolRef(true),
 // 			Filters: []ec2.GetAmiFilter{
 // 				ec2.GetAmiFilter{
 // 					Name: "name",
@@ -150,9 +148,8 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		opt0 := true
 // 		ubuntu, err := ec2.LookupAmi(ctx, &ec2.LookupAmiArgs{
-// 			MostRecent: &opt0,
+// 			MostRecent: pulumi.BoolRef(true),
 // 			Filters: []ec2.GetAmiFilter{
 // 				ec2.GetAmiFilter{
 // 					Name: "name",
@@ -239,7 +236,7 @@ import (
 // * `deviceName` - The name of the block device to mount on the instance.
 // * `virtualName` - The [Instance Store Device
 //   Name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#InstanceStoreDeviceNames)
-//   (e.g. `"ephemeral0"`)
+//   (e.g., `"ephemeral0"`)
 //
 // Each AWS Instance type has a different set of Instance Store block devices
 // available for attachment. AWS [publishes a
@@ -254,7 +251,7 @@ import (
 //
 // ## Import
 //
-// Launch configurations can be imported using the `name`, e.g.
+// Launch configurations can be imported using the `name`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/launchConfiguration:LaunchConfiguration as_conf lg-123456
@@ -573,7 +570,7 @@ type LaunchConfigurationInput interface {
 }
 
 func (*LaunchConfiguration) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchConfiguration)(nil))
+	return reflect.TypeOf((**LaunchConfiguration)(nil)).Elem()
 }
 
 func (i *LaunchConfiguration) ToLaunchConfigurationOutput() LaunchConfigurationOutput {
@@ -582,35 +579,6 @@ func (i *LaunchConfiguration) ToLaunchConfigurationOutput() LaunchConfigurationO
 
 func (i *LaunchConfiguration) ToLaunchConfigurationOutputWithContext(ctx context.Context) LaunchConfigurationOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(LaunchConfigurationOutput)
-}
-
-func (i *LaunchConfiguration) ToLaunchConfigurationPtrOutput() LaunchConfigurationPtrOutput {
-	return i.ToLaunchConfigurationPtrOutputWithContext(context.Background())
-}
-
-func (i *LaunchConfiguration) ToLaunchConfigurationPtrOutputWithContext(ctx context.Context) LaunchConfigurationPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(LaunchConfigurationPtrOutput)
-}
-
-type LaunchConfigurationPtrInput interface {
-	pulumi.Input
-
-	ToLaunchConfigurationPtrOutput() LaunchConfigurationPtrOutput
-	ToLaunchConfigurationPtrOutputWithContext(ctx context.Context) LaunchConfigurationPtrOutput
-}
-
-type launchConfigurationPtrType LaunchConfigurationArgs
-
-func (*launchConfigurationPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**LaunchConfiguration)(nil))
-}
-
-func (i *launchConfigurationPtrType) ToLaunchConfigurationPtrOutput() LaunchConfigurationPtrOutput {
-	return i.ToLaunchConfigurationPtrOutputWithContext(context.Background())
-}
-
-func (i *launchConfigurationPtrType) ToLaunchConfigurationPtrOutputWithContext(ctx context.Context) LaunchConfigurationPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(LaunchConfigurationPtrOutput)
 }
 
 // LaunchConfigurationArrayInput is an input type that accepts LaunchConfigurationArray and LaunchConfigurationArrayOutput values.
@@ -666,7 +634,7 @@ func (i LaunchConfigurationMap) ToLaunchConfigurationMapOutputWithContext(ctx co
 type LaunchConfigurationOutput struct{ *pulumi.OutputState }
 
 func (LaunchConfigurationOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchConfiguration)(nil))
+	return reflect.TypeOf((**LaunchConfiguration)(nil)).Elem()
 }
 
 func (o LaunchConfigurationOutput) ToLaunchConfigurationOutput() LaunchConfigurationOutput {
@@ -677,44 +645,10 @@ func (o LaunchConfigurationOutput) ToLaunchConfigurationOutputWithContext(ctx co
 	return o
 }
 
-func (o LaunchConfigurationOutput) ToLaunchConfigurationPtrOutput() LaunchConfigurationPtrOutput {
-	return o.ToLaunchConfigurationPtrOutputWithContext(context.Background())
-}
-
-func (o LaunchConfigurationOutput) ToLaunchConfigurationPtrOutputWithContext(ctx context.Context) LaunchConfigurationPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v LaunchConfiguration) *LaunchConfiguration {
-		return &v
-	}).(LaunchConfigurationPtrOutput)
-}
-
-type LaunchConfigurationPtrOutput struct{ *pulumi.OutputState }
-
-func (LaunchConfigurationPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**LaunchConfiguration)(nil))
-}
-
-func (o LaunchConfigurationPtrOutput) ToLaunchConfigurationPtrOutput() LaunchConfigurationPtrOutput {
-	return o
-}
-
-func (o LaunchConfigurationPtrOutput) ToLaunchConfigurationPtrOutputWithContext(ctx context.Context) LaunchConfigurationPtrOutput {
-	return o
-}
-
-func (o LaunchConfigurationPtrOutput) Elem() LaunchConfigurationOutput {
-	return o.ApplyT(func(v *LaunchConfiguration) LaunchConfiguration {
-		if v != nil {
-			return *v
-		}
-		var ret LaunchConfiguration
-		return ret
-	}).(LaunchConfigurationOutput)
-}
-
 type LaunchConfigurationArrayOutput struct{ *pulumi.OutputState }
 
 func (LaunchConfigurationArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]LaunchConfiguration)(nil))
+	return reflect.TypeOf((*[]*LaunchConfiguration)(nil)).Elem()
 }
 
 func (o LaunchConfigurationArrayOutput) ToLaunchConfigurationArrayOutput() LaunchConfigurationArrayOutput {
@@ -726,15 +660,15 @@ func (o LaunchConfigurationArrayOutput) ToLaunchConfigurationArrayOutputWithCont
 }
 
 func (o LaunchConfigurationArrayOutput) Index(i pulumi.IntInput) LaunchConfigurationOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) LaunchConfiguration {
-		return vs[0].([]LaunchConfiguration)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *LaunchConfiguration {
+		return vs[0].([]*LaunchConfiguration)[vs[1].(int)]
 	}).(LaunchConfigurationOutput)
 }
 
 type LaunchConfigurationMapOutput struct{ *pulumi.OutputState }
 
 func (LaunchConfigurationMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]LaunchConfiguration)(nil))
+	return reflect.TypeOf((*map[string]*LaunchConfiguration)(nil)).Elem()
 }
 
 func (o LaunchConfigurationMapOutput) ToLaunchConfigurationMapOutput() LaunchConfigurationMapOutput {
@@ -746,14 +680,16 @@ func (o LaunchConfigurationMapOutput) ToLaunchConfigurationMapOutputWithContext(
 }
 
 func (o LaunchConfigurationMapOutput) MapIndex(k pulumi.StringInput) LaunchConfigurationOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) LaunchConfiguration {
-		return vs[0].(map[string]LaunchConfiguration)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *LaunchConfiguration {
+		return vs[0].(map[string]*LaunchConfiguration)[vs[1].(string)]
 	}).(LaunchConfigurationOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationInput)(nil)).Elem(), &LaunchConfiguration{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationArrayInput)(nil)).Elem(), LaunchConfigurationArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaunchConfigurationMapInput)(nil)).Elem(), LaunchConfigurationMap{})
 	pulumi.RegisterOutputType(LaunchConfigurationOutput{})
-	pulumi.RegisterOutputType(LaunchConfigurationPtrOutput{})
 	pulumi.RegisterOutputType(LaunchConfigurationArrayOutput{})
 	pulumi.RegisterOutputType(LaunchConfigurationMapOutput{})
 }

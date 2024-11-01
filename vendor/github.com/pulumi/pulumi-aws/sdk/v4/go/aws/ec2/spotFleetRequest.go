@@ -11,213 +11,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Provides an EC2 Spot Fleet Request resource. This allows a fleet of Spot
-// instances to be requested on the Spot market.
-//
-// ## Example Usage
-// ### Using launch specifications
-//
-// ```go
-// package main
-//
-// import (
-// 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
-// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-// )
-//
-// func main() {
-// 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		_, err := ec2.NewSpotFleetRequest(ctx, "cheapCompute", &ec2.SpotFleetRequestArgs{
-// 			IamFleetRole:       pulumi.String("arn:aws:iam::12345678:role/spot-fleet"),
-// 			SpotPrice:          pulumi.String("0.03"),
-// 			AllocationStrategy: pulumi.String("diversified"),
-// 			TargetCapacity:     pulumi.Int(6),
-// 			ValidUntil:         pulumi.String("2019-11-04T20:44:20Z"),
-// 			LaunchSpecifications: ec2.SpotFleetRequestLaunchSpecificationArray{
-// 				&ec2.SpotFleetRequestLaunchSpecificationArgs{
-// 					InstanceType:          pulumi.String("m4.10xlarge"),
-// 					Ami:                   pulumi.String("ami-1234"),
-// 					SpotPrice:             pulumi.String("2.793"),
-// 					PlacementTenancy:      pulumi.String("dedicated"),
-// 					IamInstanceProfileArn: pulumi.Any(aws_iam_instance_profile.Example.Arn),
-// 				},
-// 				&ec2.SpotFleetRequestLaunchSpecificationArgs{
-// 					InstanceType:          pulumi.String("m4.4xlarge"),
-// 					Ami:                   pulumi.String("ami-5678"),
-// 					KeyName:               pulumi.String("my-key"),
-// 					SpotPrice:             pulumi.String("1.117"),
-// 					IamInstanceProfileArn: pulumi.Any(aws_iam_instance_profile.Example.Arn),
-// 					AvailabilityZone:      pulumi.String("us-west-1a"),
-// 					SubnetId:              pulumi.String("subnet-1234"),
-// 					WeightedCapacity:      pulumi.String("35"),
-// 					RootBlockDevices: ec2.SpotFleetRequestLaunchSpecificationRootBlockDeviceArray{
-// 						&ec2.SpotFleetRequestLaunchSpecificationRootBlockDeviceArgs{
-// 							VolumeSize: pulumi.Int(300),
-// 							VolumeType: pulumi.String("gp2"),
-// 						},
-// 					},
-// 					Tags: pulumi.StringMap{
-// 						"Name": pulumi.String("spot-fleet-example"),
-// 					},
-// 				},
-// 			},
-// 		})
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	})
-// }
-// ```
-// ### Using launch templates
-//
-// ```go
-// package main
-//
-// import (
-// 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
-// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-// )
-//
-// func main() {
-// 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		fooLaunchTemplate, err := ec2.NewLaunchTemplate(ctx, "fooLaunchTemplate", &ec2.LaunchTemplateArgs{
-// 			ImageId:      pulumi.String("ami-516b9131"),
-// 			InstanceType: pulumi.String("m1.small"),
-// 			KeyName:      pulumi.String("some-key"),
-// 		})
-// 		if err != nil {
-// 			return err
-// 		}
-// 		_, err = ec2.NewSpotFleetRequest(ctx, "fooSpotFleetRequest", &ec2.SpotFleetRequestArgs{
-// 			IamFleetRole:   pulumi.String("arn:aws:iam::12345678:role/spot-fleet"),
-// 			SpotPrice:      pulumi.String("0.005"),
-// 			TargetCapacity: pulumi.Int(2),
-// 			ValidUntil:     pulumi.String("2019-11-04T20:44:20Z"),
-// 			LaunchTemplateConfigs: ec2.SpotFleetRequestLaunchTemplateConfigArray{
-// 				&ec2.SpotFleetRequestLaunchTemplateConfigArgs{
-// 					LaunchTemplateSpecification: &ec2.SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecificationArgs{
-// 						Id:      fooLaunchTemplate.ID(),
-// 						Version: fooLaunchTemplate.LatestVersion,
-// 					},
-// 				},
-// 			},
-// 		}, pulumi.DependsOn([]pulumi.Resource{
-// 			aws_iam_policy_attachment.Test - attach,
-// 		}))
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	})
-// }
-// ```
-//
-// > **NOTE:** This provider does not support the functionality where multiple `subnetId` or `availabilityZone` parameters can be specified in the same
-// launch configuration block. If you want to specify multiple values, then separate launch configuration blocks should be used:
-// ### Using multiple launch specifications
-//
-// ```go
-// package main
-//
-// import (
-// 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
-// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-// )
-//
-// func main() {
-// 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		_, err := ec2.NewSpotFleetRequest(ctx, "foo", &ec2.SpotFleetRequestArgs{
-// 			IamFleetRole: pulumi.String("arn:aws:iam::12345678:role/spot-fleet"),
-// 			LaunchSpecifications: ec2.SpotFleetRequestLaunchSpecificationArray{
-// 				&ec2.SpotFleetRequestLaunchSpecificationArgs{
-// 					Ami:              pulumi.String("ami-d06a90b0"),
-// 					AvailabilityZone: pulumi.String("us-west-2a"),
-// 					InstanceType:     pulumi.String("m1.small"),
-// 					KeyName:          pulumi.String("my-key"),
-// 				},
-// 				&ec2.SpotFleetRequestLaunchSpecificationArgs{
-// 					Ami:              pulumi.String("ami-d06a90b0"),
-// 					AvailabilityZone: pulumi.String("us-west-2a"),
-// 					InstanceType:     pulumi.String("m5.large"),
-// 					KeyName:          pulumi.String("my-key"),
-// 				},
-// 			},
-// 			SpotPrice:      pulumi.String("0.005"),
-// 			TargetCapacity: pulumi.Int(2),
-// 			ValidUntil:     pulumi.String("2019-11-04T20:44:20Z"),
-// 		})
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	})
-// }
-// ```
-// ### Using multiple launch configurations
-//
-// ```go
-// package main
-//
-// import (
-// 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
-// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-// )
-//
-// func main() {
-// 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		_, err := ec2.GetSubnetIds(ctx, &ec2.GetSubnetIdsArgs{
-// 			VpcId: _var.Vpc_id,
-// 		}, nil)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		fooLaunchTemplate, err := ec2.NewLaunchTemplate(ctx, "fooLaunchTemplate", &ec2.LaunchTemplateArgs{
-// 			ImageId:      pulumi.String("ami-516b9131"),
-// 			InstanceType: pulumi.String("m1.small"),
-// 			KeyName:      pulumi.String("some-key"),
-// 		})
-// 		if err != nil {
-// 			return err
-// 		}
-// 		_, err = ec2.NewSpotFleetRequest(ctx, "fooSpotFleetRequest", &ec2.SpotFleetRequestArgs{
-// 			IamFleetRole:   pulumi.String("arn:aws:iam::12345678:role/spot-fleet"),
-// 			SpotPrice:      pulumi.String("0.005"),
-// 			TargetCapacity: pulumi.Int(2),
-// 			ValidUntil:     pulumi.String("2019-11-04T20:44:20Z"),
-// 			LaunchTemplateConfigs: ec2.SpotFleetRequestLaunchTemplateConfigArray{
-// 				&ec2.SpotFleetRequestLaunchTemplateConfigArgs{
-// 					LaunchTemplateSpecification: &ec2.SpotFleetRequestLaunchTemplateConfigLaunchTemplateSpecificationArgs{
-// 						Id:      fooLaunchTemplate.ID(),
-// 						Version: fooLaunchTemplate.LatestVersion,
-// 					},
-// 					Overrides: ec2.SpotFleetRequestLaunchTemplateConfigOverrideArray{
-// 						&ec2.SpotFleetRequestLaunchTemplateConfigOverrideArgs{
-// 							SubnetId: pulumi.Any(data.Aws_subnets.Example.Ids[0]),
-// 						},
-// 						&ec2.SpotFleetRequestLaunchTemplateConfigOverrideArgs{
-// 							SubnetId: pulumi.Any(data.Aws_subnets.Example.Ids[1]),
-// 						},
-// 						&ec2.SpotFleetRequestLaunchTemplateConfigOverrideArgs{
-// 							SubnetId: pulumi.Any(data.Aws_subnets.Example.Ids[2]),
-// 						},
-// 					},
-// 				},
-// 			},
-// 		}, pulumi.DependsOn([]pulumi.Resource{
-// 			aws_iam_policy_attachment.Test - attach,
-// 		}))
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	})
-// }
-// ```
-//
 // ## Import
 //
-// Spot Fleet Requests can be imported using `id`, e.g.
+// Spot Fleet Requests can be imported using `id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/spotFleetRequest:SpotFleetRequest fleet sfr-005e9ec8-5546-4c31-b317-31a62325411e
@@ -625,7 +421,7 @@ type SpotFleetRequestInput interface {
 }
 
 func (*SpotFleetRequest) ElementType() reflect.Type {
-	return reflect.TypeOf((*SpotFleetRequest)(nil))
+	return reflect.TypeOf((**SpotFleetRequest)(nil)).Elem()
 }
 
 func (i *SpotFleetRequest) ToSpotFleetRequestOutput() SpotFleetRequestOutput {
@@ -634,35 +430,6 @@ func (i *SpotFleetRequest) ToSpotFleetRequestOutput() SpotFleetRequestOutput {
 
 func (i *SpotFleetRequest) ToSpotFleetRequestOutputWithContext(ctx context.Context) SpotFleetRequestOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(SpotFleetRequestOutput)
-}
-
-func (i *SpotFleetRequest) ToSpotFleetRequestPtrOutput() SpotFleetRequestPtrOutput {
-	return i.ToSpotFleetRequestPtrOutputWithContext(context.Background())
-}
-
-func (i *SpotFleetRequest) ToSpotFleetRequestPtrOutputWithContext(ctx context.Context) SpotFleetRequestPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(SpotFleetRequestPtrOutput)
-}
-
-type SpotFleetRequestPtrInput interface {
-	pulumi.Input
-
-	ToSpotFleetRequestPtrOutput() SpotFleetRequestPtrOutput
-	ToSpotFleetRequestPtrOutputWithContext(ctx context.Context) SpotFleetRequestPtrOutput
-}
-
-type spotFleetRequestPtrType SpotFleetRequestArgs
-
-func (*spotFleetRequestPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**SpotFleetRequest)(nil))
-}
-
-func (i *spotFleetRequestPtrType) ToSpotFleetRequestPtrOutput() SpotFleetRequestPtrOutput {
-	return i.ToSpotFleetRequestPtrOutputWithContext(context.Background())
-}
-
-func (i *spotFleetRequestPtrType) ToSpotFleetRequestPtrOutputWithContext(ctx context.Context) SpotFleetRequestPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(SpotFleetRequestPtrOutput)
 }
 
 // SpotFleetRequestArrayInput is an input type that accepts SpotFleetRequestArray and SpotFleetRequestArrayOutput values.
@@ -718,7 +485,7 @@ func (i SpotFleetRequestMap) ToSpotFleetRequestMapOutputWithContext(ctx context.
 type SpotFleetRequestOutput struct{ *pulumi.OutputState }
 
 func (SpotFleetRequestOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SpotFleetRequest)(nil))
+	return reflect.TypeOf((**SpotFleetRequest)(nil)).Elem()
 }
 
 func (o SpotFleetRequestOutput) ToSpotFleetRequestOutput() SpotFleetRequestOutput {
@@ -729,44 +496,10 @@ func (o SpotFleetRequestOutput) ToSpotFleetRequestOutputWithContext(ctx context.
 	return o
 }
 
-func (o SpotFleetRequestOutput) ToSpotFleetRequestPtrOutput() SpotFleetRequestPtrOutput {
-	return o.ToSpotFleetRequestPtrOutputWithContext(context.Background())
-}
-
-func (o SpotFleetRequestOutput) ToSpotFleetRequestPtrOutputWithContext(ctx context.Context) SpotFleetRequestPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v SpotFleetRequest) *SpotFleetRequest {
-		return &v
-	}).(SpotFleetRequestPtrOutput)
-}
-
-type SpotFleetRequestPtrOutput struct{ *pulumi.OutputState }
-
-func (SpotFleetRequestPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**SpotFleetRequest)(nil))
-}
-
-func (o SpotFleetRequestPtrOutput) ToSpotFleetRequestPtrOutput() SpotFleetRequestPtrOutput {
-	return o
-}
-
-func (o SpotFleetRequestPtrOutput) ToSpotFleetRequestPtrOutputWithContext(ctx context.Context) SpotFleetRequestPtrOutput {
-	return o
-}
-
-func (o SpotFleetRequestPtrOutput) Elem() SpotFleetRequestOutput {
-	return o.ApplyT(func(v *SpotFleetRequest) SpotFleetRequest {
-		if v != nil {
-			return *v
-		}
-		var ret SpotFleetRequest
-		return ret
-	}).(SpotFleetRequestOutput)
-}
-
 type SpotFleetRequestArrayOutput struct{ *pulumi.OutputState }
 
 func (SpotFleetRequestArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]SpotFleetRequest)(nil))
+	return reflect.TypeOf((*[]*SpotFleetRequest)(nil)).Elem()
 }
 
 func (o SpotFleetRequestArrayOutput) ToSpotFleetRequestArrayOutput() SpotFleetRequestArrayOutput {
@@ -778,15 +511,15 @@ func (o SpotFleetRequestArrayOutput) ToSpotFleetRequestArrayOutputWithContext(ct
 }
 
 func (o SpotFleetRequestArrayOutput) Index(i pulumi.IntInput) SpotFleetRequestOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SpotFleetRequest {
-		return vs[0].([]SpotFleetRequest)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *SpotFleetRequest {
+		return vs[0].([]*SpotFleetRequest)[vs[1].(int)]
 	}).(SpotFleetRequestOutput)
 }
 
 type SpotFleetRequestMapOutput struct{ *pulumi.OutputState }
 
 func (SpotFleetRequestMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]SpotFleetRequest)(nil))
+	return reflect.TypeOf((*map[string]*SpotFleetRequest)(nil)).Elem()
 }
 
 func (o SpotFleetRequestMapOutput) ToSpotFleetRequestMapOutput() SpotFleetRequestMapOutput {
@@ -798,14 +531,16 @@ func (o SpotFleetRequestMapOutput) ToSpotFleetRequestMapOutputWithContext(ctx co
 }
 
 func (o SpotFleetRequestMapOutput) MapIndex(k pulumi.StringInput) SpotFleetRequestOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) SpotFleetRequest {
-		return vs[0].(map[string]SpotFleetRequest)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *SpotFleetRequest {
+		return vs[0].(map[string]*SpotFleetRequest)[vs[1].(string)]
 	}).(SpotFleetRequestOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestInput)(nil)).Elem(), &SpotFleetRequest{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestArrayInput)(nil)).Elem(), SpotFleetRequestArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SpotFleetRequestMapInput)(nil)).Elem(), SpotFleetRequestMap{})
 	pulumi.RegisterOutputType(SpotFleetRequestOutput{})
-	pulumi.RegisterOutputType(SpotFleetRequestPtrOutput{})
 	pulumi.RegisterOutputType(SpotFleetRequestArrayOutput{})
 	pulumi.RegisterOutputType(SpotFleetRequestMapOutput{})
 }

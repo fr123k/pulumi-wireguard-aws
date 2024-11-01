@@ -161,13 +161,13 @@ import (
 // ```
 // ## Notes
 //
-// If both VPCs are not in the same AWS account do not enable the `autoAccept` attribute.
+// If both VPCs are not in the same AWS account and region do not enable the `autoAccept` attribute.
 // The accepter can manage its side of the connection using the `ec2.VpcPeeringConnectionAccepter` resource
 // or accept the connection manually using the AWS Management Console, AWS CLI, through SDKs, etc.
 //
 // ## Import
 //
-// VPC Peering resources can be imported using the `vpc peering id`, e.g.
+// VPC Peering resources can be imported using the `vpc peering id`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:ec2/vpcPeeringConnection:VpcPeeringConnection test_connection pcx-111aaa111
@@ -182,7 +182,7 @@ type VpcPeeringConnection struct {
 	// An optional configuration block that allows for [VPC Peering Connection](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html) options to be set for the VPC that accepts
 	// the peering connection (a maximum of one).
 	Accepter VpcPeeringConnectionAccepterTypeOutput `pulumi:"accepter"`
-	// Accept the peering (both VPCs need to be in the same AWS account).
+	// Accept the peering (both VPCs need to be in the same AWS account and region).
 	AutoAccept pulumi.BoolPtrOutput `pulumi:"autoAccept"`
 	// The AWS account ID of the owner of the peer VPC.
 	// Defaults to the account ID the [AWS provider](https://www.terraform.io/docs/providers/aws/index.html) is currently connected to.
@@ -243,7 +243,7 @@ type vpcPeeringConnectionState struct {
 	// An optional configuration block that allows for [VPC Peering Connection](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html) options to be set for the VPC that accepts
 	// the peering connection (a maximum of one).
 	Accepter *VpcPeeringConnectionAccepterType `pulumi:"accepter"`
-	// Accept the peering (both VPCs need to be in the same AWS account).
+	// Accept the peering (both VPCs need to be in the same AWS account and region).
 	AutoAccept *bool `pulumi:"autoAccept"`
 	// The AWS account ID of the owner of the peer VPC.
 	// Defaults to the account ID the [AWS provider](https://www.terraform.io/docs/providers/aws/index.html) is currently connected to.
@@ -270,7 +270,7 @@ type VpcPeeringConnectionState struct {
 	// An optional configuration block that allows for [VPC Peering Connection](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html) options to be set for the VPC that accepts
 	// the peering connection (a maximum of one).
 	Accepter VpcPeeringConnectionAccepterTypePtrInput
-	// Accept the peering (both VPCs need to be in the same AWS account).
+	// Accept the peering (both VPCs need to be in the same AWS account and region).
 	AutoAccept pulumi.BoolPtrInput
 	// The AWS account ID of the owner of the peer VPC.
 	// Defaults to the account ID the [AWS provider](https://www.terraform.io/docs/providers/aws/index.html) is currently connected to.
@@ -299,7 +299,7 @@ type vpcPeeringConnectionArgs struct {
 	// An optional configuration block that allows for [VPC Peering Connection](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html) options to be set for the VPC that accepts
 	// the peering connection (a maximum of one).
 	Accepter *VpcPeeringConnectionAccepterType `pulumi:"accepter"`
-	// Accept the peering (both VPCs need to be in the same AWS account).
+	// Accept the peering (both VPCs need to be in the same AWS account and region).
 	AutoAccept *bool `pulumi:"autoAccept"`
 	// The AWS account ID of the owner of the peer VPC.
 	// Defaults to the account ID the [AWS provider](https://www.terraform.io/docs/providers/aws/index.html) is currently connected to.
@@ -314,8 +314,6 @@ type vpcPeeringConnectionArgs struct {
 	Requester *VpcPeeringConnectionRequester `pulumi:"requester"`
 	// A map of tags to assign to the resource. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags map[string]string `pulumi:"tags"`
-	// A map of tags assigned to the resource, including those inherited from the provider .
-	TagsAll map[string]string `pulumi:"tagsAll"`
 	// The ID of the requester VPC.
 	VpcId string `pulumi:"vpcId"`
 }
@@ -325,7 +323,7 @@ type VpcPeeringConnectionArgs struct {
 	// An optional configuration block that allows for [VPC Peering Connection](https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html) options to be set for the VPC that accepts
 	// the peering connection (a maximum of one).
 	Accepter VpcPeeringConnectionAccepterTypePtrInput
-	// Accept the peering (both VPCs need to be in the same AWS account).
+	// Accept the peering (both VPCs need to be in the same AWS account and region).
 	AutoAccept pulumi.BoolPtrInput
 	// The AWS account ID of the owner of the peer VPC.
 	// Defaults to the account ID the [AWS provider](https://www.terraform.io/docs/providers/aws/index.html) is currently connected to.
@@ -340,8 +338,6 @@ type VpcPeeringConnectionArgs struct {
 	Requester VpcPeeringConnectionRequesterPtrInput
 	// A map of tags to assign to the resource. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapInput
-	// A map of tags assigned to the resource, including those inherited from the provider .
-	TagsAll pulumi.StringMapInput
 	// The ID of the requester VPC.
 	VpcId pulumi.StringInput
 }
@@ -358,7 +354,7 @@ type VpcPeeringConnectionInput interface {
 }
 
 func (*VpcPeeringConnection) ElementType() reflect.Type {
-	return reflect.TypeOf((*VpcPeeringConnection)(nil))
+	return reflect.TypeOf((**VpcPeeringConnection)(nil)).Elem()
 }
 
 func (i *VpcPeeringConnection) ToVpcPeeringConnectionOutput() VpcPeeringConnectionOutput {
@@ -367,35 +363,6 @@ func (i *VpcPeeringConnection) ToVpcPeeringConnectionOutput() VpcPeeringConnecti
 
 func (i *VpcPeeringConnection) ToVpcPeeringConnectionOutputWithContext(ctx context.Context) VpcPeeringConnectionOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(VpcPeeringConnectionOutput)
-}
-
-func (i *VpcPeeringConnection) ToVpcPeeringConnectionPtrOutput() VpcPeeringConnectionPtrOutput {
-	return i.ToVpcPeeringConnectionPtrOutputWithContext(context.Background())
-}
-
-func (i *VpcPeeringConnection) ToVpcPeeringConnectionPtrOutputWithContext(ctx context.Context) VpcPeeringConnectionPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(VpcPeeringConnectionPtrOutput)
-}
-
-type VpcPeeringConnectionPtrInput interface {
-	pulumi.Input
-
-	ToVpcPeeringConnectionPtrOutput() VpcPeeringConnectionPtrOutput
-	ToVpcPeeringConnectionPtrOutputWithContext(ctx context.Context) VpcPeeringConnectionPtrOutput
-}
-
-type vpcPeeringConnectionPtrType VpcPeeringConnectionArgs
-
-func (*vpcPeeringConnectionPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**VpcPeeringConnection)(nil))
-}
-
-func (i *vpcPeeringConnectionPtrType) ToVpcPeeringConnectionPtrOutput() VpcPeeringConnectionPtrOutput {
-	return i.ToVpcPeeringConnectionPtrOutputWithContext(context.Background())
-}
-
-func (i *vpcPeeringConnectionPtrType) ToVpcPeeringConnectionPtrOutputWithContext(ctx context.Context) VpcPeeringConnectionPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(VpcPeeringConnectionPtrOutput)
 }
 
 // VpcPeeringConnectionArrayInput is an input type that accepts VpcPeeringConnectionArray and VpcPeeringConnectionArrayOutput values.
@@ -451,7 +418,7 @@ func (i VpcPeeringConnectionMap) ToVpcPeeringConnectionMapOutputWithContext(ctx 
 type VpcPeeringConnectionOutput struct{ *pulumi.OutputState }
 
 func (VpcPeeringConnectionOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*VpcPeeringConnection)(nil))
+	return reflect.TypeOf((**VpcPeeringConnection)(nil)).Elem()
 }
 
 func (o VpcPeeringConnectionOutput) ToVpcPeeringConnectionOutput() VpcPeeringConnectionOutput {
@@ -462,44 +429,10 @@ func (o VpcPeeringConnectionOutput) ToVpcPeeringConnectionOutputWithContext(ctx 
 	return o
 }
 
-func (o VpcPeeringConnectionOutput) ToVpcPeeringConnectionPtrOutput() VpcPeeringConnectionPtrOutput {
-	return o.ToVpcPeeringConnectionPtrOutputWithContext(context.Background())
-}
-
-func (o VpcPeeringConnectionOutput) ToVpcPeeringConnectionPtrOutputWithContext(ctx context.Context) VpcPeeringConnectionPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v VpcPeeringConnection) *VpcPeeringConnection {
-		return &v
-	}).(VpcPeeringConnectionPtrOutput)
-}
-
-type VpcPeeringConnectionPtrOutput struct{ *pulumi.OutputState }
-
-func (VpcPeeringConnectionPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**VpcPeeringConnection)(nil))
-}
-
-func (o VpcPeeringConnectionPtrOutput) ToVpcPeeringConnectionPtrOutput() VpcPeeringConnectionPtrOutput {
-	return o
-}
-
-func (o VpcPeeringConnectionPtrOutput) ToVpcPeeringConnectionPtrOutputWithContext(ctx context.Context) VpcPeeringConnectionPtrOutput {
-	return o
-}
-
-func (o VpcPeeringConnectionPtrOutput) Elem() VpcPeeringConnectionOutput {
-	return o.ApplyT(func(v *VpcPeeringConnection) VpcPeeringConnection {
-		if v != nil {
-			return *v
-		}
-		var ret VpcPeeringConnection
-		return ret
-	}).(VpcPeeringConnectionOutput)
-}
-
 type VpcPeeringConnectionArrayOutput struct{ *pulumi.OutputState }
 
 func (VpcPeeringConnectionArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]VpcPeeringConnection)(nil))
+	return reflect.TypeOf((*[]*VpcPeeringConnection)(nil)).Elem()
 }
 
 func (o VpcPeeringConnectionArrayOutput) ToVpcPeeringConnectionArrayOutput() VpcPeeringConnectionArrayOutput {
@@ -511,15 +444,15 @@ func (o VpcPeeringConnectionArrayOutput) ToVpcPeeringConnectionArrayOutputWithCo
 }
 
 func (o VpcPeeringConnectionArrayOutput) Index(i pulumi.IntInput) VpcPeeringConnectionOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) VpcPeeringConnection {
-		return vs[0].([]VpcPeeringConnection)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *VpcPeeringConnection {
+		return vs[0].([]*VpcPeeringConnection)[vs[1].(int)]
 	}).(VpcPeeringConnectionOutput)
 }
 
 type VpcPeeringConnectionMapOutput struct{ *pulumi.OutputState }
 
 func (VpcPeeringConnectionMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]VpcPeeringConnection)(nil))
+	return reflect.TypeOf((*map[string]*VpcPeeringConnection)(nil)).Elem()
 }
 
 func (o VpcPeeringConnectionMapOutput) ToVpcPeeringConnectionMapOutput() VpcPeeringConnectionMapOutput {
@@ -531,14 +464,16 @@ func (o VpcPeeringConnectionMapOutput) ToVpcPeeringConnectionMapOutputWithContex
 }
 
 func (o VpcPeeringConnectionMapOutput) MapIndex(k pulumi.StringInput) VpcPeeringConnectionOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) VpcPeeringConnection {
-		return vs[0].(map[string]VpcPeeringConnection)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *VpcPeeringConnection {
+		return vs[0].(map[string]*VpcPeeringConnection)[vs[1].(string)]
 	}).(VpcPeeringConnectionOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionInput)(nil)).Elem(), &VpcPeeringConnection{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionArrayInput)(nil)).Elem(), VpcPeeringConnectionArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*VpcPeeringConnectionMapInput)(nil)).Elem(), VpcPeeringConnectionMap{})
 	pulumi.RegisterOutputType(VpcPeeringConnectionOutput{})
-	pulumi.RegisterOutputType(VpcPeeringConnectionPtrOutput{})
 	pulumi.RegisterOutputType(VpcPeeringConnectionArrayOutput{})
 	pulumi.RegisterOutputType(VpcPeeringConnectionMapOutput{})
 }

@@ -28,6 +28,13 @@ type StackSummary struct {
 
 	// ResourceCount is the number of resources associated with this stack, as applicable.
 	ResourceCount *int `json:"resourceCount,omitempty"`
+
+	// Links to the stack in the Pulumi Console
+	Links StackLinks `json:"links,omitempty"`
+}
+
+type StackLinks struct {
+	Self string `json:"self"`
 }
 
 // ListStacksResponse returns a set of stack summaries. This call is designed to be inexpensive.
@@ -48,6 +55,12 @@ type CreateStackRequest struct {
 
 	// An optional set of tags to apply to the stack.
 	Tags map[StackTagName]string `json:"tags,omitempty"`
+
+	// An optional set of teams to assign to the stack.
+	Teams []string `json:"teams,omitempty"`
+
+	// An optional state to initialize the stack with.
+	State *UntypedDeployment `json:"state,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.
@@ -75,6 +88,23 @@ type DecryptValueRequest struct {
 type DecryptValueResponse struct {
 	// The decrypted value.
 	Plaintext []byte `json:"plaintext"`
+}
+
+// Log3rdPartyDecryptionEvent defines the request body for logging a 3rd party secrets provider decryption event.
+type Log3rdPartyDecryptionEvent struct {
+	SecretName  string `json:"secretName,omitempty"`
+	CommandName string `json:"commandName,omitempty"`
+}
+
+// BulkDecryptValueRequest defines the request body for bulk decrypting secret values.
+type BulkDecryptValueRequest struct {
+	Ciphertexts [][]byte `json:"ciphertexts"`
+}
+
+// BulkDecryptValueResponse defines the response body for bulk decrypted secret values. The key in
+// the map is the base64 encoding of the ciphertext.
+type BulkDecryptValueResponse struct {
+	Plaintexts map[string][]byte `json:"plaintexts"`
 }
 
 // ExportStackResponse defines the response body for exporting a Stack.

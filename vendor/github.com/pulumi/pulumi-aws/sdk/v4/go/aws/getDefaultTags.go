@@ -4,9 +4,33 @@
 package aws
 
 import (
+	"context"
+	"reflect"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// ## Example Usage
+// ### Basic Usage
+//
+// ```go
+// package main
+//
+// import (
+// 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+// )
+//
+// func main() {
+// 	pulumi.Run(func(ctx *pulumi.Context) error {
+// 		_, err := aws.GetDefaultTags(ctx, nil, nil)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	})
+// }
+// ```
 func GetDefaultTags(ctx *pulumi.Context, args *GetDefaultTagsArgs, opts ...pulumi.InvokeOption) (*GetDefaultTagsResult, error) {
 	var rv GetDefaultTagsResult
 	err := ctx.Invoke("aws:index/getDefaultTags:getDefaultTags", args, &rv, opts...)
@@ -28,4 +52,52 @@ type GetDefaultTagsResult struct {
 	Id string `pulumi:"id"`
 	// Blocks of default tags set on the provider. See details below.
 	Tags map[string]string `pulumi:"tags"`
+}
+
+func GetDefaultTagsOutput(ctx *pulumi.Context, args GetDefaultTagsOutputArgs, opts ...pulumi.InvokeOption) GetDefaultTagsResultOutput {
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (GetDefaultTagsResult, error) {
+			args := v.(GetDefaultTagsArgs)
+			r, err := GetDefaultTags(ctx, &args, opts...)
+			return *r, err
+		}).(GetDefaultTagsResultOutput)
+}
+
+// A collection of arguments for invoking getDefaultTags.
+type GetDefaultTagsOutputArgs struct {
+	// Blocks of default tags set on the provider. See details below.
+	Tags pulumi.StringMapInput `pulumi:"tags"`
+}
+
+func (GetDefaultTagsOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetDefaultTagsArgs)(nil)).Elem()
+}
+
+// A collection of values returned by getDefaultTags.
+type GetDefaultTagsResultOutput struct{ *pulumi.OutputState }
+
+func (GetDefaultTagsResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*GetDefaultTagsResult)(nil)).Elem()
+}
+
+func (o GetDefaultTagsResultOutput) ToGetDefaultTagsResultOutput() GetDefaultTagsResultOutput {
+	return o
+}
+
+func (o GetDefaultTagsResultOutput) ToGetDefaultTagsResultOutputWithContext(ctx context.Context) GetDefaultTagsResultOutput {
+	return o
+}
+
+// The provider-assigned unique ID for this managed resource.
+func (o GetDefaultTagsResultOutput) Id() pulumi.StringOutput {
+	return o.ApplyT(func(v GetDefaultTagsResult) string { return v.Id }).(pulumi.StringOutput)
+}
+
+// Blocks of default tags set on the provider. See details below.
+func (o GetDefaultTagsResultOutput) Tags() pulumi.StringMapOutput {
+	return o.ApplyT(func(v GetDefaultTagsResult) map[string]string { return v.Tags }).(pulumi.StringMapOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(GetDefaultTagsResultOutput{})
 }

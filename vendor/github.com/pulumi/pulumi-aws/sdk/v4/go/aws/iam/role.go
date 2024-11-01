@@ -303,7 +303,7 @@ import (
 //
 // ## Import
 //
-// IAM Roles can be imported using the `name`, e.g.
+// IAM Roles can be imported using the `name`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:iam/role:Role developer developer_name
@@ -321,16 +321,16 @@ type Role struct {
 	Description pulumi.StringPtrOutput `pulumi:"description"`
 	// Whether to force detaching any policies the role has before destroying it. Defaults to `false`.
 	ForceDetachPolicies pulumi.BoolPtrOutput `pulumi:"forceDetachPolicies"`
-	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. Defined below. If no blocks are configured, the provider will ignore any managing any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies.
+	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. See below. If no blocks are configured, this provider will not manage any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies added out of band on `apply`.
 	InlinePolicies RoleInlinePolicyArrayOutput `pulumi:"inlinePolicies"`
-	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, the provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
+	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, this provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
 	ManagedPolicyArns pulumi.StringArrayOutput `pulumi:"managedPolicyArns"`
 	// Maximum session duration (in seconds) that you want to set for the specified role. If you do not specify a value for this setting, the default maximum of one hour is applied. This setting can have a value from 1 hour to 12 hours.
 	MaxSessionDuration pulumi.IntPtrOutput `pulumi:"maxSessionDuration"`
 	// Name of the role policy.
 	Name pulumi.StringOutput `pulumi:"name"`
 	// Creates a unique friendly name beginning with the specified prefix. Conflicts with `name`.
-	NamePrefix pulumi.StringPtrOutput `pulumi:"namePrefix"`
+	NamePrefix pulumi.StringOutput `pulumi:"namePrefix"`
 	// Path to the role. See [IAM Identifiers](https://docs.aws.amazon.com/IAM/latest/UserGuide/Using_Identifiers.html) for more information.
 	Path pulumi.StringPtrOutput `pulumi:"path"`
 	// ARN of the policy that is used to set the permissions boundary for the role.
@@ -385,9 +385,9 @@ type roleState struct {
 	Description *string `pulumi:"description"`
 	// Whether to force detaching any policies the role has before destroying it. Defaults to `false`.
 	ForceDetachPolicies *bool `pulumi:"forceDetachPolicies"`
-	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. Defined below. If no blocks are configured, the provider will ignore any managing any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies.
+	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. See below. If no blocks are configured, this provider will not manage any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies added out of band on `apply`.
 	InlinePolicies []RoleInlinePolicy `pulumi:"inlinePolicies"`
-	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, the provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
+	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, this provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
 	ManagedPolicyArns []string `pulumi:"managedPolicyArns"`
 	// Maximum session duration (in seconds) that you want to set for the specified role. If you do not specify a value for this setting, the default maximum of one hour is applied. This setting can have a value from 1 hour to 12 hours.
 	MaxSessionDuration *int `pulumi:"maxSessionDuration"`
@@ -418,9 +418,9 @@ type RoleState struct {
 	Description pulumi.StringPtrInput
 	// Whether to force detaching any policies the role has before destroying it. Defaults to `false`.
 	ForceDetachPolicies pulumi.BoolPtrInput
-	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. Defined below. If no blocks are configured, the provider will ignore any managing any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies.
+	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. See below. If no blocks are configured, this provider will not manage any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies added out of band on `apply`.
 	InlinePolicies RoleInlinePolicyArrayInput
-	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, the provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
+	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, this provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
 	ManagedPolicyArns pulumi.StringArrayInput
 	// Maximum session duration (in seconds) that you want to set for the specified role. If you do not specify a value for this setting, the default maximum of one hour is applied. This setting can have a value from 1 hour to 12 hours.
 	MaxSessionDuration pulumi.IntPtrInput
@@ -451,9 +451,9 @@ type roleArgs struct {
 	Description *string `pulumi:"description"`
 	// Whether to force detaching any policies the role has before destroying it. Defaults to `false`.
 	ForceDetachPolicies *bool `pulumi:"forceDetachPolicies"`
-	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. Defined below. If no blocks are configured, the provider will ignore any managing any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies.
+	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. See below. If no blocks are configured, this provider will not manage any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies added out of band on `apply`.
 	InlinePolicies []RoleInlinePolicy `pulumi:"inlinePolicies"`
-	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, the provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
+	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, this provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
 	ManagedPolicyArns []string `pulumi:"managedPolicyArns"`
 	// Maximum session duration (in seconds) that you want to set for the specified role. If you do not specify a value for this setting, the default maximum of one hour is applied. This setting can have a value from 1 hour to 12 hours.
 	MaxSessionDuration *int `pulumi:"maxSessionDuration"`
@@ -477,9 +477,9 @@ type RoleArgs struct {
 	Description pulumi.StringPtrInput
 	// Whether to force detaching any policies the role has before destroying it. Defaults to `false`.
 	ForceDetachPolicies pulumi.BoolPtrInput
-	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. Defined below. If no blocks are configured, the provider will ignore any managing any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies.
+	// Configuration block defining an exclusive set of IAM inline policies associated with the IAM role. See below. If no blocks are configured, this provider will not manage any inline policies in this resource. Configuring one empty block (i.e., `inlinePolicy {}`) will cause the provider to remove _all_ inline policies added out of band on `apply`.
 	InlinePolicies RoleInlinePolicyArrayInput
-	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, the provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
+	// Set of exclusive IAM managed policy ARNs to attach to the IAM role. If this attribute is not configured, this provider will ignore policy attachments to this resource. When configured, the provider will align the role's managed policy attachments with this set by attaching or detaching managed policies. Configuring an empty set (i.e., `managedPolicyArns = []`) will cause the provider to remove _all_ managed policy attachments.
 	ManagedPolicyArns pulumi.StringArrayInput
 	// Maximum session duration (in seconds) that you want to set for the specified role. If you do not specify a value for this setting, the default maximum of one hour is applied. This setting can have a value from 1 hour to 12 hours.
 	MaxSessionDuration pulumi.IntPtrInput
@@ -507,7 +507,7 @@ type RoleInput interface {
 }
 
 func (*Role) ElementType() reflect.Type {
-	return reflect.TypeOf((*Role)(nil))
+	return reflect.TypeOf((**Role)(nil)).Elem()
 }
 
 func (i *Role) ToRoleOutput() RoleOutput {
@@ -516,35 +516,6 @@ func (i *Role) ToRoleOutput() RoleOutput {
 
 func (i *Role) ToRoleOutputWithContext(ctx context.Context) RoleOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(RoleOutput)
-}
-
-func (i *Role) ToRolePtrOutput() RolePtrOutput {
-	return i.ToRolePtrOutputWithContext(context.Background())
-}
-
-func (i *Role) ToRolePtrOutputWithContext(ctx context.Context) RolePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(RolePtrOutput)
-}
-
-type RolePtrInput interface {
-	pulumi.Input
-
-	ToRolePtrOutput() RolePtrOutput
-	ToRolePtrOutputWithContext(ctx context.Context) RolePtrOutput
-}
-
-type rolePtrType RoleArgs
-
-func (*rolePtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Role)(nil))
-}
-
-func (i *rolePtrType) ToRolePtrOutput() RolePtrOutput {
-	return i.ToRolePtrOutputWithContext(context.Background())
-}
-
-func (i *rolePtrType) ToRolePtrOutputWithContext(ctx context.Context) RolePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(RolePtrOutput)
 }
 
 // RoleArrayInput is an input type that accepts RoleArray and RoleArrayOutput values.
@@ -600,7 +571,7 @@ func (i RoleMap) ToRoleMapOutputWithContext(ctx context.Context) RoleMapOutput {
 type RoleOutput struct{ *pulumi.OutputState }
 
 func (RoleOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Role)(nil))
+	return reflect.TypeOf((**Role)(nil)).Elem()
 }
 
 func (o RoleOutput) ToRoleOutput() RoleOutput {
@@ -611,44 +582,10 @@ func (o RoleOutput) ToRoleOutputWithContext(ctx context.Context) RoleOutput {
 	return o
 }
 
-func (o RoleOutput) ToRolePtrOutput() RolePtrOutput {
-	return o.ToRolePtrOutputWithContext(context.Background())
-}
-
-func (o RoleOutput) ToRolePtrOutputWithContext(ctx context.Context) RolePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Role) *Role {
-		return &v
-	}).(RolePtrOutput)
-}
-
-type RolePtrOutput struct{ *pulumi.OutputState }
-
-func (RolePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Role)(nil))
-}
-
-func (o RolePtrOutput) ToRolePtrOutput() RolePtrOutput {
-	return o
-}
-
-func (o RolePtrOutput) ToRolePtrOutputWithContext(ctx context.Context) RolePtrOutput {
-	return o
-}
-
-func (o RolePtrOutput) Elem() RoleOutput {
-	return o.ApplyT(func(v *Role) Role {
-		if v != nil {
-			return *v
-		}
-		var ret Role
-		return ret
-	}).(RoleOutput)
-}
-
 type RoleArrayOutput struct{ *pulumi.OutputState }
 
 func (RoleArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Role)(nil))
+	return reflect.TypeOf((*[]*Role)(nil)).Elem()
 }
 
 func (o RoleArrayOutput) ToRoleArrayOutput() RoleArrayOutput {
@@ -660,15 +597,15 @@ func (o RoleArrayOutput) ToRoleArrayOutputWithContext(ctx context.Context) RoleA
 }
 
 func (o RoleArrayOutput) Index(i pulumi.IntInput) RoleOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Role {
-		return vs[0].([]Role)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Role {
+		return vs[0].([]*Role)[vs[1].(int)]
 	}).(RoleOutput)
 }
 
 type RoleMapOutput struct{ *pulumi.OutputState }
 
 func (RoleMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Role)(nil))
+	return reflect.TypeOf((*map[string]*Role)(nil)).Elem()
 }
 
 func (o RoleMapOutput) ToRoleMapOutput() RoleMapOutput {
@@ -680,14 +617,16 @@ func (o RoleMapOutput) ToRoleMapOutputWithContext(ctx context.Context) RoleMapOu
 }
 
 func (o RoleMapOutput) MapIndex(k pulumi.StringInput) RoleOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Role {
-		return vs[0].(map[string]Role)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Role {
+		return vs[0].(map[string]*Role)[vs[1].(string)]
 	}).(RoleOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*RoleInput)(nil)).Elem(), &Role{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RoleArrayInput)(nil)).Elem(), RoleArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RoleMapInput)(nil)).Elem(), RoleMap{})
 	pulumi.RegisterOutputType(RoleOutput{})
-	pulumi.RegisterOutputType(RolePtrOutput{})
 	pulumi.RegisterOutputType(RoleArrayOutput{})
 	pulumi.RegisterOutputType(RoleMapOutput{})
 }

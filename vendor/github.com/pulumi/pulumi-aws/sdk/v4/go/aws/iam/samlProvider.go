@@ -13,9 +13,42 @@ import (
 
 // Provides an IAM SAML provider.
 //
+// ## Example Usage
+//
+// ```go
+// package main
+//
+// import (
+// 	"io/ioutil"
+//
+// 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam"
+// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+// )
+//
+// func readFileOrPanic(path string) pulumi.StringPtrInput {
+// 	data, err := ioutil.ReadFile(path)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	return pulumi.String(string(data))
+// }
+//
+// func main() {
+// 	pulumi.Run(func(ctx *pulumi.Context) error {
+// 		_, err := iam.NewSamlProvider(ctx, "default", &iam.SamlProviderArgs{
+// 			SamlMetadataDocument: readFileOrPanic("saml-metadata.xml"),
+// 		})
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	})
+// }
+// ```
+//
 // ## Import
 //
-// IAM SAML Providers can be imported using the `arn`, e.g.
+// IAM SAML Providers can be imported using the `arn`, e.g.,
 //
 // ```sh
 //  $ pulumi import aws:iam/samlProvider:SamlProvider default arn:aws:iam::123456789012:saml-provider/SAMLADFS
@@ -31,9 +64,9 @@ type SamlProvider struct {
 	SamlMetadataDocument pulumi.StringOutput `pulumi:"samlMetadataDocument"`
 	// Map of resource tags for the IAM SAML provider. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapOutput `pulumi:"tags"`
-	// A map of tags assigned to the resource, including those inherited from the provider .
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
 	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
-	// The expiration date and time for the SAML provider in RFC1123 format, e.g. `Mon, 02 Jan 2006 15:04:05 MST`.
+	// The expiration date and time for the SAML provider in RFC1123 format, e.g., `Mon, 02 Jan 2006 15:04:05 MST`.
 	ValidUntil pulumi.StringOutput `pulumi:"validUntil"`
 }
 
@@ -77,9 +110,9 @@ type samlProviderState struct {
 	SamlMetadataDocument *string `pulumi:"samlMetadataDocument"`
 	// Map of resource tags for the IAM SAML provider. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags map[string]string `pulumi:"tags"`
-	// A map of tags assigned to the resource, including those inherited from the provider .
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
 	TagsAll map[string]string `pulumi:"tagsAll"`
-	// The expiration date and time for the SAML provider in RFC1123 format, e.g. `Mon, 02 Jan 2006 15:04:05 MST`.
+	// The expiration date and time for the SAML provider in RFC1123 format, e.g., `Mon, 02 Jan 2006 15:04:05 MST`.
 	ValidUntil *string `pulumi:"validUntil"`
 }
 
@@ -92,9 +125,9 @@ type SamlProviderState struct {
 	SamlMetadataDocument pulumi.StringPtrInput
 	// Map of resource tags for the IAM SAML provider. .If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
 	Tags pulumi.StringMapInput
-	// A map of tags assigned to the resource, including those inherited from the provider .
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
 	TagsAll pulumi.StringMapInput
-	// The expiration date and time for the SAML provider in RFC1123 format, e.g. `Mon, 02 Jan 2006 15:04:05 MST`.
+	// The expiration date and time for the SAML provider in RFC1123 format, e.g., `Mon, 02 Jan 2006 15:04:05 MST`.
 	ValidUntil pulumi.StringPtrInput
 }
 
@@ -133,7 +166,7 @@ type SamlProviderInput interface {
 }
 
 func (*SamlProvider) ElementType() reflect.Type {
-	return reflect.TypeOf((*SamlProvider)(nil))
+	return reflect.TypeOf((**SamlProvider)(nil)).Elem()
 }
 
 func (i *SamlProvider) ToSamlProviderOutput() SamlProviderOutput {
@@ -142,35 +175,6 @@ func (i *SamlProvider) ToSamlProviderOutput() SamlProviderOutput {
 
 func (i *SamlProvider) ToSamlProviderOutputWithContext(ctx context.Context) SamlProviderOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(SamlProviderOutput)
-}
-
-func (i *SamlProvider) ToSamlProviderPtrOutput() SamlProviderPtrOutput {
-	return i.ToSamlProviderPtrOutputWithContext(context.Background())
-}
-
-func (i *SamlProvider) ToSamlProviderPtrOutputWithContext(ctx context.Context) SamlProviderPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(SamlProviderPtrOutput)
-}
-
-type SamlProviderPtrInput interface {
-	pulumi.Input
-
-	ToSamlProviderPtrOutput() SamlProviderPtrOutput
-	ToSamlProviderPtrOutputWithContext(ctx context.Context) SamlProviderPtrOutput
-}
-
-type samlProviderPtrType SamlProviderArgs
-
-func (*samlProviderPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**SamlProvider)(nil))
-}
-
-func (i *samlProviderPtrType) ToSamlProviderPtrOutput() SamlProviderPtrOutput {
-	return i.ToSamlProviderPtrOutputWithContext(context.Background())
-}
-
-func (i *samlProviderPtrType) ToSamlProviderPtrOutputWithContext(ctx context.Context) SamlProviderPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(SamlProviderPtrOutput)
 }
 
 // SamlProviderArrayInput is an input type that accepts SamlProviderArray and SamlProviderArrayOutput values.
@@ -226,7 +230,7 @@ func (i SamlProviderMap) ToSamlProviderMapOutputWithContext(ctx context.Context)
 type SamlProviderOutput struct{ *pulumi.OutputState }
 
 func (SamlProviderOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SamlProvider)(nil))
+	return reflect.TypeOf((**SamlProvider)(nil)).Elem()
 }
 
 func (o SamlProviderOutput) ToSamlProviderOutput() SamlProviderOutput {
@@ -237,44 +241,10 @@ func (o SamlProviderOutput) ToSamlProviderOutputWithContext(ctx context.Context)
 	return o
 }
 
-func (o SamlProviderOutput) ToSamlProviderPtrOutput() SamlProviderPtrOutput {
-	return o.ToSamlProviderPtrOutputWithContext(context.Background())
-}
-
-func (o SamlProviderOutput) ToSamlProviderPtrOutputWithContext(ctx context.Context) SamlProviderPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v SamlProvider) *SamlProvider {
-		return &v
-	}).(SamlProviderPtrOutput)
-}
-
-type SamlProviderPtrOutput struct{ *pulumi.OutputState }
-
-func (SamlProviderPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**SamlProvider)(nil))
-}
-
-func (o SamlProviderPtrOutput) ToSamlProviderPtrOutput() SamlProviderPtrOutput {
-	return o
-}
-
-func (o SamlProviderPtrOutput) ToSamlProviderPtrOutputWithContext(ctx context.Context) SamlProviderPtrOutput {
-	return o
-}
-
-func (o SamlProviderPtrOutput) Elem() SamlProviderOutput {
-	return o.ApplyT(func(v *SamlProvider) SamlProvider {
-		if v != nil {
-			return *v
-		}
-		var ret SamlProvider
-		return ret
-	}).(SamlProviderOutput)
-}
-
 type SamlProviderArrayOutput struct{ *pulumi.OutputState }
 
 func (SamlProviderArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]SamlProvider)(nil))
+	return reflect.TypeOf((*[]*SamlProvider)(nil)).Elem()
 }
 
 func (o SamlProviderArrayOutput) ToSamlProviderArrayOutput() SamlProviderArrayOutput {
@@ -286,15 +256,15 @@ func (o SamlProviderArrayOutput) ToSamlProviderArrayOutputWithContext(ctx contex
 }
 
 func (o SamlProviderArrayOutput) Index(i pulumi.IntInput) SamlProviderOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SamlProvider {
-		return vs[0].([]SamlProvider)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *SamlProvider {
+		return vs[0].([]*SamlProvider)[vs[1].(int)]
 	}).(SamlProviderOutput)
 }
 
 type SamlProviderMapOutput struct{ *pulumi.OutputState }
 
 func (SamlProviderMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]SamlProvider)(nil))
+	return reflect.TypeOf((*map[string]*SamlProvider)(nil)).Elem()
 }
 
 func (o SamlProviderMapOutput) ToSamlProviderMapOutput() SamlProviderMapOutput {
@@ -306,14 +276,16 @@ func (o SamlProviderMapOutput) ToSamlProviderMapOutputWithContext(ctx context.Co
 }
 
 func (o SamlProviderMapOutput) MapIndex(k pulumi.StringInput) SamlProviderOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) SamlProvider {
-		return vs[0].(map[string]SamlProvider)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *SamlProvider {
+		return vs[0].(map[string]*SamlProvider)[vs[1].(string)]
 	}).(SamlProviderOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*SamlProviderInput)(nil)).Elem(), &SamlProvider{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SamlProviderArrayInput)(nil)).Elem(), SamlProviderArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SamlProviderMapInput)(nil)).Elem(), SamlProviderMap{})
 	pulumi.RegisterOutputType(SamlProviderOutput{})
-	pulumi.RegisterOutputType(SamlProviderPtrOutput{})
 	pulumi.RegisterOutputType(SamlProviderArrayOutput{})
 	pulumi.RegisterOutputType(SamlProviderMapOutput{})
 }

@@ -45,6 +45,11 @@ type DiagnosticEvent struct {
 	Ephemeral bool   `json:"ephemeral,omitempty"`
 }
 
+// StartDebuggingEvent is emitted to start a debugging session.
+type StartDebuggingEvent struct {
+	Config map[string]interface{} `json:"config,omitempty"`
+}
+
 // PolicyEvent is emitted whenever there is Policy violation.
 type PolicyEvent struct {
 	ResourceURN          string `json:"resourceUrn,omitempty"`
@@ -55,8 +60,20 @@ type PolicyEvent struct {
 	PolicyPackVersion    string `json:"policyPackVersion"`
 	PolicyPackVersionTag string `json:"policyPackVersionTag"`
 
-	// EnforcementLevel is one of "warning" or "mandatory".
+	// EnforcementLevel is one of "warning", "mandatory", "remediate", or "none".
 	EnforcementLevel string `json:"enforcementLevel"`
+}
+
+// PolicyRemediationEvent is emitted whenever there is Policy transformation.
+type PolicyRemediationEvent struct {
+	ResourceURN          string                 `json:"resourceUrn,omitempty"`
+	Color                string                 `json:"color"`
+	PolicyName           string                 `json:"policyName"`
+	PolicyPackName       string                 `json:"policyPackName"`
+	PolicyPackVersion    string                 `json:"policyPackVersion"`
+	PolicyPackVersionTag string                 `json:"policyPackVersionTag"`
+	Before               map[string]interface{} `json:"before,omitempty"`
+	After                map[string]interface{} `json:"after,omitempty"`
 }
 
 // PreludeEvent is emitted at the start of an update.
@@ -127,7 +144,9 @@ type StepEventMetadata struct {
 	// Keys that changed with this step.
 	Diffs []string `json:"diffs,omitempty"`
 	// The diff for this step as a list of property paths and difference types.
-	DetailedDiff map[string]PropertyDiff `json:"detailedDiff,omitempty"`
+	// NOTE: We don't want to omitempty this field because we want to distinguish between
+	// a nil value and an empty map. See https://github.com/pulumi/pulumi/pull/15213 for details.
+	DetailedDiff map[string]PropertyDiff `json:"detailedDiff"`
 	// Logical is set if the step is a logical operation in the program.
 	Logical bool `json:"logical,omitempty"`
 	// Provider actually performing the step.
@@ -150,6 +169,8 @@ type StepEventStateMetadata struct {
 	Parent string `json:"parent"`
 	// Protect is true to "protect" this resource (protected resources cannot be deleted).
 	Protect bool `json:"protect,omitempty"`
+	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
+	RetainOnDelete bool `json:"retainOnDelete,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have
 	// filtered out, and large assets have been replaced by hashes as applicable.
 	Inputs map[string]interface{} `json:"inputs"`
@@ -181,6 +202,37 @@ type ResOpFailedEvent struct {
 	Steps    int               `json:"steps"`
 }
 
+// PolicyLoadEvent is emitted when a policy starts loading
+type PolicyLoadEvent struct{}
+
+// ProgressEvent is emitted when a potentially long-running engine process is in
+// progress.
+type ProgressEvent struct {
+	// The type of process (e.g. plugin download, plugin install).
+	Type ProgressType `json:"type"`
+	// A unique identifier for the process.
+	ID string `json:"id"`
+	// A message accompanying the process.
+	Message string `json:"message"`
+	// The number of items completed so far (e.g. bytes received, items installed,
+	// etc.)
+	Completed int64 `json:"received"`
+	// The total number of items that must be completed.
+	Total int64 `json:"total"`
+	// True if and only if the process has completed.
+	Done bool `json:"done"`
+}
+
+// ProgressType is the type of process occurring.
+type ProgressType string
+
+const (
+	// PluginDownload represents a download of a plugin.
+	PluginDownload ProgressType = "plugin-download"
+	// PluginInstall represents the installation of a plugin.
+	PluginInstall ProgressType = "plugin-install"
+)
+
 // EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
 // message. EngineEvent is a discriminated union of all possible event types, and exactly one
 // field will be non-nil.
@@ -197,18 +249,35 @@ type EngineEvent struct {
 	// Timestamp is a Unix timestamp (seconds) of when the event was emitted.
 	Timestamp int `json:"timestamp"`
 
-	CancelEvent      *CancelEvent       `json:"cancelEvent,omitempty"`
-	StdoutEvent      *StdoutEngineEvent `json:"stdoutEvent,omitempty"`
-	DiagnosticEvent  *DiagnosticEvent   `json:"diagnosticEvent,omitempty"`
-	PreludeEvent     *PreludeEvent      `json:"preludeEvent,omitempty"`
-	SummaryEvent     *SummaryEvent      `json:"summaryEvent,omitempty"`
-	ResourcePreEvent *ResourcePreEvent  `json:"resourcePreEvent,omitempty"`
-	ResOutputsEvent  *ResOutputsEvent   `json:"resOutputsEvent,omitempty"`
-	ResOpFailedEvent *ResOpFailedEvent  `json:"resOpFailedEvent,omitempty"`
-	PolicyEvent      *PolicyEvent       `json:"policyEvent,omitempty"`
+	CancelEvent            *CancelEvent            `json:"cancelEvent,omitempty"`
+	StdoutEvent            *StdoutEngineEvent      `json:"stdoutEvent,omitempty"`
+	DiagnosticEvent        *DiagnosticEvent        `json:"diagnosticEvent,omitempty"`
+	PreludeEvent           *PreludeEvent           `json:"preludeEvent,omitempty"`
+	SummaryEvent           *SummaryEvent           `json:"summaryEvent,omitempty"`
+	ResourcePreEvent       *ResourcePreEvent       `json:"resourcePreEvent,omitempty"`
+	ResOutputsEvent        *ResOutputsEvent        `json:"resOutputsEvent,omitempty"`
+	ResOpFailedEvent       *ResOpFailedEvent       `json:"resOpFailedEvent,omitempty"`
+	PolicyEvent            *PolicyEvent            `json:"policyEvent,omitempty"`
+	PolicyRemediationEvent *PolicyRemediationEvent `json:"policyRemediationEvent,omitempty"`
+	PolicyLoadEvent        *PolicyLoadEvent        `json:"policyLoadEvent,omitempty"`
+	StartDebuggingEvent    *StartDebuggingEvent    `json:"startDebuggingEvent,omitempty"`
+	ProgressEvent          *ProgressEvent          `json:"progressEvent,omitempty"`
 }
 
 // EngineEventBatch is a group of engine events.
 type EngineEventBatch struct {
 	Events []EngineEvent `json:"events"`
+}
+
+// GetUpdateEventsResponse contains the engine events for an update.
+type GetUpdateEventsResponse struct {
+	// Events are returned sorted by their internal sequence number (not exposed to the API).
+	// So the last Event in the slice is the most recent event which was stored in the database.
+	// (Should sort identical to timestamp, but may not if we support parallel writes.)
+	Events []EngineEvent `json:"events"`
+
+	// ContinuationToken is an opaque value the client can send to fetch more recent
+	// events if the update is still in progress. Will be nil once all events have
+	// been returned and the update is complete.
+	ContinuationToken *string `json:"continuationToken"`
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
-	user "github.com/tweekmonster/luser"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -59,6 +59,8 @@ const (
 
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"
+	// DeploymentSuffix is the base suffix for deployment settings files (e.g. "Pulumi.<stack>.deploy.yaml").
+	DeploymentSuffix = "deploy"
 	// RepoFile is the name of the file that holds information specific to the entire repository.
 	RepoFile = "settings.json"
 	// WorkspaceFile is the name of the file that holds workspace information.
@@ -92,22 +94,61 @@ func DetectProjectPath() (string, error) {
 
 // DetectProjectStackPath returns the name of the file to store stack specific project settings in. We place stack
 // specific settings next to the Pulumi.yaml file, named like: Pulumi.<stack-name>.yaml
-func DetectProjectStackPath(stackName tokens.QName) (string, error) {
+func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
+	proj, projPath, err := DetectProjectAndPath()
+	if err != nil {
+		return nil, "", err
+	}
+
+	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
+
+	if proj.StackConfigDir != "" {
+		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+	}
+
+	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
+}
+
+func DetectProjectStackDeploymentPath(stackName tokens.QName) (string, error) {
 	proj, projPath, err := DetectProjectAndPath()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
-		filepath.Ext(projPath))), nil
+	fileName := fmt.Sprintf("%s.%s.%s%s", ProjectFile, qnameFileName(stackName), DeploymentSuffix, filepath.Ext(projPath))
+
+	if proj.StackConfigDir != "" {
+		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+	}
+
+	return filepath.Join(filepath.Dir(projPath), fileName), nil
 }
+
+var ErrProjectNotFound = errors.New("no project file found")
 
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
 // hierarchy.  If no project is found, an empty path is returned.
-func DetectProjectPathFrom(path string) (string, error) {
-	return fsutil.WalkUp(path, isProject, func(s string) bool {
+func DetectProjectPathFrom(dir string) (string, error) {
+	path, err := fsutil.WalkUp(dir, isProject, func(s string) bool {
 		return true
 	})
+	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
+	// users can run pulumi with unreadable root directories.
+	if errors.Is(err, fs.ErrPermission) {
+		err = nil
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("failed to locate Pulumi.yaml project file: %w", err)
+	}
+
+	if path == "" {
+		// Embed/wrap ErrProjectNotFound
+		return "", fmt.Errorf(
+			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+				"created a project yet, use `pulumi new` to do so: %w", dir, ErrProjectNotFound)
+	}
+	return path, nil
 }
 
 // DetectPolicyPackPathFrom locates the closest Pulumi policy project from the given path,
@@ -119,6 +160,26 @@ func DetectPolicyPackPathFrom(path string) (string, error) {
 	})
 }
 
+// DetectPolicyPackPathAt locates the PulumiPolicy file at the given path. If no project is found, an empty path is
+// returned. Unlike DetectPolicyPackPathFrom, this function does not search upwards in the directory hierarchy.
+func DetectPolicyPackPathAt(path string) (string, error) {
+	for _, ext := range encoding.Exts {
+		packPath := filepath.Join(path, PolicyPackFile+ext)
+		info, err := os.Stat(packPath)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+			return "", err
+		}
+		if info.IsDir() {
+			return "", nil
+		}
+		return packPath, nil
+	}
+	return "", nil
+}
+
 // DetectProject loads the closest project from the current working directory, or an error if not found.
 func DetectProject() (*Project, error) {
 	proj, _, err := DetectProjectAndPath()
@@ -126,12 +187,21 @@ func DetectProject() (*Project, error) {
 }
 
 func DetectProjectStack(stackName tokens.QName) (*ProjectStack, error) {
-	path, err := DetectProjectStackPath(stackName)
+	project, path, err := DetectProjectStackPath(stackName)
 	if err != nil {
 		return nil, err
 	}
 
-	return LoadProjectStack(path)
+	return LoadProjectStack(project, path)
+}
+
+func DetectProjectStackDeployment(stackName tokens.QName) (*ProjectStackDeployment, error) {
+	path, err := DetectProjectStackDeploymentPath(stackName)
+	if err != nil {
+		return nil, err
+	}
+
+	return LoadProjectStackDeployment(path)
 }
 
 // DetectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
@@ -141,7 +211,8 @@ func DetectProjectAndPath() (*Project, string, error) {
 	if err != nil {
 		return nil, "", err
 	} else if path == "" {
-		return nil, "", errors.Errorf("no Pulumi project found in the current working directory")
+		return nil, "", errors.New("no Pulumi project found in the current working directory. " +
+			"Move to a directory with a Pulumi project or try creating a project first with `pulumi new`.")
 	}
 
 	proj, err := LoadProject(path)
@@ -159,12 +230,21 @@ func SaveProject(proj *Project) error {
 }
 
 func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
-	path, err := DetectProjectStackPath(stackName)
+	_, path, err := DetectProjectStackPath(stackName)
 	if err != nil {
 		return err
 	}
 
 	return stack.Save(path)
+}
+
+func SaveProjectStackDeployment(stackName tokens.QName, deployment *ProjectStackDeployment) error {
+	path, err := DetectProjectStackDeploymentPath(stackName)
+	if err != nil {
+		return err
+	}
+
+	return deployment.Save(path)
 }
 
 // isProject returns true if the path references what appears to be a valid project.  If problems are detected -- like
@@ -222,7 +302,11 @@ func GetPulumiHomeDir() (string, error) {
 	// Otherwise, use the current user's home dir + .pulumi
 	user, err := user.Current()
 	if err != nil {
-		return "", errors.Wrapf(err, "getting current user")
+		return "", fmt.Errorf("getting current user: %w", err)
+	}
+
+	if user == nil || user.HomeDir == "" {
+		return "", fmt.Errorf("could not find user home directory, set %s", PulumiHomeEnvVar)
 	}
 
 	return filepath.Join(user.HomeDir, BookkeepingDir), nil

@@ -1,0 +1,7 @@
+encryptionsalt: v1:xeoddRS9pbM=:v1:4/uh1DEhgRGw8OCB:Kc2F8enq/xw/sR0CDY5pGimI4uw/jA==
+config:
+  aws:region: eu-west-1
+  wireguard-aws-pulumi:vpn_enabled_ssh: "true"
+  hcloud:token:
+    secure: v1:cIMkGQYlzgYgRTXT:a++2FbpnTpaqYtGmzLwGg/Gl3aUjhfpCJHYrwSfKg+rm7N+Z7L7i3sNvLyM+1IdoVkcOlz2VWXjMsG2IY5Yv4bI32nh0FgqBNllojLyGxTY=
+  wireguard-aws-pulumi:ssh_key_file: ./keys/id_rsa_wireguard

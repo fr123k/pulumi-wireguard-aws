@@ -11,8 +11,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Provides an EC2 host resource. This allows hosts to be created, updated,
-// and deleted.
+// Provides an EC2 Host resource. This allows Dedicated Hosts to be allocated, modified, and released.
 //
 // ## Example Usage
 //
@@ -26,9 +25,9 @@ import (
 //
 // func main() {
 // 	pulumi.Run(func(ctx *pulumi.Context) error {
-// 		test, err := ec2.NewDedicatedHost(ctx, "test", &ec2.DedicatedHostArgs{
+// 		_, err := ec2.NewDedicatedHost(ctx, "test", &ec2.DedicatedHostArgs{
 // 			AutoPlacement:    pulumi.String("on"),
-// 			AvailabilityZone: pulumi.String("us-west-1a"),
+// 			AvailabilityZone: pulumi.String("us-west-2a"),
 // 			HostRecovery:     pulumi.String("on"),
 // 			InstanceType:     pulumi.String("c5.18xlarge"),
 // 		})
@@ -42,25 +41,32 @@ import (
 //
 // ## Import
 //
-// hosts can be imported using the `host_id`, e.g.
+// Hosts can be imported using the host `id`, e.g.,
 //
 // ```sh
-//  $ pulumi import aws:ec2/dedicatedHost:DedicatedHost host_id h-0385a99d0e4b20cbb
+//  $ pulumi import aws:ec2/dedicatedHost:DedicatedHost example h-0385a99d0e4b20cbb
 // ```
 type DedicatedHost struct {
 	pulumi.CustomResourceState
 
-	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID.
-	AutoPlacement pulumi.StringOutput `pulumi:"autoPlacement"`
-	// The AZ to start the host in.
+	// The ARN of the Dedicated Host.
+	Arn pulumi.StringOutput `pulumi:"arn"`
+	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID. Valid values: `on`, `off`. Default: `on`.
+	AutoPlacement pulumi.StringPtrOutput `pulumi:"autoPlacement"`
+	// The Availability Zone in which to allocate the Dedicated Host.
 	AvailabilityZone pulumi.StringOutput `pulumi:"availabilityZone"`
-	// Indicates whether to enable or disable host recovery for the Dedicated Host. Host recovery is disabled by default.
-	HostRecovery pulumi.StringOutput `pulumi:"hostRecovery"`
-	// Specifies the instance family for which to configure your Dedicated Host. Mutually exclusive with `instanceType`.
+	// Indicates whether to enable or disable host recovery for the Dedicated Host. Valid values: `on`, `off`. Default: `off`.
+	HostRecovery pulumi.StringPtrOutput `pulumi:"hostRecovery"`
+	// Specifies the instance family to be supported by the Dedicated Hosts. If you specify an instance family, the Dedicated Hosts support multiple instance types within that instance family. Exactly one of `instanceFamily` or `instanceType` must be specified.
 	InstanceFamily pulumi.StringPtrOutput `pulumi:"instanceFamily"`
-	// Specifies the instance type for which to configure your Dedicated Host. When you specify the instance type, that is the only instance type that you can launch onto that host. Mutually exclusive with `instanceFamily`.
+	// Specifies the instance type to be supported by the Dedicated Hosts. If you specify an instance type, the Dedicated Hosts support instances of the specified instance type only.  Exactly one of `instanceFamily` or `instanceType` must be specified.
 	InstanceType pulumi.StringPtrOutput `pulumi:"instanceType"`
-	Tags         pulumi.StringMapOutput `pulumi:"tags"`
+	// The ID of the AWS account that owns the Dedicated Host.
+	OwnerId pulumi.StringOutput `pulumi:"ownerId"`
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapOutput `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapOutput `pulumi:"tagsAll"`
 }
 
 // NewDedicatedHost registers a new resource with the given unique name, arguments, and options.
@@ -95,31 +101,45 @@ func GetDedicatedHost(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering DedicatedHost resources.
 type dedicatedHostState struct {
-	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID.
+	// The ARN of the Dedicated Host.
+	Arn *string `pulumi:"arn"`
+	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID. Valid values: `on`, `off`. Default: `on`.
 	AutoPlacement *string `pulumi:"autoPlacement"`
-	// The AZ to start the host in.
+	// The Availability Zone in which to allocate the Dedicated Host.
 	AvailabilityZone *string `pulumi:"availabilityZone"`
-	// Indicates whether to enable or disable host recovery for the Dedicated Host. Host recovery is disabled by default.
+	// Indicates whether to enable or disable host recovery for the Dedicated Host. Valid values: `on`, `off`. Default: `off`.
 	HostRecovery *string `pulumi:"hostRecovery"`
-	// Specifies the instance family for which to configure your Dedicated Host. Mutually exclusive with `instanceType`.
+	// Specifies the instance family to be supported by the Dedicated Hosts. If you specify an instance family, the Dedicated Hosts support multiple instance types within that instance family. Exactly one of `instanceFamily` or `instanceType` must be specified.
 	InstanceFamily *string `pulumi:"instanceFamily"`
-	// Specifies the instance type for which to configure your Dedicated Host. When you specify the instance type, that is the only instance type that you can launch onto that host. Mutually exclusive with `instanceFamily`.
-	InstanceType *string           `pulumi:"instanceType"`
-	Tags         map[string]string `pulumi:"tags"`
+	// Specifies the instance type to be supported by the Dedicated Hosts. If you specify an instance type, the Dedicated Hosts support instances of the specified instance type only.  Exactly one of `instanceFamily` or `instanceType` must be specified.
+	InstanceType *string `pulumi:"instanceType"`
+	// The ID of the AWS account that owns the Dedicated Host.
+	OwnerId *string `pulumi:"ownerId"`
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll map[string]string `pulumi:"tagsAll"`
 }
 
 type DedicatedHostState struct {
-	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID.
+	// The ARN of the Dedicated Host.
+	Arn pulumi.StringPtrInput
+	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID. Valid values: `on`, `off`. Default: `on`.
 	AutoPlacement pulumi.StringPtrInput
-	// The AZ to start the host in.
+	// The Availability Zone in which to allocate the Dedicated Host.
 	AvailabilityZone pulumi.StringPtrInput
-	// Indicates whether to enable or disable host recovery for the Dedicated Host. Host recovery is disabled by default.
+	// Indicates whether to enable or disable host recovery for the Dedicated Host. Valid values: `on`, `off`. Default: `off`.
 	HostRecovery pulumi.StringPtrInput
-	// Specifies the instance family for which to configure your Dedicated Host. Mutually exclusive with `instanceType`.
+	// Specifies the instance family to be supported by the Dedicated Hosts. If you specify an instance family, the Dedicated Hosts support multiple instance types within that instance family. Exactly one of `instanceFamily` or `instanceType` must be specified.
 	InstanceFamily pulumi.StringPtrInput
-	// Specifies the instance type for which to configure your Dedicated Host. When you specify the instance type, that is the only instance type that you can launch onto that host. Mutually exclusive with `instanceFamily`.
+	// Specifies the instance type to be supported by the Dedicated Hosts. If you specify an instance type, the Dedicated Hosts support instances of the specified instance type only.  Exactly one of `instanceFamily` or `instanceType` must be specified.
 	InstanceType pulumi.StringPtrInput
-	Tags         pulumi.StringMapInput
+	// The ID of the AWS account that owns the Dedicated Host.
+	OwnerId pulumi.StringPtrInput
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
+	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
+	TagsAll pulumi.StringMapInput
 }
 
 func (DedicatedHostState) ElementType() reflect.Type {
@@ -127,32 +147,34 @@ func (DedicatedHostState) ElementType() reflect.Type {
 }
 
 type dedicatedHostArgs struct {
-	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID.
+	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID. Valid values: `on`, `off`. Default: `on`.
 	AutoPlacement *string `pulumi:"autoPlacement"`
-	// The AZ to start the host in.
+	// The Availability Zone in which to allocate the Dedicated Host.
 	AvailabilityZone string `pulumi:"availabilityZone"`
-	// Indicates whether to enable or disable host recovery for the Dedicated Host. Host recovery is disabled by default.
+	// Indicates whether to enable or disable host recovery for the Dedicated Host. Valid values: `on`, `off`. Default: `off`.
 	HostRecovery *string `pulumi:"hostRecovery"`
-	// Specifies the instance family for which to configure your Dedicated Host. Mutually exclusive with `instanceType`.
+	// Specifies the instance family to be supported by the Dedicated Hosts. If you specify an instance family, the Dedicated Hosts support multiple instance types within that instance family. Exactly one of `instanceFamily` or `instanceType` must be specified.
 	InstanceFamily *string `pulumi:"instanceFamily"`
-	// Specifies the instance type for which to configure your Dedicated Host. When you specify the instance type, that is the only instance type that you can launch onto that host. Mutually exclusive with `instanceFamily`.
-	InstanceType *string           `pulumi:"instanceType"`
-	Tags         map[string]string `pulumi:"tags"`
+	// Specifies the instance type to be supported by the Dedicated Hosts. If you specify an instance type, the Dedicated Hosts support instances of the specified instance type only.  Exactly one of `instanceFamily` or `instanceType` must be specified.
+	InstanceType *string `pulumi:"instanceType"`
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags map[string]string `pulumi:"tags"`
 }
 
 // The set of arguments for constructing a DedicatedHost resource.
 type DedicatedHostArgs struct {
-	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID.
+	// Indicates whether the host accepts any untargeted instance launches that match its instance type configuration, or if it only accepts Host tenancy instance launches that specify its unique host ID. Valid values: `on`, `off`. Default: `on`.
 	AutoPlacement pulumi.StringPtrInput
-	// The AZ to start the host in.
+	// The Availability Zone in which to allocate the Dedicated Host.
 	AvailabilityZone pulumi.StringInput
-	// Indicates whether to enable or disable host recovery for the Dedicated Host. Host recovery is disabled by default.
+	// Indicates whether to enable or disable host recovery for the Dedicated Host. Valid values: `on`, `off`. Default: `off`.
 	HostRecovery pulumi.StringPtrInput
-	// Specifies the instance family for which to configure your Dedicated Host. Mutually exclusive with `instanceType`.
+	// Specifies the instance family to be supported by the Dedicated Hosts. If you specify an instance family, the Dedicated Hosts support multiple instance types within that instance family. Exactly one of `instanceFamily` or `instanceType` must be specified.
 	InstanceFamily pulumi.StringPtrInput
-	// Specifies the instance type for which to configure your Dedicated Host. When you specify the instance type, that is the only instance type that you can launch onto that host. Mutually exclusive with `instanceFamily`.
+	// Specifies the instance type to be supported by the Dedicated Hosts. If you specify an instance type, the Dedicated Hosts support instances of the specified instance type only.  Exactly one of `instanceFamily` or `instanceType` must be specified.
 	InstanceType pulumi.StringPtrInput
-	Tags         pulumi.StringMapInput
+	// Map of tags to assign to this resource. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
+	Tags pulumi.StringMapInput
 }
 
 func (DedicatedHostArgs) ElementType() reflect.Type {
@@ -167,7 +189,7 @@ type DedicatedHostInput interface {
 }
 
 func (*DedicatedHost) ElementType() reflect.Type {
-	return reflect.TypeOf((*DedicatedHost)(nil))
+	return reflect.TypeOf((**DedicatedHost)(nil)).Elem()
 }
 
 func (i *DedicatedHost) ToDedicatedHostOutput() DedicatedHostOutput {
@@ -176,35 +198,6 @@ func (i *DedicatedHost) ToDedicatedHostOutput() DedicatedHostOutput {
 
 func (i *DedicatedHost) ToDedicatedHostOutputWithContext(ctx context.Context) DedicatedHostOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DedicatedHostOutput)
-}
-
-func (i *DedicatedHost) ToDedicatedHostPtrOutput() DedicatedHostPtrOutput {
-	return i.ToDedicatedHostPtrOutputWithContext(context.Background())
-}
-
-func (i *DedicatedHost) ToDedicatedHostPtrOutputWithContext(ctx context.Context) DedicatedHostPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(DedicatedHostPtrOutput)
-}
-
-type DedicatedHostPtrInput interface {
-	pulumi.Input
-
-	ToDedicatedHostPtrOutput() DedicatedHostPtrOutput
-	ToDedicatedHostPtrOutputWithContext(ctx context.Context) DedicatedHostPtrOutput
-}
-
-type dedicatedHostPtrType DedicatedHostArgs
-
-func (*dedicatedHostPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**DedicatedHost)(nil))
-}
-
-func (i *dedicatedHostPtrType) ToDedicatedHostPtrOutput() DedicatedHostPtrOutput {
-	return i.ToDedicatedHostPtrOutputWithContext(context.Background())
-}
-
-func (i *dedicatedHostPtrType) ToDedicatedHostPtrOutputWithContext(ctx context.Context) DedicatedHostPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(DedicatedHostPtrOutput)
 }
 
 // DedicatedHostArrayInput is an input type that accepts DedicatedHostArray and DedicatedHostArrayOutput values.
@@ -260,7 +253,7 @@ func (i DedicatedHostMap) ToDedicatedHostMapOutputWithContext(ctx context.Contex
 type DedicatedHostOutput struct{ *pulumi.OutputState }
 
 func (DedicatedHostOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*DedicatedHost)(nil))
+	return reflect.TypeOf((**DedicatedHost)(nil)).Elem()
 }
 
 func (o DedicatedHostOutput) ToDedicatedHostOutput() DedicatedHostOutput {
@@ -271,44 +264,10 @@ func (o DedicatedHostOutput) ToDedicatedHostOutputWithContext(ctx context.Contex
 	return o
 }
 
-func (o DedicatedHostOutput) ToDedicatedHostPtrOutput() DedicatedHostPtrOutput {
-	return o.ToDedicatedHostPtrOutputWithContext(context.Background())
-}
-
-func (o DedicatedHostOutput) ToDedicatedHostPtrOutputWithContext(ctx context.Context) DedicatedHostPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v DedicatedHost) *DedicatedHost {
-		return &v
-	}).(DedicatedHostPtrOutput)
-}
-
-type DedicatedHostPtrOutput struct{ *pulumi.OutputState }
-
-func (DedicatedHostPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**DedicatedHost)(nil))
-}
-
-func (o DedicatedHostPtrOutput) ToDedicatedHostPtrOutput() DedicatedHostPtrOutput {
-	return o
-}
-
-func (o DedicatedHostPtrOutput) ToDedicatedHostPtrOutputWithContext(ctx context.Context) DedicatedHostPtrOutput {
-	return o
-}
-
-func (o DedicatedHostPtrOutput) Elem() DedicatedHostOutput {
-	return o.ApplyT(func(v *DedicatedHost) DedicatedHost {
-		if v != nil {
-			return *v
-		}
-		var ret DedicatedHost
-		return ret
-	}).(DedicatedHostOutput)
-}
-
 type DedicatedHostArrayOutput struct{ *pulumi.OutputState }
 
 func (DedicatedHostArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]DedicatedHost)(nil))
+	return reflect.TypeOf((*[]*DedicatedHost)(nil)).Elem()
 }
 
 func (o DedicatedHostArrayOutput) ToDedicatedHostArrayOutput() DedicatedHostArrayOutput {
@@ -320,15 +279,15 @@ func (o DedicatedHostArrayOutput) ToDedicatedHostArrayOutputWithContext(ctx cont
 }
 
 func (o DedicatedHostArrayOutput) Index(i pulumi.IntInput) DedicatedHostOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DedicatedHost {
-		return vs[0].([]DedicatedHost)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *DedicatedHost {
+		return vs[0].([]*DedicatedHost)[vs[1].(int)]
 	}).(DedicatedHostOutput)
 }
 
 type DedicatedHostMapOutput struct{ *pulumi.OutputState }
 
 func (DedicatedHostMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]DedicatedHost)(nil))
+	return reflect.TypeOf((*map[string]*DedicatedHost)(nil)).Elem()
 }
 
 func (o DedicatedHostMapOutput) ToDedicatedHostMapOutput() DedicatedHostMapOutput {
@@ -340,14 +299,16 @@ func (o DedicatedHostMapOutput) ToDedicatedHostMapOutputWithContext(ctx context.
 }
 
 func (o DedicatedHostMapOutput) MapIndex(k pulumi.StringInput) DedicatedHostOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) DedicatedHost {
-		return vs[0].(map[string]DedicatedHost)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *DedicatedHost {
+		return vs[0].(map[string]*DedicatedHost)[vs[1].(string)]
 	}).(DedicatedHostOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*DedicatedHostInput)(nil)).Elem(), &DedicatedHost{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DedicatedHostArrayInput)(nil)).Elem(), DedicatedHostArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DedicatedHostMapInput)(nil)).Elem(), DedicatedHostMap{})
 	pulumi.RegisterOutputType(DedicatedHostOutput{})
-	pulumi.RegisterOutputType(DedicatedHostPtrOutput{})
 	pulumi.RegisterOutputType(DedicatedHostArrayOutput{})
 	pulumi.RegisterOutputType(DedicatedHostMapOutput{})
 }
