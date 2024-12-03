@@ -6,5 +6,6 @@ build/
 Pulumi.wireguard-ec2.yaml
 .vagrant
 .vscode
+coverage.txt
 
 .DS_Store
