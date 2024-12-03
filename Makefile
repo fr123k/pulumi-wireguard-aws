@@ -49,6 +49,9 @@ create: pulumi-init
 	# verbose logging
 	# pulumi up --yes --logtostderr -v=9 2> out.txt
 
+preview: pulumi-init
+	pulumi preview --diff
+
 clean:
 	pulumi destroy --yes -s ${STACK_NAME}
 	pulumi stack rm -f --yes ${STACK_NAME} || true

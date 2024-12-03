@@ -17,14 +17,14 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "")
 
-		security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), model.VPCArgsDefault)
+		security := model.NewSecurityArgsForVPC(cfg.GetBool("vpn_enabled_ssh"), model.VpcArg("temporal", "10.9.1.0"))
 		security.Println()
 
-		vpc, err := network.CreateVPC(ctx, model.VPCArgsDefault)
+		vpc, err := network.CreateVPC(ctx, model.VpcArg("temporal", "10.9.1.0"))
 		if err != nil {
 			return err
 		}
-		keyPairName := "wireguard24-"
+		keyPairName := "temporal-"
 
 		var keyPair *model.KeyPairArgs
 
@@ -44,32 +44,26 @@ func main() {
 
 		// keyPair.Username = "frank.ittermann"
 		computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
-		computeArgs.Name = "wireguard24"
+		computeArgs.Name = "temporal"
 		computeArgs.Images = []*model.ImageArgs{
 			{
 				Name: "ubuntu-24.04",
 			},
 		}
 
-		vm, err := compute.CreateWireguardVM(ctx, computeArgs)
+		vm, err := compute.CreateTemporalVM(ctx, computeArgs)
 
 		if err != nil {
 			return err
 		}
 
-		sshConnector := shared.WireguardProvisioner(ctx, keyPair)
+		sshConnector := shared.TemporalProvisioner(ctx, keyPair)
 
 		//TODO implement exporting of mutliptl ssh output with one session
-		compute.ProvisionVM(ctx, "wireguard", &model.ProvisionArgs{
+		compute.ProvisionVM(ctx, "temporal", &model.ProvisionArgs{
 			ExportName:    "wireguard.publicKey",
 			SourceCompute: vm,
 		}, &sshConnector)
-
-		sshConnectorPassword := shared.WireguardPasswordProvisioner(ctx, keyPair)
-		compute.ProvisionVM(ctx, "wireguard", &model.ProvisionArgs{
-			ExportName:    "wireguard.password",
-			SourceCompute: vm,
-		}, &sshConnectorPassword)
 
 		return err
 	})
