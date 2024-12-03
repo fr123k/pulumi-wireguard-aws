@@ -15,7 +15,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-const size = "cx11"
+const size = "cpx11"
 
 type Infrastructure struct {
 	Server    *hcloud.Server
@@ -32,7 +32,7 @@ func exports(ctx *pulumi.Context, infra *Infrastructure) {
 	ctx.Export("publicDns", infra.Server.Ipv4Address)
 }
 
-func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, export exportsFnc) (*Infrastructure, error) {
+func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, ip string, export exportsFnc) (*Infrastructure, error) {
 	if computeArgs.UserData != nil {
 		ctx.Export("cloud-init", pulumi.String(computeArgs.UserData.Content))
 	}
@@ -84,7 +84,12 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, export ex
 		serverArgs.UserData = pulumi.String(computeArgs.UserData.Content)
 	}
 
-	server, err := hcloud.NewServer(ctx, computeArgs.Name, &serverArgs, pulumi.IgnoreChanges([]string{"firewallIds"}))
+	server, err := hcloud.NewServer(ctx, computeArgs.Name, &serverArgs, pulumi.IgnoreChanges([]string{
+		"firewallIds",
+		"allowDeprecatedImages",
+		"deleteProtection",
+		"ignoreRemoteFirewallIds",
+	}))
 
 	if err != nil {
 		return nil, err
@@ -93,7 +98,7 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, export ex
 	_, err = hcloud.NewServerNetwork(ctx, "srvnetwork", &hcloud.ServerNetworkArgs{
 		ServerId:  utility.IDtoInt(server.CustomResourceState),
 		NetworkId: computeArgs.Vpc.IDtoInt(),
-		Ip:        pulumi.String("10.8.0.145"),
+		Ip:        pulumi.String(ip),
 	})
 	if err != nil {
 		return nil, err
@@ -146,7 +151,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 
 	computeArgs.UserData = userData
 
-	infra, err := CreateServer(ctx, computeArgs, exports)
+	infra, err := CreateServer(ctx, computeArgs, "10.8.1.145", exports)
 
 	if err != nil {
 		return nil, err
@@ -160,8 +165,8 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 	}, nil
 }
 
-func ProvisionVM(ctx *pulumi.Context, provisionArgs *model.ProvisionArgs, actor actors.Connector) error {
-	name := fmt.Sprintf("wireguard-%s", utility.RandomSecret(12))
+func ProvisionVM(ctx *pulumi.Context, prefix string, provisionArgs *model.ProvisionArgs, actor actors.Connector) error {
+	name := fmt.Sprintf("%s-%s", prefix, utility.RandomSecret(12))
 	server, err := hcloud.GetServer(ctx, name, provisionArgs.SourceCompute.ID(), &hcloud.ServerState{
 		Status: pulumi.String("running"),
 	})

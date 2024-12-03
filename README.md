@@ -364,3 +364,9 @@ To open a SSH shell just run the following command.
   only a restart of the wireguard systemd service would be needed.
 * use the pulumi log to print message on the terminal
 * generalize security rules implementation
+
+
+# Engine-CI Todos
+* generate the Pulumi.yaml based on the arch (to support multiple binaries depending on the arch)
+* finding the ~/.pulumi folder to mount the stacks folder properly into the pulumi container (only the stacks dir)
+* implement pulumi cache to skip always downloading of plugins

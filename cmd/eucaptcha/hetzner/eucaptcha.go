@@ -71,7 +71,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
 
 	computeArgs.SecurityGroups = shared.JenkinsSecGroup(tags, security)
 
-	vm, err := compute.CreateServer(ctx, computeArgs, exports)
+	vm, err := compute.CreateServer(ctx, computeArgs, "10.8.0.145", exports)
 
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
 
 	sshConnector := shared.JenkinsProvisioner(ctx, keyPair)
 
-	compute.ProvisionVM(ctx, &model.ProvisionArgs{
+	compute.ProvisionVM(ctx, "eucaptcha", &model.ProvisionArgs{
 		ExportName: "eucaptcha.result",
 		SourceCompute: &model.ComputeResult{
 			Compute: vm.Server.CustomResourceState,

@@ -1,0 +1,348 @@
+#!/bin/bash -v
+
+export DEBIAN_FRONTEND=noninteractive
+export TEMPORAL_CLI_VERSION=1.1.2
+export TEMPORAL_SERVER_VERSION=1.25.2
+export TEMPORAL_UI_VERSION=2.32.0
+export TEMPORAL_WORKER_VERSION=0.1.0
+
+# Setup ssh user
+useradd -m -s /bin/bash -G sudo frank.ittermann
+mkdir -p /home/frank.ittermann/.ssh/
+echo "frank.ittermann ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/frank_ittermann
+chmod 0440 /etc/sudoers.d/frank_ittermann
+
+cp /root/.ssh/authorized_keys /home/frank.ittermann/.ssh/authorized_keys
+chmod 600 /home/frank.ittermann/.ssh/authorized_keys
+chown -R frank.ittermann:frank.ittermann /home/frank.ittermann
+
+# Hardening ssh
+sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's|[#]*PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config
+sed -i -e '$aPubkeyAcceptedAlgorithms +ssh-rsa' /etc/ssh/sshd_config
+sed -i -e '$aAllowUsers frank.ittermann' /etc/ssh/sshd_config
+
+systemctl reload ssh.service
+
+apt-get update -y
+apt-get upgrade -y
+
+# Setup fail2ban
+apt-get install -y fail2ban
+
+cat > /etc/fail2ban/filter.d/nginx-4xx.conf <<EOF
+[Definition]
+failregex = ^<HOST> - \S+ \[\] "[^"]*" (404|444|403|400)
+
+datepattern = {^LN-BEG}%%ExY(?P<_sep>[-/.])%%m(?P=_sep)%%d[T ]%%H:%%M:%%S(?:[.,]%%f)?(?:\s*%%z)?
+              ^[^\[]*\[({DATE})
+              {^LN-BEG}
+EOF
+
+cat > /etc/fail2ban/jail.d/defaults-debian.conf <<EOF
+[DEFAULT]
+banaction = nftables
+banaction_allports = nftables[type=allports]
+backend = systemd
+
+[sshd]
+enabled = true
+
+[nginx-4xx]
+enabled  = true
+port     = http,https
+filter   = nginx-4xx
+logpath  = %(nginx_access_log)s
+backend  = polling
+maxretry = 3
+EOF
+
+systemctl enable fail2ban
+systemctl restart fail2ban
+systemctl status fail2ban
+
+curl -OL https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz
+tar -xzf temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz
+
+sudo mv temporal /usr/bin/temporal
+sudo chmod +x /usr/bin/temporal
+
+curl -OL https://github.com/temporalio/temporal/releases/download/v${TEMPORAL_SERVER_VERSION}/temporal_${TEMPORAL_SERVER_VERSION}_linux_amd64.tar.gz
+tar -xzf temporal_${TEMPORAL_SERVER_VERSION}_linux_amd64.tar.gz
+
+sudo mv temporal-server /usr/bin/temporal-server
+sudo chmod +x /usr/bin/temporal-server
+
+curl -OL https://github.com/temporalio/ui-server/releases/download/v${TEMPORAL_UI_VERSION}/ui-server_${TEMPORAL_UI_VERSION}_linux_amd64.tar.gz
+tar -xzf ui-server_${TEMPORAL_UI_VERSION}_linux_amd64.tar.gz
+
+sudo mv ui-server /usr/bin/temporal-ui-server
+sudo chmod +x /usr/bin/temporal-ui-server
+
+curl -OL https://github.com/containifyci/temporal-worker/releases/download/v${TEMPORAL_WORKER_VERSION}/temporal-worker_linux_x86_64
+
+sudo mv temporal-worker_linux_x86_64 /usr/bin/temporal-worker
+sudo chmod +x /usr/bin/temporal-worker
+
+sudo useradd temporal
+sudo mkdir /etc/temporal
+sudo chown temporal /etc/temporal
+
+cat > /etc/temporal/temporal-server.yaml <<- EOF
+log:
+  stdout: true
+  level: info
+
+persistence:
+  defaultStore: sqlite-default
+  visibilityStore: sqlite-visibility
+  numHistoryShards: 4
+  datastores:
+    sqlite-default:
+      sql:
+        pluginName: "sqlite"
+        databaseName: "/etc/temporal/default.db"
+        connectAddr: "localhost"
+        connectProtocol: "tcp"
+        connectAttributes:
+          cache: "private"
+          setup: true
+
+    sqlite-visibility:
+      sql:
+        pluginName: "sqlite"
+        databaseName: "/etc/temporal/visibility.db"
+        connectAddr: "localhost"
+        connectProtocol: "tcp"
+        connectAttributes:
+          cache: "private"
+          setup: true
+
+global:
+  membership:
+    maxJoinDuration: 30s
+    broadcastAddress: "127.0.0.1"
+  pprof:
+    port: 7936
+
+services:
+  frontend:
+    rpc:
+      grpcPort: 7236
+      membershipPort: 6933
+      bindOnLocalHost: true
+      httpPort: 7243
+
+  matching:
+    rpc:
+      grpcPort: 7235
+      membershipPort: 6935
+      bindOnLocalHost: true
+
+  history:
+    rpc:
+      grpcPort: 7234
+      membershipPort: 6934
+      bindOnLocalHost: true
+
+  worker:
+    rpc:
+      membershipPort: 6939
+
+clusterMetadata:
+  enableGlobalNamespace: false
+  failoverVersionIncrement: 10
+  masterClusterName: "active"
+  currentClusterName: "active"
+  clusterInformation:
+    active:
+      enabled: true
+      initialFailoverVersion: 1
+      rpcName: "frontend"
+      rpcAddress: "localhost:7236"
+      httpAddress: "localhost:7243"
+
+dcRedirectionPolicy:
+  policy: "noop"
+EOF
+
+cat > /etc/temporal/temporal-ui-server.yaml <<- EOF
+temporalGrpcAddress: 127.0.0.1:7236
+host: 127.0.0.1
+port: 8233
+enableUi: true
+cors:
+  allowOrigins:
+    - http://localhost:8233
+defaultNamespace: default
+EOF
+
+cat > /etc/systemd/system/temporal.service <<- EOF
+[Unit]
+Description=Temporal Service
+After=network.target
+
+[Service]
+User=temporal
+Group=temporal
+ExecStart=temporal-server -r / -c etc/temporal/ -e temporal-server start
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl start temporal
+sudo systemctl enable temporal
+sudo systemctl status temporal
+
+cat > /etc/systemd/system/temporal-ui.service <<- EOF
+[Unit]
+Description=Temporal UI Server
+After=network.target
+
+[Service]
+User=temporal
+Group=temporal
+ExecStart=temporal-ui-server -r / -c etc/temporal/ -e temporal-ui-server start
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl start temporal-ui
+sudo systemctl enable temporal-ui
+sudo systemctl status temporal-ui
+
+cat > /etc/systemd/system/temporal-worker-update.service <<- EOF
+[Unit]
+Description=Temporal Worker Update
+
+[Service]
+Type=oneshot
+ExecStart=temporal-worker update
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/temporal-worker-update.timer <<- EOF
+[Unit]
+Description=Run self update for temporal-worker
+Requires=temporal-worker.service
+
+[Timer]
+Unit=temporal-worker-update.service
+OnCalendar=*:00/30
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl start temporal-worker-update
+sudo systemctl enable temporal-worker-update
+sudo systemctl status temporal-worker-update
+sudo systemctl start temporal-worker-update.timer
+sudo systemctl enable temporal-worker-update.timer
+
+cat > /etc/systemd/system/temporal-worker.service <<- EOF
+[Unit]
+Description=Temporal Worker
+After=network.target
+StartLimitIntervalSec=120s
+StartLimitBurst=10
+
+[Service]
+User=temporal
+Group=temporal
+ExecStart=temporal-worker
+ExecStartPre=-temporal-worker update
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl start temporal-worker
+sudo systemctl enable temporal-worker
+sudo systemctl status temporal-worker
+
+sudo apt-get update
+sudo apt-get install -y nginx
+
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+
+sudo certbot certonly --nginx -d temporal.dunebot.io -m frank.ittermann@yahoo.de --agree-tos -n
+
+cat > /etc/nginx/sites-available/temporal-ui <<- EOF
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name temporal.dunebot.io
+
+    access_log /var/log/nginx/temporal.access.log;
+    error_log /var/log/nginx/temporal.error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:8233;
+        proxy_http_version 1.1;
+        proxy_read_timeout 300;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-PORT \$remote_port;
+        allow 78.47.97.138;
+        deny all;
+        # Return 444 for denied requests
+        error_page 403 = /custom_444;
+
+        location = /custom_444 {
+            return 444;
+        }
+    }
+
+    listen 443 ssl;
+    # RSA certificate
+    ssl_certificate /etc/letsencrypt/live/temporal.dunebot.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/temporal.dunebot.io/privkey.pem;
+
+    # Redirect non-https traffic to https
+    if (\$scheme != "https") {
+        return 301 https://$host$request_uri;
+    }
+}
+EOF
+
+cat > /etc/nginx/sites-available/temporal <<- EOF
+server {
+    listen 7233 http2;
+    listen [::]:7233 http2;
+    server_name temporal.dunebot.io
+
+    http2 on;
+
+    keepalive_timeout 90s; # Duration for idle keep-alive connections
+    keepalive_requests 100; # Number of requests per connection
+
+    location / {
+        grpc_pass localhost:7236;
+        # Timeout settings
+        grpc_read_timeout 90s;
+        grpc_send_timeout 90s;
+        proxy_connect_timeout 90s;
+        allow 78.47.97.138;
+        allow ::1;
+        allow 127.0.0.1;
+        deny all;
+    }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/temporal /etc/nginx/sites-enabled/temporal
+sudo rm /etc/nginx/sites-enabled/default 
+sudo ln -s /etc/nginx/sites-available/temporal-ui /etc/nginx/sites-enabled/temporal-ui
+sudo systemctl restart nginx
+
+temporal --address localhost:7236 operator namespace create default

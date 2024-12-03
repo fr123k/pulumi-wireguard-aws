@@ -1,4 +1,4 @@
-name: wireguard-aws-pulumi
+name: temporal-hetzner-pulumi
 runtime:
   name: go
   options:
