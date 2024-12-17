@@ -317,8 +317,8 @@ EOF
 
 cat > /etc/nginx/sites-available/temporal <<- EOF
 server {
-    listen 7233 http2;
-    listen [::]:7233 http2;
+    listen 127.0.0.1:7233 http2;
+    listen [::1]:7233 http2;
     server_name temporal.dunebot.io
 
     http2 on;
@@ -346,3 +346,15 @@ sudo ln -s /etc/nginx/sites-available/temporal-ui /etc/nginx/sites-enabled/tempo
 sudo systemctl restart nginx
 
 temporal --address localhost:7236 operator namespace create default
+
+# setup secret-operator-client to fetch secrets from GCP
+export SECRET_OPERATOR_AUTHENTICATION_TOKEN="{{ SECRET_OPERATOR_AUTHENTICATION_TOKEN }}"
+
+curl -OL https://github.com/containifyci/secret-operator/releases/download/v0.3.0/secret-operator-client_linux_amd64
+sudo mv secret-operator-client_linux_amd64 /usr/bin/secret-operator-client
+sudo chmod +x /usr/bin/secret-operator-client
+
+# fetch secret for the github auth service
+secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} -envfile=/etc/systemd/system/auth-service.env
+
+# TODO setup github auth service as systemd service
