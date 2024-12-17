@@ -11,7 +11,7 @@ import (
 
 func TemporalUserData() (*model.UserData, error) {
 	userDataVariables := map[string]string{
-		// "CLIENT_PUBLICKEY":        "CLIENT_PUBLICKEY",
+		"SECRET_OPERATOR_AUTHENTICATION_TOKEN":        "SECRET_OPERATOR_AUTHENTICATION_TOKEN",
 		// "CLIENT_IP_ADDRESS":       "CLIENT_IP_ADDRESS",
 		// "MAILJET_API_CREDENTIALS": "MAILJET_API_CREDENTIALS",
 		// "METADATA_URL":            "METADATA_URL",
