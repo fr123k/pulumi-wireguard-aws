@@ -3,6 +3,7 @@
 tmp/
 output/
 build/
+keys/
 Pulumi.wireguard-ec2.yaml
 .vagrant
 .vscode
