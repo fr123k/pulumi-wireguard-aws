@@ -4,7 +4,9 @@ export DEBIAN_FRONTEND=noninteractive
 export TEMPORAL_CLI_VERSION=1.1.2
 export TEMPORAL_SERVER_VERSION=1.25.2
 export TEMPORAL_UI_VERSION=2.32.0
-export TEMPORAL_WORKER_VERSION=0.1.0
+export TEMPORAL_WORKER_VERSION=0.3.0
+export SECRET_OPERATOR_VERSION=0.4.0
+export OAUTH2_STORAGE_VERSION=0.2.0
 
 # Setup ssh user
 useradd -m -s /bin/bash -G sudo frank.ittermann
@@ -78,6 +80,16 @@ tar -xzf ui-server_${TEMPORAL_UI_VERSION}_linux_amd64.tar.gz
 
 sudo mv ui-server /usr/bin/temporal-ui-server
 sudo chmod +x /usr/bin/temporal-ui-server
+
+# setup secret-operator-client to fetch secrets from GCP
+export SECRET_OPERATOR_AUTHENTICATION_TOKEN="{{ SECRET_OPERATOR_AUTHENTICATION_TOKEN }}"
+
+curl -OL https://github.com/containifyci/secret-operator/releases/download/v${SECRET_OPERATOR_VERSION}/secret-operator-client_linux_amd64
+sudo mv secret-operator-client_linux_amd64 /usr/bin/secret-operator-client
+sudo chmod +x /usr/bin/secret-operator-client
+
+# fetch secret for the github auth service
+secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} -envfile=/etc/systemd/system/temporal-worker.env
 
 curl -OL https://github.com/containifyci/temporal-worker/releases/download/v${TEMPORAL_WORKER_VERSION}/temporal-worker_linux_x86_64
 
@@ -254,6 +266,7 @@ StartLimitBurst=10
 [Service]
 User=temporal
 Group=temporal
+EnvironmentFile=/etc/systemd/system/temporal-worker.env
 ExecStart=temporal-worker
 ExecStartPre=-temporal-worker update
 Restart=on-failure
@@ -268,18 +281,24 @@ sudo systemctl enable temporal-worker
 sudo systemctl status temporal-worker
 
 sudo apt-get update
+sudo apt-get install -y curl gnupg2 ca-certificates lsb-release ubuntu-keyring
+curl -fsSL https://nginx.org/keys/nginx_signing.key | sudo gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/ubuntu $(lsb_release -cs) nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
+sudo apt-get update
 sudo apt-get install -y nginx
+
+mkdir /etc/nginx/sites-available
 
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
-sudo certbot certonly --nginx -d temporal.dunebot.io -m frank.ittermann@yahoo.de --agree-tos -n
+sudo certbot certonly --nginx -d temporal.dunebot.io,githubapp.dunebot.io  -m frank.ittermann@yahoo.de --agree-tos -n
 
 cat > /etc/nginx/sites-available/temporal-ui <<- EOF
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name temporal.dunebot.io
+    listen 80;
+    listen [::]:80;
+    server_name temporal.dunebot.io;
 
     access_log /var/log/nginx/temporal.access.log;
     error_log /var/log/nginx/temporal.error.log;
@@ -317,9 +336,9 @@ EOF
 
 cat > /etc/nginx/sites-available/temporal <<- EOF
 server {
-    listen 127.0.0.1:7233 http2;
-    listen [::1]:7233 http2;
-    server_name temporal.dunebot.io
+    listen 127.0.0.1:7233;
+    listen [::1]:7233;
+    server_name temporal.dunebot.io;
 
     http2 on;
 
@@ -340,21 +359,179 @@ server {
 }
 EOF
 
-sudo ln -s /etc/nginx/sites-available/temporal /etc/nginx/sites-enabled/temporal
-sudo rm /etc/nginx/sites-enabled/default 
-sudo ln -s /etc/nginx/sites-available/temporal-ui /etc/nginx/sites-enabled/temporal-ui
+sudo ln -s /etc/nginx/sites-available/temporal /etc/nginx/conf.d/temporal.conf
+sudo rm /etc/nginx/conf.d/default 
+sudo ln -s /etc/nginx/sites-available/temporal-ui /etc/nginx/conf.d/temporal-ui.conf
 sudo systemctl restart nginx
 
 temporal --address localhost:7236 operator namespace create default
 
-# setup secret-operator-client to fetch secrets from GCP
-export SECRET_OPERATOR_AUTHENTICATION_TOKEN="{{ SECRET_OPERATOR_AUTHENTICATION_TOKEN }}"
-
-curl -OL https://github.com/containifyci/secret-operator/releases/download/v0.3.0/secret-operator-client_linux_amd64
-sudo mv secret-operator-client_linux_amd64 /usr/bin/secret-operator-client
-sudo chmod +x /usr/bin/secret-operator-client
-
-# fetch secret for the github auth service
-secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} -envfile=/etc/systemd/system/auth-service.env
-
 # TODO setup github auth service as systemd service
+curl -OL https://github.com/containifyci/oauth2-storage/releases/download/v${OAUTH2_STORAGE_VERSION}/oauth2-storage_linux_amd64
+sudo mv oauth2-storage_linux_amd64 /usr/bin/oauth2-storage
+sudo chmod +x /usr/bin/oauth2-storage
+
+cat > /etc/systemd/system/oauth2-storage-update.service <<- EOF
+[Unit]
+Description=OAuth2 Storage Update
+
+[Service]
+Type=oneshot
+ExecStart=oauth2-storage update
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/oauth2-storage-update.timer <<- EOF
+[Unit]
+Description=Run self update for oauth2-storage
+Requires=oauth2-storage-update.service
+
+[Timer]
+Unit=oauth2-storage-update.service
+OnCalendar=*:00/30
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl start oauth2-storage-update
+sudo systemctl enable oauth2-storage-update
+sudo systemctl status oauth2-storage-update
+sudo systemctl start oauth2-storage-update.timer
+sudo systemctl enable oauth2-storage-update.timer
+
+cat > /etc/systemd/system/oauth2-storage.service <<- EOF
+[Unit]
+Description=OAuth2 Storage
+After=network.target
+StartLimitIntervalSec=120s
+StartLimitBurst=10
+
+[Service]
+EnvironmentFile=/etc/systemd/system/temporal-worker.env
+ExecStart=oauth2-storage
+ExecStartPre=-oauth2-storage update
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl start oauth2-storage
+sudo systemctl enable oauth2-storage
+sudo systemctl status oauth2-storage
+
+# dunebot
+
+# TODO implement self update
+
+curl -OL https://github.com/containifyci/dunebot/releases/download/v0.1.0/dunebot_linux_amd64
+sudo mv dunebot_linux_amd64 /usr/bin/dunebot
+sudo chmod +x /usr/bin/dunebot
+
+cat > /etc/systemd/system/dunebot.service <<- EOF
+[Unit]
+Description=DuneBot Service
+After=network.target
+StartLimitIntervalSec=120s
+StartLimitBurst=10
+
+[Service]
+Environment="PORT=8080"
+Environment="ADDRESS=127.0.0.1"
+Environment="DUNEBOT_JWT_SERVER_ADDRESS=localhost:50051"
+Environment="DUNEBOT_GITHUB_OAUTH_SCOPES=repo"
+Environment="DUNEBOT_GITHUB_V3_API_URL=https://api.github.com/"
+Environment="DUNEBOT_GITHUB_WEB_URL=https://github.com/"
+Environment="DUNEBOT_APP_CONFIGURATION_REVIEWER_TYPE=temporal"
+Environment="DUNEBOT_APP_CONFIGURATION_REVIEWER_SERVER_ADDRESS=127.0.0.1:7233"
+EnvironmentFile=/etc/systemd/system/temporal-worker.env
+ExecStart=dunebot app
+#ExecStartPre=-dunebot update
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl start dunebot
+sudo systemctl enable dunebot
+sudo systemctl status dunebot
+
+cat > /etc/systemd/system/dunebot-disptach-job.service <<- EOF
+[Unit]
+Description=DuneBot Disptach Job
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/systemd/system/temporal-worker.env
+ExecStart=dunebot dispatch
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/dunebot-disptach-job.timer <<- EOF
+[Unit]
+Description=Run dunebot dispatch job
+
+[Timer]
+Unit=dunebot-disptach-job.service 
+OnCalendar=*-*-* 10:00:00 UTC
+Persistent=true
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl start dunebot-disptach-job.timer
+sudo systemctl enable dunebot-disptach-job.timer
+
+cat > /etc/nginx/sites-available/dunebot <<- EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name githubapp.dunebot.io;
+
+    access_log /var/log/nginx/dunebot.access.log;
+    error_log /var/log/nginx/dunebot.error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_read_timeout 300;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-PORT \$remote_port;
+        # allow 78.47.97.138;
+        # deny all;
+        # Return 444 for denied requests
+        error_page 403 = /custom_444;
+
+        location = /custom_444 {
+            return 444;
+        }
+    }
+
+    listen 443 ssl;
+    # RSA certificate
+    ssl_certificate /etc/letsencrypt/live/temporal.dunebot.io/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/temporal.dunebot.io/privkey.pem;
+
+    # Redirect non-https traffic to https
+    if (\$scheme != "https") {
+        return 301 https://$host$request_uri;
+    }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/dunebot /etc/nginx/conf.d/dunebot.conf
+sudo systemctl restart nginx

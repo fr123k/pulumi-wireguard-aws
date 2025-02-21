@@ -27,6 +27,92 @@ apt-get upgrade -y
 apt-get install -y fail2ban
 systemctl enable fail2ban
 
+# Setup nginx
+
+sudo apt-get update
+sudo apt-get install -y nginx
+
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+
+sudo certbot certonly --nginx -d wg.fr123k.uk -m frank.ittermann@yahoo.de --agree-tos -n
+
+cat > /etc/nginx/sites-available/router <<- EOF
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    listen 443 ssl;
+
+    server_name wg.fr123k.uk
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    location = /custom_444 {
+        return 444;
+    }
+
+    # Redirect non-https traffic to https
+    if (\$scheme != "https") {
+        return 301 https://$host$request_uri;
+    }
+}
+EOF
+
+cat > /etc/nginx/sites-available/router.secret <<- EOF
+server {
+    listen 8443 ssl;
+    # RSA certificate
+    ssl_certificate /etc/letsencrypt/live/wg.fr123k.uk/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/wg.fr123k.uk/privkey.pem;
+    server_name wg.fr123k.uk
+
+    access_log /var/log/nginx/secret_access.log;
+    error_log /var/log/nginx/secret_error.log;
+
+    error_page 404 = /custom_444;
+
+    # Everything is a 404
+    location / {
+        return 404;
+    }
+
+    location /secrets/ {
+        proxy_pass http://127.0.0.1:8088/;
+        proxy_redirect off;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Real-PORT \$remote_port;
+        #allow 78.47.97.138;
+        #deny all;
+        # Return 444 for denied requests
+        error_page 502 404 403 = /custom_444;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-PORT \$remote_port;
+        #allow 78.47.97.138;
+        #deny all;
+        # Return 444 for denied requests
+        error_page 403 = /custom_444;
+    }
+
+    location = /custom_444 {
+        return 444;
+    }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/router /etc/nginx/sites-enabled/router
+sudo ln -s /etc/nginx/sites-available/router.secret /etc/nginx/sites-enabled/router.secret
+sudo rm /etc/nginx/sites-enabled/default 
+sudo systemctl restart nginx
+
 # Setup wireguard
 apt-get install -y wireguard wireguard-tools pwgen
 
@@ -55,6 +141,8 @@ chmod -R og-rwx /etc/wireguard/*
 sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf
 sysctl -p
 ufw allow http
+ufw allow https
+ufw allow 8443/tcp # this is to bypass wireguard firewall rule
 ufw allow ssh
 ufw allow 51820/udp
 ufw --force enable
@@ -141,7 +229,7 @@ Restart=always
 WorkingDirectory=/usr/local/bin
 Environment="WGUI_PASSWORD=$(cat /tmp/user_password)"
 Environment="SESSION_SECRET=hasdgjh"
-ExecStart=/usr/local/bin/wireguard-ui --bind-address 0.0.0.0:80
+ExecStart=/usr/local/bin/wireguard-ui --bind-address 127.0.0.1:8080
 
 [Install]
 WantedBy=muli-user.target
@@ -182,3 +270,33 @@ systemctl enable wgui-restart-wg.path
 systemctl start wgui-restart-wg.path
 systemctl enable wgui.service
 systemctl start wgui.service
+
+# Setup secret-operator
+
+curl -OL https://github.com/containifyci/secret-operator/releases/download/v0.2.0/secret-operator-server_linux_amd64
+
+sudo mv secret-operator-server_linux_amd64 /usr/bin/secret-operator-server
+sudo chmod +x /usr/bin/secret-operator-server
+
+cat > /etc/systemd/system/secret-operator-server.service <<- EOF
+[Unit]
+Description=Secret Operator Server
+After=network.target
+StartLimitIntervalSec=120s
+StartLimitBurst=10
+
+[Service]
+Environment="GCP_PROJECT_ID=gke-1-368016"
+Environment="GOOGLE_APPLICATION_CREDENTIALS=/root/adc.json"
+Environment="PORT=8088"
+ExecStart=secret-operator-server
+ExecStartPre=-secret-operator-server update
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl start secret-operator-server
+sudo systemctl status secret-operator-server
