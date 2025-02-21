@@ -4,7 +4,7 @@ tmp/
 output/
 build/
 keys/
-Pulumi.wireguard-ec2.yaml
+Pulumi.*.yaml
 .vagrant
 .vscode
 coverage.txt
