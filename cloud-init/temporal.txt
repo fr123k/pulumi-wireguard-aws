@@ -426,11 +426,42 @@ sudo systemctl status oauth2-storage
 
 # dunebot
 
-# TODO implement self update
-
-curl -OL https://github.com/containifyci/dunebot/releases/download/v0.1.0/dunebot_linux_amd64
+curl -OL https://github.com/containifyci/dunebot/releases/download/v0.3.4/dunebot_linux_amd64
 sudo mv dunebot_linux_amd64 /usr/bin/dunebot
 sudo chmod +x /usr/bin/dunebot
+
+# TODO implement self update
+
+cat > /etc/systemd/system/dunebot-update.service <<- EOF
+[Unit]
+Description=DuneBot Update Service
+
+[Service]
+Type=oneshot
+ExecStart=dunebot update
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/dunebot-update.timer <<- EOF
+[Unit]
+Description=Run self update for DuneBot
+Requires=dunebot-update.service
+
+[Timer]
+Unit=dunebot-update.service
+OnCalendar=*:00/30
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl start dunebot-update
+sudo systemctl enable dunebot-update
+sudo systemctl status dunebot-update
+sudo systemctl start dunebot-update.timer
+sudo systemctl enable dunebot-update.timer
 
 cat > /etc/systemd/system/dunebot.service <<- EOF
 [Unit]
@@ -490,7 +521,7 @@ WantedBy=timers.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl start dunebot-disptach-job.timer
+sudo systemctl start ¡
 sudo systemctl enable dunebot-disptach-job.timer
 
 cat > /etc/nginx/sites-available/dunebot <<- EOF
