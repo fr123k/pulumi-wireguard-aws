@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/packer/hetzner/temporal"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+    groups:
+      temporal:
+        patterns:
+          - "github.com/temporalio/*"
+          - "go.temporal.io/*"
+      containifyci:
+        patterns:
+          - "github.com/containifyci/*"

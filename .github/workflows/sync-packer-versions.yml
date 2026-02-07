@@ -1,0 +1,38 @@
+name: Sync Packer Versions
+
+on:
+  pull_request:
+    paths:
+      - "packer/hetzner/temporal/go.mod"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-versions:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync go.mod versions to variables.pkr.hcl
+        run: bash packer/hetzner/temporal/scripts/sync-versions.sh
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git diff --quiet packer/hetzner/temporal/variables.pkr.hcl || echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit updated variables.pkr.hcl
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packer/hetzner/temporal/variables.pkr.hcl
+          git commit -m "chore: sync packer variable versions from go.mod"
+          git push
+      # todo add engine-ci run with packer build
