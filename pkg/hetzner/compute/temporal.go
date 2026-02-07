@@ -1,11 +1,28 @@
 package compute
 
 import (
+	"regexp"
+	"strings"
+
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+// isPrebakedImage detects if the image is a pre-baked Hetzner snapshot.
+// Returns true if the image name is numeric (snapshot ID) or starts with "prebaked" prefix.
+func isPrebakedImage(imageName string) bool {
+	// Check if it's a numeric snapshot ID
+	numericPattern := regexp.MustCompile(`^\d+$`)
+	if numericPattern.MatchString(imageName) {
+		return true
+	}
+
+	// Check if it starts with "prebaked" or "temporal-prebaked" prefix
+	lowerName := strings.ToLower(imageName)
+	return strings.HasPrefix(lowerName, "prebaked") || strings.HasPrefix(lowerName, "temporal-prebaked")
+}
 
 // const size = "cx11"
 
@@ -106,16 +123,34 @@ import (
 // 	return &infra, nil
 // }
 
-// CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateTemporalVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
-	userData, err := shared.TemporalUserData()
+// CreateTemporalVM creates a Temporal VM on Hetzner Cloud.
+// If the image is a pre-baked snapshot (numeric ID or "prebaked" prefix), it uses the minimal
+// cloud-init script. Otherwise, it uses the full cloud-init script for base Ubuntu images.
+func CreateTemporalVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP string) (*model.ComputeResult, error) {
+	var userData *model.UserData
+	var err error
+
+	// Detect if using a pre-baked snapshot image
+	imageName := ""
+	if len(computeArgs.Images) > 0 && computeArgs.Images[0] != nil {
+		imageName = computeArgs.Images[0].Name
+	}
+
+	if isPrebakedImage(imageName) {
+		ctx.Log.Info("Using pre-baked image, loading minimal cloud-init", nil)
+		userData, err = shared.TemporalPrebakedUserData()
+	} else {
+		ctx.Log.Info("Using base image, loading full cloud-init", nil)
+		userData, err = shared.TemporalUserData()
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
 	computeArgs.UserData = userData
 
-	infra, err := CreateServer(ctx, computeArgs, "10.9.1.145", exports)
+	infra, err := CreateServer(ctx, computeArgs, vmIP, exports)
 	if err != nil {
 		return nil, err
 	}

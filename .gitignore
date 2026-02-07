@@ -10,3 +10,9 @@ Pulumi.*.yaml
 coverage.txt
 
 .DS_Store
+
+# Packer
+packer/hetzner/temporal/manifest.json
+packer/hetzner/temporal/temporal-verify
+*.pkrvars.hcl
+!*.pkrvars.hcl.example

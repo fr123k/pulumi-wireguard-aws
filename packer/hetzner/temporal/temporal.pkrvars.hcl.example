@@ -1,0 +1,17 @@
+# Hetzner Cloud API Token (required)
+# Get from: https://console.hetzner.cloud/projects/YOUR_PROJECT/security/tokens
+hcloud_token = "YOUR_HCLOUD_TOKEN_HERE"
+
+# Optional: Override default values
+# base_image   = "ubuntu-24.04"
+# server_type  = "cpx11"
+# location     = "nbg1"
+
+# Optional: Override component versions
+# temporal_cli_version     = "1.1.2"
+# temporal_server_version  = "1.25.2"
+# temporal_ui_version      = "2.32.0"
+# temporal_worker_version  = "0.3.0"
+# secret_operator_version  = "0.4.0"
+# oauth2_storage_version   = "0.2.0"
+# dunebot_version          = "0.3.4"

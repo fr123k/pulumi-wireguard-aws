@@ -1,0 +1,220 @@
+#!/bin/bash -v
+
+# Minimal cloud-init for pre-baked Temporal image
+# This script handles runtime-specific configuration only:
+# - SSH user setup
+# - Secret fetching
+# - SSL certificate installation (from Secret Manager)
+# - Nginx SSL configuration
+# - Service startup
+
+export DEBIAN_FRONTEND=noninteractive
+
+# Domain configuration (defaults to production, override via template variables)
+export TEMPORAL_DOMAIN="{{ TEMPORAL_DOMAIN }}"
+export DUNEBOT_DOMAIN="{{ DUNEBOT_DOMAIN }}"
+
+# ============================================
+# SSH User Setup
+# ============================================
+echo "=== Setting up SSH user ==="
+useradd -m -s /bin/bash -G sudo frank.ittermann
+mkdir -p /home/frank.ittermann/.ssh/
+echo "frank.ittermann ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/frank_ittermann
+chmod 0440 /etc/sudoers.d/frank_ittermann
+
+cp /root/.ssh/authorized_keys /home/frank.ittermann/.ssh/authorized_keys
+chmod 600 /home/frank.ittermann/.ssh/authorized_keys
+chown -R frank.ittermann:frank.ittermann /home/frank.ittermann
+
+# Finalize SSH hardening
+sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+if ! grep -q "AllowUsers frank.ittermann" /etc/ssh/sshd_config; then
+    echo "AllowUsers frank.ittermann" >> /etc/ssh/sshd_config
+fi
+systemctl reload ssh.service
+
+# ============================================
+# Secret Fetching
+# ============================================
+echo "=== Fetching secrets ==="
+export SECRET_OPERATOR_AUTHENTICATION_TOKEN="{{ SECRET_OPERATOR_AUTHENTICATION_TOKEN }}"
+
+secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} --output=/tmp/secrets -envFile=temporal-worker.env
+mv /tmp/secrets/temporal-worker.env /etc/systemd/system/temporal-worker.env
+chmod 600 /etc/systemd/system/temporal-worker.env
+
+# ============================================
+# SSL Certificate Installation (from Secret Manager)
+# ============================================
+echo "=== Installing SSL certificates ==="
+
+mkdir -p /etc/letsencrypt/live/${TEMPORAL_DOMAIN}
+
+mv /tmp/secrets/certs/fullchain.pem /etc/letsencrypt/live/${TEMPORAL_DOMAIN}/fullchain.pem;
+mv /tmp/secrets/certs/privkey.pem /etc/letsencrypt/live/${TEMPORAL_DOMAIN}/privkey.pem;
+chmod 600 /etc/letsencrypt/live/${TEMPORAL_DOMAIN}/privkey.pem
+chmod 644 /etc/letsencrypt/live/${TEMPORAL_DOMAIN}/fullchain.pem
+
+# ============================================
+# Nginx SSL Configuration
+# ============================================
+echo "=== Configuring Nginx with SSL ==="
+
+# Temporal UI nginx config (with SSL)
+cat > /etc/nginx/sites-available/temporal-ui <<EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name temporal.dunebot.io ${TEMPORAL_DOMAIN};
+
+    access_log /var/log/nginx/temporal.access.log;
+    error_log /var/log/nginx/temporal.error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:8233;
+        proxy_http_version 1.1;
+        proxy_read_timeout 300;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-PORT \$remote_port;
+        allow 78.47.97.138;
+        deny all;
+        error_page 403 = /custom_444;
+
+        location = /custom_444 {
+            return 444;
+        }
+    }
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/${TEMPORAL_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${TEMPORAL_DOMAIN}/privkey.pem;
+
+    if (\$scheme != "https") {
+        return 301 https://\$host\$request_uri;
+    }
+}
+EOF
+
+# Temporal gRPC nginx config
+cat > /etc/nginx/sites-available/temporal <<EOF
+server {
+    listen 127.0.0.1:7233;
+    listen [::1]:7233;
+    server_name temporal.dunebot.io ${TEMPORAL_DOMAIN};
+
+    http2 on;
+
+    keepalive_timeout 90s;
+    keepalive_requests 100;
+
+    location / {
+        grpc_pass localhost:7236;
+        grpc_read_timeout 90s;
+        grpc_send_timeout 90s;
+        proxy_connect_timeout 90s;
+        allow 78.47.97.138;
+        allow ::1;
+        allow 127.0.0.1;
+        deny all;
+    }
+}
+EOF
+
+# DuneBot nginx config (with SSL)
+cat > /etc/nginx/sites-available/dunebot <<EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name githubapp.dunebot.io ${DUNEBOT_DOMAIN};
+
+    access_log /var/log/nginx/dunebot.access.log;
+    error_log /var/log/nginx/dunebot.error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_read_timeout 300;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-PORT \$remote_port;
+        error_page 403 = /custom_444;
+
+        location = /custom_444 {
+            return 444;
+        }
+    }
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/${TEMPORAL_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${TEMPORAL_DOMAIN}/privkey.pem;
+
+    if (\$scheme != "https") {
+        return 301 https://$host$request_uri;
+    }
+}
+EOF
+
+# Enable nginx sites
+ln -sf /etc/nginx/sites-available/temporal /etc/nginx/conf.d/temporal.conf
+ln -sf /etc/nginx/sites-available/temporal-ui /etc/nginx/conf.d/temporal-ui.conf
+ln -sf /etc/nginx/sites-available/dunebot /etc/nginx/conf.d/dunebot.conf
+
+# ============================================
+# Start Services
+# ============================================
+echo "=== Starting services ==="
+
+# Start fail2ban
+systemctl start fail2ban
+
+# Start Temporal services
+systemctl start temporal
+systemctl enable temporal
+systemctl start temporal-ui
+systemctl enable temporal-ui
+
+sleep 5 # Wait for Temporal to be ready
+
+# Start Temporal Worker
+systemctl start temporal-dunebot-worker
+systemctl enable temporal-dunebot-worker
+systemctl start temporal-dunebot-worker-update.timer
+systemctl enable temporal-dunebot-worker-update.timer
+
+# Start OAuth2 Storage
+systemctl start oauth2-storage
+systemctl enable oauth2-storage
+systemctl start oauth2-storage-update.timer
+systemctl enable oauth2-storage-update.timer
+
+# Start DuneBot
+systemctl start dunebot
+systemctl enable dunebot
+systemctl start dunebot-update.timer
+systemctl enable dunebot-update.timer
+systemctl start dunebot-dispatch-job.timer
+systemctl enable dunebot-dispatch-job.timer
+
+# Start Nginx
+systemctl restart nginx
+
+# ============================================
+# Create Temporal Namespace
+# ============================================
+echo "=== Creating Temporal namespace ==="
+sleep 5  # Wait for Temporal to be ready
+HOME=/root temporal --address localhost:7236 operator namespace create -n default || true
+
+# ============================================
+# Verify Deployment
+# ============================================
+echo "=== Verifying deployment ==="
+HOME=/root /usr/local/bin/temporal-verify --local --deployed
+
+echo "=== Cloud-init complete ==="
