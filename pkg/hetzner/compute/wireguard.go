@@ -15,7 +15,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-const size = "cpx11"
+const size = "cpx22"
 
 type Infrastructure struct {
 	Server    *hcloud.Server

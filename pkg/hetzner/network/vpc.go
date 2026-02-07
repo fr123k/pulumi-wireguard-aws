@@ -16,6 +16,7 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
     defaults.MustSet(vpcArgs)
 
     network, err := hcloud.NewNetwork(ctx, vpcArgs.Name, &hcloud.NetworkArgs{
+        Name:    pulumi.String(vpcArgs.Name),
         IpRange: pulumi.String(vpcArgs.Cidr),
     })
     if err != nil {
