@@ -10,7 +10,7 @@ require (
 	github.com/containifyci/secret-operator v0.4.6
 	github.com/containifyci/temporal-worker v0.9.6
 	github.com/temporalio/cli v1.6.0
-	github.com/temporalio/ui-server/v2 v2.45.0
+	github.com/temporalio/ui-server/v2 v2.45.1
 	go.temporal.io/server v1.30.0
 )
 
