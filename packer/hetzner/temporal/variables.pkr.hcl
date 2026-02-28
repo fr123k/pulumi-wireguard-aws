@@ -75,6 +75,6 @@ variable "oauth2_storage_version" {
 
 variable "dunebot_version" {
   type        = string
-  default     = "0.3.6"
+  default     = "0.3.7"
   description = "DuneBot version"
 }
