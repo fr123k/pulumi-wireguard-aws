@@ -1,6 +1,6 @@
 module github.com/fr123k/pulumi-wireguard-aws/packer
 
-go 1.25.5
+go 1.26.0
 
 replace github.com/temporalio/cli/cliext => github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7
 
@@ -9,9 +9,9 @@ require (
 	github.com/containifyci/oauth2-storage v0.2.1
 	github.com/containifyci/secret-operator v0.4.6
 	github.com/containifyci/temporal-worker v0.9.6
-	github.com/temporalio/cli v1.6.0
-	github.com/temporalio/ui-server/v2 v2.45.3
-	go.temporal.io/server v1.30.0
+	github.com/temporalio/cli v1.6.1
+	github.com/temporalio/ui-server/v2 v2.47.2
+	go.temporal.io/server v1.30.1
 )
 
 require (
