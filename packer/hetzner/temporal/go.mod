@@ -5,10 +5,10 @@ go 1.26.0
 replace github.com/temporalio/cli/cliext => github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7
 
 require (
-	github.com/containifyci/dunebot v0.3.7
+	github.com/containifyci/dunebot v0.3.8
 	github.com/containifyci/oauth2-storage v0.2.1
 	github.com/containifyci/secret-operator v0.4.6
-	github.com/containifyci/temporal-worker v0.9.6
+	github.com/containifyci/temporal-worker v0.9.7
 	github.com/temporalio/cli v1.6.1
 	github.com/temporalio/ui-server/v2 v2.47.3
 	go.temporal.io/server v1.30.1
@@ -180,7 +180,7 @@ require (
 	google.golang.org/genproto v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120174246-409b4a993575 // indirect
-	google.golang.org/grpc v1.79.1 // indirect
+	google.golang.org/grpc v1.79.2 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
