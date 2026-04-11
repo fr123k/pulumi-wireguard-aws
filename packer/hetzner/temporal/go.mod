@@ -5,10 +5,10 @@ go 1.26.1
 replace github.com/temporalio/cli/cliext => github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7
 
 require (
-	github.com/containifyci/dunebot v0.3.8
+	github.com/containifyci/dunebot v0.3.9
 	github.com/containifyci/oauth2-storage v0.2.1
 	github.com/containifyci/secret-operator v0.4.6
-	github.com/containifyci/temporal-worker v0.9.7
+	github.com/containifyci/temporal-worker v0.9.8
 	github.com/temporalio/cli v1.6.2
 	github.com/temporalio/ui-server/v2 v2.48.1
 	go.temporal.io/server v1.30.3
@@ -26,7 +26,7 @@ require (
 	dario.cat/mergo v1.0.1 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.31.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.53.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
@@ -105,7 +105,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
-	github.com/nexus-rpc/sdk-go v0.5.1 // indirect
+	github.com/nexus-rpc/sdk-go v0.6.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/olivere/elastic/v7 v7.0.32 // indirect
 	github.com/onsi/ginkgo/v2 v2.27.2 // indirect
@@ -156,8 +156,8 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
-	go.temporal.io/api v1.62.2 // indirect
-	go.temporal.io/sdk v1.40.0 // indirect
+	go.temporal.io/api v1.62.7 // indirect
+	go.temporal.io/sdk v1.41.1 // indirect
 	go.temporal.io/sdk/contrib/envconfig v0.1.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
@@ -170,7 +170,7 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/oauth2 v0.35.0 // indirect
+	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
@@ -178,9 +178,9 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/api v0.262.0 // indirect
 	google.golang.org/genproto v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120174246-409b4a993575 // indirect
-	google.golang.org/grpc v1.79.3 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260120221211-b8f7ae30c516 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
+	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
