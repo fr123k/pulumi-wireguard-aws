@@ -11,7 +11,7 @@ require (
 	github.com/containifyci/temporal-worker v0.9.7
 	github.com/temporalio/cli v1.6.2
 	github.com/temporalio/ui-server/v2 v2.48.1
-	go.temporal.io/server v1.30.2
+	go.temporal.io/server v1.30.3
 )
 
 require (
