@@ -45,13 +45,13 @@ variable "temporal_cli_version" {
 
 variable "temporal_server_version" {
   type        = string
-  default     = "1.30.3"
+  default     = "1.30.4"
   description = "Temporal Server version"
 }
 
 variable "temporal_ui_version" {
   type        = string
-  default     = "2.48.1"
+  default     = "2.48.2"
   description = "Temporal UI Server version"
 }
 
