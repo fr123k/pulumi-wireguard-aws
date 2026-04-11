@@ -10,8 +10,8 @@ require (
 	github.com/containifyci/secret-operator v0.4.6
 	github.com/containifyci/temporal-worker v0.9.7
 	github.com/temporalio/cli v1.6.2
-	github.com/temporalio/ui-server/v2 v2.48.1
-	go.temporal.io/server v1.30.3
+	github.com/temporalio/ui-server/v2 v2.48.2
+	go.temporal.io/server v1.30.4
 )
 
 require (
@@ -55,7 +55,7 @@ require (
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
@@ -156,7 +156,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
-	go.temporal.io/api v1.62.2 // indirect
+	go.temporal.io/api v1.62.6 // indirect
 	go.temporal.io/sdk v1.40.0 // indirect
 	go.temporal.io/sdk/contrib/envconfig v0.1.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
