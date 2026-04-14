@@ -10,7 +10,7 @@ require (
 	github.com/containifyci/secret-operator v0.5.0
 	github.com/containifyci/temporal-worker v0.9.8
 	github.com/temporalio/cli v1.6.2
-	github.com/temporalio/ui-server/v2 v2.48.2
+	github.com/temporalio/ui-server/v2 v2.48.3
 	go.temporal.io/server v1.30.4
 )
 
@@ -156,7 +156,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.42.0 // indirect
 	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
-	go.temporal.io/api v1.62.7 // indirect
+	go.temporal.io/api v1.62.8 // indirect
 	go.temporal.io/sdk v1.41.1 // indirect
 	go.temporal.io/sdk/contrib/envconfig v0.1.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
