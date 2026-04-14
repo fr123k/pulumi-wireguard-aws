@@ -57,13 +57,13 @@ variable "temporal_ui_version" {
 
 variable "temporal_worker_version" {
   type        = string
-  default     = "0.9.7"
+  default     = "0.9.8"
   description = "Temporal Worker version"
 }
 
 variable "secret_operator_version" {
   type        = string
-  default     = "0.4.6"
+  default     = "0.5.0"
   description = "Secret Operator version"
 }
 
@@ -75,6 +75,6 @@ variable "oauth2_storage_version" {
 
 variable "dunebot_version" {
   type        = string
-  default     = "0.3.8"
+  default     = "0.3.9"
   description = "DuneBot version"
 }
