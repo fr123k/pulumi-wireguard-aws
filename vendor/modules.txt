@@ -328,6 +328,10 @@ github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2
 github.com/pulumi/pulumi-aws/sdk/v6/go/aws/iam
 github.com/pulumi/pulumi-aws/sdk/v6/go/aws/internal
 github.com/pulumi/pulumi-aws/sdk/v6/go/aws/route53
+# github.com/pulumi/pulumi-gcp/sdk/v7 v7.38.0
+## explicit; go 1.21
+github.com/pulumi/pulumi-gcp/sdk/v7/go/gcp/compute
+github.com/pulumi/pulumi-gcp/sdk/v7/go/gcp/internal
 # github.com/pulumi/pulumi-hcloud/sdk v1.20.5
 ## explicit; go 1.21
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud

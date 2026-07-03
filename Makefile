@@ -3,7 +3,7 @@ export PULUMI_CONFIG_PASSPHRASE ?= test
 #STACK_SUFFIX ?="-$(shell pwgen -s 8 1)"
 PROJECT ?= wireguard
 VM ?= ${PROJECT}
-CLOUD ?= aws
+CLOUD ?= hetzner
 STACK_NAME ?= ${VM}-${CLOUD}${STACK_SUFFIX}
 AWS_REGION ?= eu-west-1
 WIREGUARD_SERVER_IP=$(shell pulumi stack output publicIp)
@@ -101,7 +101,7 @@ validate-jenkins:
 
 ## Packer targets for pre-baked Temporal images
 
-PACKER_DIR ?= packer/hetzner/temporal
+PACKER_DIR ?= packer/hetzner/${PROJECT}
 PACKER_MANIFEST ?= $(PACKER_DIR)/manifest.json
 SNAPSHOT_KEEP_COUNT ?= 3
 
@@ -153,6 +153,24 @@ temporal-deploy-prebaked: temporal-set-snapshot init
 
 temporal-deploy-base:
 	pulumi config rm temporal_snapshot_id || true
+	pulumi up --yes
+
+## franky deployment with pre-baked image
+
+franky-set-snapshot:
+	@if [ -z "$(SNAPSHOT_ID)" ]; then \
+		SNAPSHOT_ID=$$(jq -r '.builds[-1].artifact_id' $(PACKER_MANIFEST)); \
+	fi; \
+	echo "Setting franky_snapshot_id to $$SNAPSHOT_ID"; \
+	pulumi config set franky_snapshot_id $$SNAPSHOT_ID
+
+franky-deploy-prebaked: franky-set-snapshot init
+	# pulumi destroy
+	pulumi refresh
+	pulumi up --yes
+
+franky-deploy-base:
+	pulumi config rm franky_snapshot_id || true
 	pulumi up --yes
 
 ## Full pipeline: build image and deploy

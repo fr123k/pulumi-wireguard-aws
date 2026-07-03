@@ -1,0 +1,12 @@
+# Hetzner Cloud API Token (required)
+# Get from: https://console.hetzner.cloud/projects/YOUR_PROJECT/security/tokens
+hcloud_token = "YOUR_HCLOUD_TOKEN_HERE"
+
+# Optional: Override default values
+# base_image   = "ubuntu-24.04"
+# server_type  = "cpx11"
+# location     = "nbg1"
+
+# Optional: Override component versions
+# sbx_web_ui_version = "0.0.0"
+# dandbox_version = "0.0.0"
