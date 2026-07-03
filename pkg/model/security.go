@@ -30,7 +30,7 @@ type SecurityGroup struct {
 
 type SecurityGroupResult struct {
     // ID pulumi.IDOutput
-    State pulumi.CustomResourceState
+    State *pulumi.CustomResourceState
 }
 
 func AllowAllRule() *SecurityRule {
@@ -87,7 +87,7 @@ func (rule SecurityRule) AddSecurityGroup(securityGroup *SecurityGroup) *Securit
 }
 
 // ID return resource id
-func (security SecurityGroupResult) ID() pulumi.IDOutput {
+func (security *SecurityGroupResult) ID() pulumi.IDOutput {
     return security.State.ID()
 }
 

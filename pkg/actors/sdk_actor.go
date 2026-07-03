@@ -22,7 +22,7 @@ func NewSDKActor(execute func(string) string) SDKActor {
 
 // Connect this function is called when the virtual instance is created and can recevie connection.
 func (c *SDKActor) Connect(address string) string {
-    resultChan := make(chan string, 0)
+    resultChan := make(chan string)
     c.actions <- func() {
         fmt.Printf("Can open connection to %s", address)
 

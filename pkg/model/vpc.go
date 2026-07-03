@@ -26,28 +26,28 @@ type SubnetArgs struct {
 type VpcResult struct {
     SubnetResults []SubnetResult
     // ID pulumi.IDOutput
-    Vpc pulumi.CustomResourceState
+    Vpc *pulumi.CustomResourceState
 }
 
 var VPCArgsDefault = VpcArg("wireguard", "10.8.0.0")
 
 // SubnetResult define the generated properties
 type SubnetResult struct {
-    Subnet pulumi.CustomResourceState
+    Subnet *pulumi.CustomResourceState
 }
 
 //ID return resource id
-func (vpc VpcResult) ID() pulumi.IDOutput {
+func (vpc *VpcResult) ID() pulumi.IDOutput {
     return vpc.Vpc.ID()
 }
 
 //IDtoInt return ID as int
-func (vpc VpcResult) IDtoInt() pulumi.IntOutput {
+func (vpc *VpcResult) IDtoInt() pulumi.IntOutput {
     return utility.IDtoInt(vpc.Vpc)
 }
 
 //ID return resource id
-func (subnet SubnetResult) ID() pulumi.IDOutput {
+func (subnet *SubnetResult) ID() pulumi.IDOutput {
     return subnet.Subnet.ID()
 }
 

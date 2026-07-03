@@ -96,7 +96,7 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, ip string
 	}
 
 	_, err = hcloud.NewServerNetwork(ctx, "srvnetwork", &hcloud.ServerNetworkArgs{
-		ServerId:  utility.IDtoInt(server.CustomResourceState),
+		ServerId:  utility.IDtoInt(&server.CustomResourceState),
 		NetworkId: computeArgs.Vpc.IDtoInt(),
 		Ip:        pulumi.String(ip),
 	})
@@ -161,7 +161,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 	//     Implement firewall provisioning based on userdata script or cloud-init.
 
 	return &model.ComputeResult{
-		Compute: infra.Server.CustomResourceState,
+		Compute: &infra.Server.CustomResourceState,
 	}, nil
 }
 

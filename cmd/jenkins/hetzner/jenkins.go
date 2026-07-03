@@ -72,10 +72,10 @@ func createInfraStructure(ctx *pulumi.Context) error {
 
 	sshConnector := shared.JenkinsProvisioner(ctx, keyPair)
 
-	compute.ProvisionVM(ctx, "jenkins", &model.ProvisionArgs{
+	_ = compute.ProvisionVM(ctx, "jenkins", &model.ProvisionArgs{
 		ExportName: "jenkins.publicKey",
 		SourceCompute: &model.ComputeResult{
-			Compute: vm.Server.CustomResourceState,
+			Compute: &vm.Server.CustomResourceState,
 		},
 	}, &sshConnector)
 

@@ -12,15 +12,15 @@ type Logger struct {
 }
 
 func (logger Logger) Info(msg string, args ...interface{}) {
-    logger.Ctx.Log.Info(fmt.Sprintf(msg, args...), nil)
+    _ = logger.Ctx.Log.Info(fmt.Sprintf(msg, args...), nil)
 }
 
 func (logger Logger) Error(msg string, args ...interface{}) {
-    logger.Ctx.Log.Error(fmt.Sprintf(msg, args...), nil)
+    _ = logger.Ctx.Log.Error(fmt.Sprintf(msg, args...), nil)
 }
 
 func (logger Logger) Debug(msg string, args ...interface{}) {
-    logger.Ctx.Log.Debug(fmt.Sprintf(msg, args...), nil)
+    _ = logger.Ctx.Log.Debug(fmt.Sprintf(msg, args...), nil)
 }
 
 // Println prints any object as json to stdout

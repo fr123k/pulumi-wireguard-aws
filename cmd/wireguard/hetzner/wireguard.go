@@ -60,13 +60,13 @@ func main() {
 		sshConnector := shared.WireguardProvisioner(ctx, keyPair)
 
 		//TODO implement exporting of mutliptl ssh output with one session
-		compute.ProvisionVM(ctx, "wireguard", &model.ProvisionArgs{
+		_ = compute.ProvisionVM(ctx, "wireguard", &model.ProvisionArgs{
 			ExportName:    "wireguard.publicKey",
 			SourceCompute: vm,
 		}, &sshConnector)
 
 		sshConnectorPassword := shared.WireguardPasswordProvisioner(ctx, keyPair)
-		compute.ProvisionVM(ctx, "wireguard", &model.ProvisionArgs{
+		_ = compute.ProvisionVM(ctx, "wireguard", &model.ProvisionArgs{
 			ExportName:    "wireguard.password",
 			SourceCompute: vm,
 		}, &sshConnectorPassword)

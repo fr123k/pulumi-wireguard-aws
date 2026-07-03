@@ -2,7 +2,8 @@ package utility
 
 import (
     "bytes"
-    "io/ioutil"
+    "io"
+    "os"
 )
 
 // Util type define the Util struct
@@ -20,13 +21,13 @@ type InMemoryFileReader struct {
 // ReadFile read the file content from a string in the memory instead of the filesystem
 func (inMemReader InMemoryFileReader) ReadFile(filename string) ([]byte, error) {
     buf := bytes.NewBufferString(inMemReader.Str)
-    return ioutil.ReadAll(buf)
+    return io.ReadAll(buf)
 }
 
 //NewUtil instantiate the default Util type.
 func NewUtil() Util {
     return Util{
-        OsReadFile: ioutil.ReadFile,
+        OsReadFile: os.ReadFile,
     }
 }
 

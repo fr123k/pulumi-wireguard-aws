@@ -9,7 +9,7 @@ import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/route53"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/route53"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -79,10 +79,10 @@ func createInfraStructure(ctx *pulumi.Context) error {
 
 	sshConnector := shared.JenkinsProvisioner(ctx, keyPair)
 
-	compute.ProvisionVM(ctx, "eucaptcha", &model.ProvisionArgs{
+	_ = compute.ProvisionVM(ctx, "eucaptcha", &model.ProvisionArgs{
 		ExportName: "eucaptcha.result",
 		SourceCompute: &model.ComputeResult{
-			Compute: vm.Server.CustomResourceState,
+			Compute: &vm.Server.CustomResourceState,
 		},
 	}, &sshConnector)
 

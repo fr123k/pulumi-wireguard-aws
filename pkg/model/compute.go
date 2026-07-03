@@ -7,7 +7,7 @@ import (
 // ComputeResult define the generated properties from compute package
 type ComputeResult struct {
     // ID pulumi.IDOutput
-    Compute pulumi.CustomResourceState
+    Compute *pulumi.CustomResourceState
 }
 
 type ProvisionArgs struct {
@@ -23,7 +23,7 @@ type ImageArgs struct {
 }
 
 // ID return resource id
-func (compute ComputeResult) ID() pulumi.IDOutput {
+func (compute *ComputeResult) ID() pulumi.IDOutput {
     return compute.Compute.ID()
 }
 

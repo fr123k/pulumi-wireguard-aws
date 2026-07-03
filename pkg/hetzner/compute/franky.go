@@ -24,6 +24,6 @@ func CreateFrankyVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP st
 	}
 
 	return &model.ComputeResult{
-		Compute: infra.Server.CustomResourceState,
+		Compute: &infra.Server.CustomResourceState,
 	}, nil
 }

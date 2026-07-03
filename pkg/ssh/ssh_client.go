@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -20,11 +19,11 @@ import (
 // SSHClientConfig define type to pass ssh client configuration parameters.
 type SSHClientConfig struct {
 	Hostname      string
-	Port          int `default:22`
+	Port          int `default:"22"`
 	Username      string
 	SSHKeyPair    SSHKey
-	IgnoreHostKey bool          `default:true`
-	Timeout       time.Duration `default:30000`
+	IgnoreHostKey bool          `default:"true"`
+	Timeout       time.Duration `default:"30000"`
 	Log           utility.Logger
 }
 
@@ -113,7 +112,7 @@ func (sshClientConfig SSHClientConfig) SSHSession() (*ssh.Session, error) {
 	// go io.Copy(os.Stderr, stderr)
 
 	if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
-		session.Close()
+		_ = session.Close()
 		return nil, fmt.Errorf("request for pseudo terminal failed: %s", err)
 	}
 	return session, err
@@ -125,7 +124,7 @@ func (sshClientConfig SSHClientConfig) SSHCommand(command string) (*string, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to run ssh command: %s", err)
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	sshClientConfig.Log.Info("Run SSH command to %s", command)
 
@@ -161,7 +160,7 @@ func GenerateKeyPair() *SSHKey {
 }
 
 func parsePrivateKeyFile(file string) (*rsa.PrivateKey, error) {
-	buffer, err := ioutil.ReadFile(file)
+	buffer, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
