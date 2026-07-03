@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -23,11 +24,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -37,14 +39,6 @@ const (
 	// This file will be ignored when copying from the template cache to
 	// a project directory.
 	legacyPulumiTemplateManifestFile = ".pulumi.template.yaml"
-
-	// pulumiLocalTemplatePathEnvVar is a path to the folder where templates are stored.
-	// It is used in sandboxed environments where the classic template folder may not be writable.
-	pulumiLocalTemplatePathEnvVar = "PULUMI_TEMPLATE_PATH"
-
-	// pulumiLocalPolicyTemplatePathEnvVar is a path to the folder where policy templates are stored.
-	// It is used in sandboxed environments where the classic template folder may not be writable.
-	pulumiLocalPolicyTemplatePathEnvVar = "PULUMI_POLICY_TEMPLATE_PATH"
 )
 
 // These are variables instead of constants in order that they can be set using the `-X`
@@ -58,7 +52,71 @@ var (
 	pulumiPolicyTemplateGitRepository = "https://github.com/pulumi/templates-policy.git"
 	// The branch name for the policy pack template repository
 	pulumiPolicyTemplateBranch = "master"
+	// The Git URL for Pulumi package templates.
+	pulumiPackageTemplateGitRepository = "https://github.com/pulumi/templates-packages.git"
+	// The branch name for the package template repository
+	pulumiPackageTemplateBranch = "main"
 )
+
+// getTemplateGitRepository returns the Git URL for the template repository.
+// It checks the environment variable first, then falls back to the compile-time default.
+func getTemplateGitRepository(templateKind TemplateKind) string {
+	switch templateKind {
+	case TemplateKindPolicyPack:
+		if repo := env.PolicyTemplateGitRepository.Value(); repo != "" {
+			logging.V(5).Infof("Using custom policy template repository from %s: %s",
+				env.PolicyTemplateGitRepository.Var().Name(), repo)
+			return repo
+		}
+		return pulumiPolicyTemplateGitRepository
+	case TemplateKindPackage:
+		if repo := env.PackageTemplateGitRepository.Value(); repo != "" {
+			logging.V(5).Infof("Using custom package template repository from %s: %s",
+				env.PackageTemplateGitRepository.Var().Name(), repo)
+			return repo
+		}
+		return pulumiPackageTemplateGitRepository
+	case TemplateKindPulumiProject:
+		if repo := env.TemplateGitRepository.Value(); repo != "" {
+			logging.V(5).Infof("Using custom template repository from %s: %s",
+				env.TemplateGitRepository.Var().Name(), repo)
+			return repo
+		}
+		return pulumiTemplateGitRepository
+	}
+	contract.Failf("unhandled TemplateKind: %v", templateKind)
+	return ""
+}
+
+// getTemplateBranch returns the branch name for the template repository.
+// It checks the environment variable first, then falls back to the compile-time default.
+func getTemplateBranch(templateKind TemplateKind) string {
+	switch templateKind {
+	case TemplateKindPolicyPack:
+		if branch := env.PolicyTemplateBranch.Value(); branch != "" {
+			logging.V(5).Infof("Using custom policy template branch from %s: %s",
+				env.PolicyTemplateBranch.Var().Name(), branch)
+			return branch
+		}
+		return pulumiPolicyTemplateBranch
+	case TemplateKindPackage:
+		if branch := env.PackageTemplateBranch.Value(); branch != "" {
+			logging.V(5).Infof("Using custom package template branch from %s: %s",
+				env.PackageTemplateBranch.Var().Name(), branch)
+			return branch
+		}
+		return pulumiPackageTemplateBranch
+	case TemplateKindPulumiProject:
+		if branch := env.TemplateBranch.Value(); branch != "" {
+			logging.V(5).Infof("Using custom template branch from %s: %s",
+				env.TemplateBranch.Var().Name(), branch)
+			return branch
+		}
+		return pulumiTemplateBranch
+	}
+	contract.Failf("unhandled TemplateKind: %v", templateKind)
+	return ""
+}
 
 // TemplateKind describes the form of a template.
 type TemplateKind int
@@ -69,6 +127,10 @@ const (
 
 	// TemplateKindPolicyPack is a template for a Policy Pack.
 	TemplateKindPolicyPack TemplateKind = 1
+
+	// TemplateKindPackage is a template for a Pulumi package
+	// (a directory containing PulumiPlugin.yaml).
+	TemplateKindPackage TemplateKind = 2
 )
 
 // TemplateRepository represents a repository of templates.
@@ -194,6 +256,55 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 	return result, nil
 }
 
+// PackageTemplates lists the package templates in the repository.
+func (repo TemplateRepository) PackageTemplates() ([]PackageTemplate, error) {
+	path := repo.SubDirectory
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if !info.IsDir() {
+		path = filepath.Dir(path)
+	}
+
+	template, err := LoadPackageTemplate(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	} else if err == nil {
+		return []PackageTemplate{template}, nil
+	}
+
+	infos, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []PackageTemplate
+	for _, info := range infos {
+		if info.IsDir() {
+			name := info.Name()
+
+			if name == GitDir {
+				continue
+			}
+
+			template, err := LoadPackageTemplate(filepath.Join(path, name))
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				logging.V(2).Infof(
+					"Failed to load template %s: %s",
+					name, err,
+				)
+				result = append(result, PackageTemplate{Name: name, Error: err})
+			} else if err == nil {
+				result = append(result, template)
+			}
+		}
+	}
+	return result, nil
+}
+
 // Template represents a project template.
 type Template struct {
 	Dir         string                                // The directory containing Pulumi.yaml.
@@ -201,7 +312,6 @@ type Template struct {
 	Description string                                // Description of the template.
 	Quickstart  string                                // Optional text to be displayed after template creation.
 	Config      map[string]ProjectTemplateConfigValue // Optional template config.
-	Important   bool                                  // Indicates whether the template should be listed by default.
 	Error       error                                 // Non-nil if the template is broken.
 
 	ProjectName        string // Name of the project.
@@ -223,6 +333,20 @@ type PolicyPackTemplate struct {
 
 // Errored returns if the template has an error
 func (t PolicyPackTemplate) Errored() bool {
+	return t.Error != nil
+}
+
+// PackageTemplate represents a Pulumi package template.
+type PackageTemplate struct {
+	Dir         string // The directory containing PulumiPlugin.yaml.
+	Name        string // The name of the template.
+	Description string // Description of the template.
+	Quickstart  string // Optional text to be displayed after template creation.
+	Error       error  // Non-nil if the template is broken.
+}
+
+// Errored returns if the template has an error
+func (t PackageTemplate) Errored() bool {
 	return t.Error != nil
 }
 
@@ -248,12 +372,7 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 	// The template directory is a Git repository. We want to make sure that it has the same remote as the one that
 	// we want to pull from. If it doesn't have the same remote, we'll delete it, so that the clone later succeeds.
 	// Select the appropriate remote
-	var url string
-	if templateKind == TemplateKindPolicyPack {
-		url = pulumiPolicyTemplateGitRepository
-	} else {
-		url = pulumiTemplateGitRepository
-	}
+	url := getTemplateGitRepository(templateKind)
 	remotes, err := repo.Remotes()
 	if err != nil {
 		return fmt.Errorf("getting template repo remotes: %w", err)
@@ -266,8 +385,8 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 	return nil
 }
 
-// IsTemplateURL returns true if templateNamePathOrURL starts with "https://" (SSL) or "git@" (SSH).
-func IsTemplateURL(templateNamePathOrURL string) bool {
+// IsGitRepoTemplateURL returns true if templateNamePathOrURL is a git repository URL (https:// or ssh://).
+func IsGitRepoTemplateURL(templateNamePathOrURL string) bool {
 	// Normalize the provided URL so we can check its scheme. This will
 	// correctly return false in the case where the URL doesn't parse cleanly.
 	url, _, _ := gitutil.ParseGitRepoURL(templateNamePathOrURL)
@@ -281,37 +400,49 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 }
 
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
-func RetrieveTemplates(templateNamePathOrURL string, offline bool,
+func RetrieveTemplates(ctx context.Context, templateNamePathOrURL string, offline bool,
 	templateKind TemplateKind,
 ) (TemplateRepository, error) {
 	if isZIPTemplateURL(templateNamePathOrURL) {
-		return retrieveZIPTemplates(templateNamePathOrURL)
+		return RetrieveZIPTemplates(templateNamePathOrURL)
 	}
-	if IsTemplateURL(templateNamePathOrURL) {
-		return retrieveURLTemplates(templateNamePathOrURL, offline, templateKind)
+	if IsGitRepoTemplateURL(templateNamePathOrURL) {
+		return retrieveURLTemplates(ctx, templateNamePathOrURL, offline)
 	}
 	if isTemplateFileOrDirectory(templateNamePathOrURL) {
 		return retrieveFileTemplates(templateNamePathOrURL)
 	}
-	return retrievePulumiTemplates(templateNamePathOrURL, offline, templateKind)
+
+	// We now assume that templateNamePathOrURL is a template name that points to the
+	// global templates set.
+
+	pulumiTemplates, err := retrievePulumiTemplates(ctx, offline, templateKind)
+	if err != nil {
+		return TemplateRepository{}, err
+	}
+
+	if templateNamePathOrURL != "" {
+		return findSpecificTemplate(pulumiTemplates, templateNamePathOrURL)
+	}
+
+	return pulumiTemplates, nil
 }
 
 // retrieveURLTemplates retrieves the "template repository" at the specified URL.
-func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind) (TemplateRepository, error) {
+func retrieveURLTemplates(
+	ctx context.Context, rawurl string, offline bool,
+) (TemplateRepository, error) {
 	if offline {
 		return TemplateRepository{}, fmt.Errorf("cannot use %s offline", rawurl)
 	}
 
-	var err error
-
-	// Create a temp dir.
-	var temp string
-	if temp, err = os.MkdirTemp("", "pulumi-template-"); err != nil {
+	temp, err := os.MkdirTemp("", "pulumi-template-")
+	if err != nil {
 		return TemplateRepository{}, err
 	}
 
 	var fullPath string
-	if fullPath, err = RetrieveGitFolder(rawurl, temp); err != nil {
+	if fullPath, err = RetrieveGitFolder(ctx, rawurl, temp); err != nil {
 		return TemplateRepository{}, fmt.Errorf("failed to retrieve git folder: %w", err)
 	}
 
@@ -334,9 +465,9 @@ func retrieveFileTemplates(path string) (TemplateRepository, error) {
 // retrievePulumiTemplates retrieves the "template repository" for Pulumi templates.
 // Instead of retrieving to a temporary directory, the Pulumi templates are managed from
 // ~/.pulumi/templates.
-func retrievePulumiTemplates(templateName string, offline bool, templateKind TemplateKind) (TemplateRepository, error) {
-	templateName = strings.ToLower(templateName)
-
+func retrievePulumiTemplates(
+	ctx context.Context, offline bool, templateKind TemplateKind,
+) (TemplateRepository, error) {
 	// Cleanup the template directory.
 	if err := cleanupLegacyTemplateDir(templateKind); err != nil {
 		return TemplateRepository{}, err
@@ -355,41 +486,39 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 
 	if !offline {
 		// Clone or update the pulumi/templates repo.
-		repo := pulumiTemplateGitRepository
-		branch := plumbing.NewBranchReferenceName(pulumiTemplateBranch)
-		if templateKind == TemplateKindPolicyPack {
-			repo = pulumiPolicyTemplateGitRepository
-			branch = plumbing.NewBranchReferenceName(pulumiPolicyTemplateBranch)
-		}
-		err := gitutil.GitCloneOrPull(repo, branch, templateDir, false /*shallow*/)
+		repo := getTemplateGitRepository(templateKind)
+		branch := plumbing.NewBranchReferenceName(getTemplateBranch(templateKind))
+		err := gitutil.GitCloneOrPull(ctx, repo, branch, templateDir, false /*shallow*/)
 		if err != nil {
 			return TemplateRepository{}, fmt.Errorf("cloning templates repo: %w", err)
 		}
 	}
 
-	subDir := templateDir
-	if templateName != "" {
-		subDir = filepath.Join(subDir, templateName)
-
-		// Provide a nicer error message when the template can't be found (dir doesn't exist).
-		_, err := os.Stat(subDir)
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				return TemplateRepository{}, newTemplateNotFoundError(templateDir, templateName)
-			}
-			contract.IgnoreError(err)
-		}
-	}
-
 	return TemplateRepository{
 		Root:         templateDir,
-		SubDirectory: subDir,
+		SubDirectory: templateDir,
 		ShouldDelete: false,
 	}, nil
 }
 
+func findSpecificTemplate(repo TemplateRepository, name string) (TemplateRepository, error) {
+	subDir := filepath.Join(repo.Root, name)
+
+	// Provide a nicer error message when the template can't be found (dir doesn't exist).
+	_, err := os.Stat(subDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return TemplateRepository{}, newTemplateNotFoundError(repo.Root, name)
+		}
+		contract.IgnoreError(err)
+	}
+
+	repo.SubDirectory = subDir
+	return repo, nil
+}
+
 // RetrieveGitFolder downloads the repo to path and returns the full path on disk.
-func RetrieveGitFolder(rawurl string, path string) (string, error) {
+func RetrieveGitFolder(ctx context.Context, rawurl string, path string) (string, error) {
 	url, urlPath, err := gitutil.ParseGitRepoURL(rawurl)
 	if err != nil {
 		return "", err
@@ -414,19 +543,22 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 			refAttempts = []plumbing.ReferenceName{ref}
 		}
 
-		var cloneErr error
+		var cloneErrs []error
 		for _, ref := range refAttempts {
 			// Attempt the clone. If it succeeds, break
-			cloneErr = gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/)
-			if cloneErr == nil {
+			err := gitutil.GitCloneOrPull(ctx, url, ref, path, true /*shallow*/)
+			if err == nil {
 				break
 			}
+			logging.V(10).Infof("Failed to clone %s@%s: %v", url, ref, err)
+			cloneErrs = append(cloneErrs, fmt.Errorf("ref '%s': %w", ref, err))
 		}
-		if cloneErr != nil {
-			return "", fmt.Errorf("failed to clone ref '%s': %w", refAttempts[len(refAttempts)-1], cloneErr)
+		if len(cloneErrs) == len(refAttempts) {
+			return "", fmt.Errorf("failed to clone %s: %w", rawurl, errors.Join(cloneErrs...))
 		}
 	} else {
-		if cloneErr := gitutil.GitCloneAndCheckoutCommit(url, commit, path); cloneErr != nil {
+		if cloneErr := gitutil.GitCloneAndCheckoutCommit(ctx, url, commit, path); cloneErr != nil {
+			logging.V(10).Infof("Failed to clone %s@%s: %v", url, commit, err)
 			return "", fmt.Errorf("failed to clone and checkout %s(%s): %w", url, commit, cloneErr)
 		}
 	}
@@ -436,9 +568,11 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 	logging.V(10).Infof("Cloned %s at commit %s@%s to %s", url, ref, commit, fullPath)
 	info, err := os.Stat(fullPath)
 	if err != nil {
+		logging.V(10).Infof("Failed to stat %s after cloning %s: %v", fullPath, url, err)
 		return "", err
 	}
 	if !info.IsDir() {
+		logging.V(10).Infof("%s was not a directory after cloning %s: %v", fullPath, url, err)
 		return "", fmt.Errorf("%s is not a directory", fullPath)
 	}
 
@@ -471,7 +605,6 @@ func LoadTemplate(path string) (Template, error) {
 		template.Description = proj.Template.Description
 		template.Quickstart = proj.Template.Quickstart
 		template.Config = proj.Template.Config
-		template.Important = proj.Template.Important
 	}
 	if proj.Description != nil {
 		template.ProjectDescription = *proj.Description
@@ -528,6 +661,14 @@ func CopyTemplateFiles(
 		func(entry os.DirEntry, source string, dest string) error {
 			if entry.IsDir() {
 				// Create the destination directory.
+				if force {
+					info, _ := os.Stat(dest)
+					if info != nil && !info.IsDir() {
+						os.Remove(dest)
+					}
+					// MkdirAll will not error out if dest is a directory that already exists
+					return os.MkdirAll(dest, 0o700)
+				}
 				return os.Mkdir(dest, 0o700)
 			}
 
@@ -553,7 +694,7 @@ func CopyTemplateFiles(
 			// Originally we just wrote in 0600 mode, but
 			// this does not preserve the executable bit.
 			// With the new logic below, we try to be at
-			// least as permissive as 0600 and whathever
+			// least as permissive as 0600 and whatever
 			// permissions the source file or symlink had.
 			var mode os.FileMode
 			sourceStat, err := os.Lstat(source)
@@ -599,25 +740,52 @@ func LoadPolicyPackTemplate(path string) (PolicyPackTemplate, error) {
 	return policyPackTemplate, nil
 }
 
+// LoadPackageTemplate returns a package template from a path.
+func LoadPackageTemplate(path string) (PackageTemplate, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return PackageTemplate{}, err
+	}
+	if !info.IsDir() {
+		return PackageTemplate{}, fmt.Errorf("%s is not a directory", path)
+	}
+
+	plugin, err := LoadPluginProject(filepath.Join(path, "PulumiPlugin.yaml"))
+	if err != nil {
+		return PackageTemplate{}, err
+	}
+	template := PackageTemplate{
+		Dir:  path,
+		Name: filepath.Base(path),
+	}
+	if plugin.Template != nil {
+		template.Description = plugin.Template.Description
+		template.Quickstart = plugin.Template.Quickstart
+	}
+
+	return template, nil
+}
+
 // GetTemplateDir returns the directory in which templates on the current machine are stored.
 func GetTemplateDir(templateKind TemplateKind) (string, error) {
-	envVar := pulumiLocalTemplatePathEnvVar
-	if templateKind == TemplateKindPolicyPack {
-		envVar = pulumiLocalPolicyTemplatePathEnvVar
+	var override, classicDir string
+	switch templateKind {
+	case TemplateKindPolicyPack:
+		override = env.PolicyTemplatePath.Value()
+		classicDir = TemplatePolicyDir
+	case TemplateKindPackage:
+		override = env.PackageTemplatePath.Value()
+		classicDir = TemplatePackageDir
+	case TemplateKindPulumiProject:
+		override = env.TemplatePath.Value()
+		classicDir = TemplateDir
+	default:
+		contract.Failf("unhandled TemplateKind: %v", templateKind)
 	}
-	// Allow the folder we use to store templates to be overridden.
-	dir := os.Getenv(envVar)
-	if dir != "" {
-		return dir, nil
+	if override != "" {
+		return override, nil
 	}
-
-	// If Policy Pack template and there is no override, then return the classic policy template directory.
-	if templateKind == TemplateKindPolicyPack {
-		return GetPulumiPath(TemplatePolicyDir)
-	}
-
-	// Use the classic template directory if there is no override.
-	return GetPulumiPath(TemplateDir)
+	return GetPulumiPath(classicDir)
 }
 
 // walkFiles is a helper that walks the directories/files in a source directory
@@ -673,24 +841,45 @@ func walkFiles(sourceDir string, destDir string, projectName string,
 // that would be overwritten.
 func newExistingFilesError(existing []string) error {
 	contract.Assertf(len(existing) > 0, "called with no existing files")
-	message := "creating this template will make changes to existing files:\n"
+	var message strings.Builder
+	message.WriteString("creating this template will make changes to existing files:\n")
 	for _, file := range existing {
-		message = message + fmt.Sprintf("  overwrite   %s\n", file)
+		fmt.Fprintf(&message, "  overwrite   %s\n", file)
 	}
-	message = message + "\nrerun the command and pass --force to accept and create"
-	return errors.New(message)
+	message.WriteString("\nrerun the command and pass --force to accept and create")
+	return errors.New(message.String())
+}
+
+type TemplateNotFoundError struct {
+	templateName string
+	suggestions  []string
+}
+
+func (err TemplateNotFoundError) Error() string {
+	var message strings.Builder
+	fmt.Fprintf(&message, "template '%s' not found", err.templateName)
+	if len(err.suggestions) == 0 {
+		return message.String()
+	}
+	// Build-up error message with suggestions.
+	message.WriteString("\n\nDid you mean this?\n")
+	for _, suggestion := range err.suggestions {
+		fmt.Fprintf(&message, "\t%s\n", suggestion)
+	}
+
+	return message.String()
 }
 
 // newTemplateNotFoundError returns an error for when the template doesn't exist,
 // offering distance-based suggestions in the error message.
-func newTemplateNotFoundError(templateDir string, templateName string) error {
-	message := fmt.Sprintf("template '%s' not found", templateName)
-
+func newTemplateNotFoundError(templateDir string, templateName string) TemplateNotFoundError {
 	// Attempt to read the directory to offer suggestions.
 	entries, err := os.ReadDir(templateDir)
 	if err != nil {
-		contract.IgnoreError(err)
-		return errors.New(message)
+		// We failed to build suggestions, so just return the error we have.
+		return TemplateNotFoundError{
+			templateName: templateName,
+		}
 	}
 
 	// Get suggestions based on levenshtein distance.
@@ -704,15 +893,7 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 		}
 	}
 
-	// Build-up error message with suggestions.
-	if len(suggestions) > 0 {
-		message = message + "\n\nDid you mean this?\n"
-		for _, suggestion := range suggestions {
-			message = message + fmt.Sprintf("\t%s\n", suggestion)
-		}
-	}
-
-	return errors.New(message)
+	return TemplateNotFoundError{templateName, suggestions}
 }
 
 // transform returns a new string with ${PROJECT} and ${DESCRIPTION} replaced by
@@ -734,6 +915,16 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMo
 		flag = flag | os.O_TRUNC
 	} else {
 		flag = flag | os.O_EXCL
+	}
+
+	if overwrite {
+		info, _ := os.Stat(filename)
+		if info != nil && info.IsDir() {
+			err := os.RemoveAll(filename)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	f, err := os.OpenFile(filename, flag, mode)

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
@@ -61,10 +63,12 @@ type ResourceState struct {
 	children          resourceSet
 	providers         map[string]ProviderResource
 	provider          ProviderResource
+	protect           *bool
 	version           string
 	pluginDownloadURL string
 	aliases           []URNOutput
 	name              string
+	typ               string
 	transformations   []ResourceTransformation
 
 	keepDep bool
@@ -74,6 +78,16 @@ var _ Resource = (*ResourceState)(nil)
 
 func (s *ResourceState) URN() URNOutput {
 	return s.urn
+}
+
+// The name assigned to the resource at construction.
+func (s *ResourceState) PulumiResourceName() string {
+	return s.name
+}
+
+// The type assigned to the resource at construction.
+func (s *ResourceState) PulumiResourceType() string {
+	return s.typ
 }
 
 func (s *ResourceState) GetProvider(token string) ProviderResource {
@@ -121,6 +135,10 @@ func (s *ResourceState) getProvider() ProviderResource {
 	return s.provider
 }
 
+func (s *ResourceState) getProtect() *bool {
+	return s.protect
+}
+
 func (s *ResourceState) getVersion() string {
 	return s.version
 }
@@ -131,10 +149,6 @@ func (s *ResourceState) getPluginDownloadURL() string {
 
 func (s *ResourceState) getAliases() []URNOutput {
 	return s.aliases
-}
-
-func (s *ResourceState) getName() string {
-	return s.name
 }
 
 func (s *ResourceState) getTransformations() []ResourceTransformation {
@@ -218,6 +232,12 @@ type Resource interface {
 	// URN is this resource's stable logical URN used to distinctly address it before, during, and after deployments.
 	URN() URNOutput
 
+	// PulumiResourceName returns the name of the resource.
+	PulumiResourceName() string
+
+	// PulumiResourceType returns the type token of the resource.
+	PulumiResourceType() string
+
 	// getChildren returns the resource's children.
 	getChildren() []Resource
 
@@ -230,6 +250,9 @@ type Resource interface {
 	// getProvider returns the provider for the resource.
 	getProvider() ProviderResource
 
+	// getProtect returns the protect flag for the resource.
+	getProtect() *bool
+
 	// getVersion returns the version for the resource.
 	getVersion() string
 
@@ -238,9 +261,6 @@ type Resource interface {
 
 	// getAliases returns the list of aliases for this resource
 	getAliases() []URNOutput
-
-	// getName returns the name of the resource
-	getName() string
 
 	// getTransformations returns the transformations for the resource.
 	getTransformations() []ResourceTransformation
@@ -307,6 +327,112 @@ type CustomTimeouts struct {
 	Create string
 	Update string
 	Delete string
+	Read   string
+}
+
+// ResourceHookOptions are the options for registering a resource hook.
+type ResourceHookOptions struct {
+	OnDryRun     bool // Run the hook during dry run (preview) operations. Defaults to false.
+	IgnoreErrors bool // If true, errors are logged as warnings instead of failing the program.
+}
+
+// ResourceHookArgs represents the arguments passed to a resource hook.
+//
+// Depending on the hook type, only some of the new/old inputs/outputs are set.
+//
+// | Hook Type     | old_inputs | new_inputs | old_outputs | new_outputs |
+// | ------------- | ---------- | ---------- | ----------- | ----------- |
+// | before_create |            | ✓          |             |             |
+// | after_create  |            | ✓          |             | ✓           |
+// | before_update | ✓          | ✓          | ✓           |             |
+// | after_update  | ✓          | ✓          | ✓           | ✓           |
+// | before_delete | ✓          |            | ✓           |             |
+// | after_delete  | ✓          |            | ✓           |             |
+type ResourceHookArgs struct {
+	URN        URN                  // The URN of the resource that triggered the hook.
+	ID         ID                   // The ID of the resource that triggered the hook.
+	Name       string               // The name of the resource that triggered the hook.
+	Type       tokens.Type          // The type of the resource that triggered the hook.
+	NewInputs  resource.PropertyMap // The new inputs of the resource that triggered the hook.
+	OldInputs  resource.PropertyMap // The old inputs of the resource that triggered the hook.
+	NewOutputs resource.PropertyMap // The new outputs of the resource that triggered the hook.
+	OldOutputs resource.PropertyMap // The old outputs of the resource that triggered the hook.
+}
+
+// ErrorHookArgs represents the arguments passed to an error hook.
+//
+// Depending on the failed operation, only some of the new/old inputs/outputs are set.
+//
+// | Failed Operation | old_inputs | new_inputs | old_outputs |
+// | ---------------- | ---------- | ---------- | ----------- |
+// | create           |            | ✓          |             |
+// | update           | ✓          | ✓          | ✓           |
+// | delete           | ✓          |            | ✓           |
+type ErrorHookArgs struct {
+	URN             URN                  // The URN of the resource that triggered the hook.
+	ID              ID                   // The ID of the resource that triggered the hook.
+	Name            string               // The name of the resource that triggered the hook.
+	Type            tokens.Type          // The type of the resource that triggered the hook.
+	NewInputs       resource.PropertyMap // The new inputs of the resource that triggered the hook.
+	OldInputs       resource.PropertyMap // The old inputs of the resource that triggered the hook.
+	OldOutputs      resource.PropertyMap // The old outputs of the resource that triggered the hook.
+	FailedOperation string               // The operation that failed (create, update, or delete).
+	Errors          []string             // The errors that have been seen so far (newest first).
+}
+
+// ResourceHookFunction is a function that can be registered as a resource hook
+type ResourceHookFunction func(args *ResourceHookArgs) error
+
+// ErrorHookFunction is a function that can be registered as an error hook
+type ErrorHookFunction func(args *ErrorHookArgs) (bool, error)
+
+// ResourceHook is a named hook that can be registered as a resource hook.
+type ResourceHook struct {
+	Name     string               // The unqiue name of the resource hook.
+	Callback ResourceHookFunction // The function that will be called when the resource hook is triggered.
+	Opts     ResourceOptions      // The options for the resource hook.
+	// Tracks the registration of the resource hook. The future will resolve
+	// once the hook has been registered, or reject if any error
+	registered *promise.Promise[struct{}]
+}
+
+// ErrorHook is a named hook that can be registered as an error hook.
+type ErrorHook struct {
+	Name     string            // The unqiue name of the error hook.
+	Callback ErrorHookFunction // The function that will be called when the error hook is triggered.
+	// Tracks the registration of the error hook. The future will resolve
+	// once the hook has been registered, or reject if any error occurs.
+	registered *promise.Promise[struct{}]
+}
+
+// ResourceHookBinding binds `ResourceHook` instances to a resource. The
+// resource hooks will be invoked during certain step of the lifecycle of the
+// resource.
+//
+// `before_${action}` hooks that raise an exception cause the action to fail.
+// `after_${action}` hooks that raise an exception will log a warning, but do
+// not cause the action or the deployment to fail.
+//
+// When running `pulumi destroy`, `before_delete` and `after_delete` resource
+// hooks require the operation to run with `--run-program`, to ensure that the
+// program which defines the hooks is available.
+type ResourceHookBinding struct {
+	BeforeCreate []*ResourceHook // Hooks to be invoked before the resource is created.
+	AfterCreate  []*ResourceHook // Hooks to be invoked after the resource is created.
+	BeforeUpdate []*ResourceHook // Hooks to be invoked before the resource is updated.
+	AfterUpdate  []*ResourceHook // Hooks to be invoked after the resource is updated.
+	// Hooks to be invoked before the resource is deleted.
+	//
+	// Note that delete hooks require that destroy operations are run with
+	// `--run-program`.
+	BeforeDelete []*ResourceHook
+	// Hooks to be invoked after the resource is deleted.
+	//
+	// Note that delete hooks require that destroy operations are run with
+	// `--run-program`.
+	AfterDelete []*ResourceHook
+	// Hooks to be invoked when an operation fails and is retryable.
+	OnError []*ErrorHook
 }
 
 // ResourceOptions is a snapshot of one or more [ResourceOption]s.
@@ -348,6 +474,9 @@ type ResourceOptions struct {
 	// IgnoreChanges lists properties changes to which should be ignored.
 	IgnoreChanges []string
 
+	// HideDiffs lists property paths which shouldn't be displayed during diffs.
+	HideDiffs []string
+
 	// Import specifies that the provider for this resource
 	// should import its state from a cloud resource with the given ID.
 	Import IDInput
@@ -374,6 +503,13 @@ type ResourceOptions struct {
 	// The list may include '*' to indicate that all properties trigger
 	// replacements.
 	ReplaceOnChanges []string
+
+	// If set, the engine will diff this with the last recorded value, and trigger
+	// a replace if they are not equal.  Note that if either value is null, no
+	// comparison is done and no replacement is triggered. This means that the
+	// replacement trigger only applies to two subsequent deployments with defined
+	// triggers.
+	ReplacementTrigger Input
 
 	// Transformations is a list of functions that transform
 	// the resource's properties during construction.
@@ -403,6 +539,18 @@ type ResourceOptions struct {
 	// DeletedWith holds a container resource that, if deleted,
 	// also deletes this resource.
 	DeletedWith Resource
+
+	// ReplaceWith holds a list of container resources that, if replaced,
+	// also trigger a replace of this resource.
+	ReplaceWith []Resource
+
+	// Hooks are the optional resource hooks to bind to this resource. The hooks
+	// will be invoked during the lifecycle of the resource.
+	Hooks *ResourceHookBinding
+
+	// EnvVarMappings specifies environment variable mappings for provider resources.
+	// Keys are the source environment variable names, values are the target names.
+	EnvVarMappings map[string]string
 }
 
 // NewResourceOptions builds a preview of the effect of the provided options.
@@ -422,23 +570,28 @@ type resourceOptions struct {
 	AdditionalSecretOutputs []string
 	Aliases                 []Alias
 	CustomTimeouts          *CustomTimeouts
-	DeleteBeforeReplace     bool
+	DeleteBeforeReplace     *bool
 	DependsOn               []dependencySet
 	IgnoreChanges           []string
+	HideDiffs               []string
 	Import                  IDInput
 	Parent                  Resource
-	Protect                 bool
+	Protect                 *bool
 	Provider                ProviderResource
 	Providers               map[string]ProviderResource
 	ReplaceOnChanges        []string
+	ReplacementTrigger      Input
 	Transformations         []ResourceTransformation
 	Transforms              []ResourceTransform
 	URN                     string
 	Version                 string
 	PluginDownloadURL       string
-	RetainOnDelete          bool
+	RetainOnDelete          *bool
 	DeletedWith             Resource
+	ReplaceWith             []Resource
 	Parameterization        []byte
+	Hooks                   *ResourceHookBinding
+	EnvVarMappings          map[string]string
 }
 
 func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
@@ -460,7 +613,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 	}
 
 	sort.Slice(dependsOn, func(i, j int) bool {
-		return dependsOn[i].getName() < dependsOn[j].getName()
+		return dependsOn[i].PulumiResourceName() < dependsOn[j].PulumiResourceName()
 	})
 
 	var providers []ProviderResource
@@ -474,27 +627,39 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 		})
 	}
 
+	flatten := func(s *bool) bool {
+		if s == nil {
+			return false
+		}
+		return *s
+	}
+
 	return &ResourceOptions{
 		AdditionalSecretOutputs: ro.AdditionalSecretOutputs,
 		Aliases:                 ro.Aliases,
 		CustomTimeouts:          ro.CustomTimeouts,
-		DeleteBeforeReplace:     ro.DeleteBeforeReplace,
+		DeleteBeforeReplace:     flatten(ro.DeleteBeforeReplace),
 		DependsOn:               dependsOn,
 		DependsOnInputs:         dependsOnInputs,
 		IgnoreChanges:           ro.IgnoreChanges,
+		HideDiffs:               ro.HideDiffs,
 		Import:                  ro.Import,
 		Parent:                  ro.Parent,
-		Protect:                 ro.Protect,
+		Protect:                 flatten(ro.Protect),
 		Provider:                ro.Provider,
 		Providers:               providers,
 		ReplaceOnChanges:        ro.ReplaceOnChanges,
+		ReplacementTrigger:      ro.ReplacementTrigger,
 		Transformations:         ro.Transformations,
 		Transforms:              ro.Transforms,
 		URN:                     ro.URN,
 		Version:                 ro.Version,
 		PluginDownloadURL:       ro.PluginDownloadURL,
-		RetainOnDelete:          ro.RetainOnDelete,
+		RetainOnDelete:          flatten(ro.RetainOnDelete),
 		DeletedWith:             ro.DeletedWith,
+		ReplaceWith:             ro.ReplaceWith,
+		Hooks:                   ro.Hooks,
+		EnvVarMappings:          ro.EnvVarMappings,
 	}
 }
 
@@ -518,37 +683,66 @@ type InvokeOptions struct {
 	// should be downloaded.
 	// This will be blank if the URL was inferred automatically.
 	PluginDownloadURL string
-
-	// This is an internal write only field that is used to store the parameterization from the default options.
-	parameterization []byte
+	// DependsOn lists additional explicit dependencies for the resource
+	// in addition to those tracked automatically by Pulumi.
+	DependsOn []Resource
+	// DependsOnInputs holds explicit dependencies for the resource
+	// that may not be fully known yet.
+	DependsOnInputs []ResourceArrayInput
 }
-
-// NOTE:
-// InvokeOptions is part of the public API.
-// If you introduce a new option,
-// consider what its "snapshot" should look like,
-// not the internal representation.
-// For example, a list of resources should be []Resource,
-// even if it's stored as a map[string]Resource.
-// If the snapshot representation diverges from the internal,
-// mirror this struct into a private invokeOptions struct.
-// See resourceOptions for an example.
 
 // NewInvokeOptions builds a preview of the effect of the provided options.
 //
 // Use this to get a read-only snapshot of the collective effect
 // of a list of [InvokeOption]s.
 func NewInvokeOptions(opts ...InvokeOption) (*InvokeOptions, error) {
-	var options InvokeOptions
-	for _, o := range opts {
-		if o != nil {
-			o.applyInvokeOption(&options)
-		}
-	}
 	// The error return is currently unused,
 	// but it's foreseeable that we'll need it
 	// if we begin doing option validation at option merge time.
-	return &options, nil
+	return invokeOptionsSnapshot(mergeInvokeOptions(opts...)), nil
+}
+
+// invokeOptions is the internal representation of the effect of
+// [InvokeOptions]s.
+type invokeOptions struct {
+	Parent            Resource
+	Provider          ProviderResource
+	Version           string
+	PluginDownloadURL string
+	DependsOn         []dependencySet
+	Parameterization  []byte
+}
+
+func invokeOptionsSnapshot(io *invokeOptions) *InvokeOptions {
+	var (
+		dependsOn       []Resource
+		dependsOnInputs []ResourceArrayInput
+	)
+	for _, d := range io.DependsOn {
+		switch d := d.(type) {
+		case resourceDependencySet:
+			dependsOn = append(dependsOn, []Resource(d)...)
+		case *resourceArrayInputDependencySet:
+			dependsOnInputs = append(dependsOnInputs, d.input)
+		default:
+			// Unreachable.
+			// We control all implementations of dependencySet.
+			contract.Failf("Unknown dependencySet %T", d)
+		}
+	}
+
+	sort.Slice(dependsOn, func(i, j int) bool {
+		return dependsOn[i].PulumiResourceName() < dependsOn[j].PulumiResourceName()
+	})
+
+	return &InvokeOptions{
+		Parent:            io.Parent,
+		Provider:          io.Provider,
+		Version:           io.Version,
+		PluginDownloadURL: io.PluginDownloadURL,
+		DependsOn:         dependsOn,
+		DependsOnInputs:   dependsOnInputs,
+	}
 }
 
 type ResourceOption interface {
@@ -556,7 +750,7 @@ type ResourceOption interface {
 }
 
 type InvokeOption interface {
-	applyInvokeOption(*InvokeOptions)
+	applyInvokeOption(*invokeOptions)
 }
 
 type ResourceOrInvokeOption interface {
@@ -570,19 +764,19 @@ func (o resourceOption) applyResourceOption(opts *resourceOptions) {
 	o(opts)
 }
 
-type invokeOption func(*InvokeOptions)
+type invokeOption func(*invokeOptions)
 
-func (o invokeOption) applyInvokeOption(opts *InvokeOptions) {
+func (o invokeOption) applyInvokeOption(opts *invokeOptions) {
 	o(opts)
 }
 
-type resourceOrInvokeOption func(ro *resourceOptions, io *InvokeOptions)
+type resourceOrInvokeOption func(ro *resourceOptions, io *invokeOptions)
 
 func (o resourceOrInvokeOption) applyResourceOption(opts *resourceOptions) {
 	o(opts, nil)
 }
 
-func (o resourceOrInvokeOption) applyInvokeOption(opts *InvokeOptions) {
+func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 	o(nil, opts)
 }
 
@@ -594,6 +788,16 @@ func merge(opts ...ResourceOption) *resourceOptions {
 	for _, o := range opts {
 		if o != nil {
 			o.applyResourceOption(options)
+		}
+	}
+	return options
+}
+
+func mergeInvokeOptions(opts ...InvokeOption) *invokeOptions {
+	options := &invokeOptions{}
+	for _, o := range opts {
+		if o != nil {
+			o.applyInvokeOption(options)
 		}
 	}
 	return options
@@ -616,7 +820,7 @@ func Aliases(o []Alias) ResourceOption {
 // DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 func DeleteBeforeReplace(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DeleteBeforeReplace = o
+		ro.DeleteBeforeReplace = &o
 	})
 }
 
@@ -631,7 +835,7 @@ func Composite(opts ...ResourceOption) ResourceOption {
 
 // CompositeInvoke is an invoke option that contains other invoke options.
 func CompositeInvoke(opts ...InvokeOption) InvokeOption {
-	return invokeOption(func(ro *InvokeOptions) {
+	return invokeOption(func(ro *invokeOptions) {
 		for _, o := range opts {
 			o.applyInvokeOption(ro)
 		}
@@ -641,17 +845,21 @@ func CompositeInvoke(opts ...InvokeOption) InvokeOption {
 // dependencySet unifies types that can provide dependencies for a
 // resource.
 type dependencySet interface {
-	// Adds URNs for addURNs from this set
-	// into the given urnSet.
+	// Adds dependencies into the depSet.
 	// Optionally pass the last Resource arg to short-circuit component
 	// children cycles.
-	addURNs(context.Context, urnSet, Resource) error
+	addDeps(context.Context, map[URN]Resource, Resource) error
 }
 
 // DependsOn is an optional array of explicit dependencies on other resources.
-func DependsOn(o []Resource) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, resourceDependencySet(o))
+func DependsOn(o []Resource) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.DependsOn = append(ro.DependsOn, resourceDependencySet(o))
+		case io != nil:
+			io.DependsOn = append(io.DependsOn, resourceDependencySet(o))
+		}
 	})
 }
 
@@ -661,9 +869,9 @@ type resourceDependencySet []Resource
 
 var _ dependencySet = (resourceDependencySet)(nil)
 
-func (rs resourceDependencySet) addURNs(ctx context.Context, urns urnSet, from Resource) error {
+func (rs resourceDependencySet) addDeps(ctx context.Context, deps map[URN]Resource, from Resource) error {
 	for _, r := range rs {
-		if err := addDependency(ctx, urns, r, from); err != nil {
+		if err := addDependency(ctx, deps, r, from); err != nil {
 			return err
 		}
 	}
@@ -678,9 +886,14 @@ func (rs resourceDependencySet) addURNs(ctx context.Context, urns urnSet, from R
 //	var ro ResourceOutput
 //	allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
 //	DependsOnInputs(allDeps)
-func DependsOnInputs(o ResourceArrayInput) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, &resourceArrayInputDependencySet{o})
+func DependsOnInputs(o ResourceArrayInput) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.DependsOn = append(ro.DependsOn, &resourceArrayInputDependencySet{o})
+		case io != nil:
+			io.DependsOn = append(io.DependsOn, &resourceArrayInputDependencySet{o})
+		}
 	})
 }
 
@@ -690,7 +903,7 @@ type resourceArrayInputDependencySet struct{ input ResourceArrayInput }
 
 var _ dependencySet = (*resourceArrayInputDependencySet)(nil)
 
-func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urnSet, from Resource) error {
+func (ra *resourceArrayInputDependencySet) addDeps(ctx context.Context, deps map[URN]Resource, from Resource) error {
 	out := ra.input.ToResourceArrayOutput()
 
 	value, known, _ /* secret */, _ /* deps */, err := internal.AwaitOutput(ctx, out)
@@ -708,7 +921,7 @@ func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urn
 	toplevelDeps := getOutputDeps(out)
 
 	for _, r := range append(resources, toplevelDeps...) {
-		if err := addDependency(ctx, urns, r, from); err != nil {
+		if err := addDependency(ctx, deps, r, from); err != nil {
 			return err
 		}
 	}
@@ -719,6 +932,13 @@ func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urn
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.IgnoreChanges = append(ro.IgnoreChanges, o...)
+	})
+}
+
+// Hide the diffs for a set of property paths.
+func HideDiffs(paths []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.HideDiffs = append(ro.HideDiffs, paths...)
 	})
 }
 
@@ -734,7 +954,7 @@ func Import(o IDInput) ResourceOption {
 
 // Parent sets the parent resource to which this resource or invoke belongs.
 func Parent(r Resource) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.Parent = r
@@ -747,7 +967,27 @@ func Parent(r Resource) ResourceOrInvokeOption {
 // Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 func Protect(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.Protect = o
+		ro.Protect = &o
+	})
+}
+
+// If set, ResourceHooks are the resource hooks to bind to this resource. The
+// hooks will be invoked during the lifecycle of the resource.
+func ResourceHooks(hooks *ResourceHookBinding) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		if hooks == nil {
+			return
+		}
+		if ro.Hooks == nil {
+			ro.Hooks = &ResourceHookBinding{}
+		}
+		ro.Hooks.BeforeCreate = append(ro.Hooks.BeforeCreate, hooks.BeforeCreate...)
+		ro.Hooks.AfterCreate = append(ro.Hooks.AfterCreate, hooks.AfterCreate...)
+		ro.Hooks.BeforeUpdate = append(ro.Hooks.BeforeUpdate, hooks.BeforeUpdate...)
+		ro.Hooks.AfterUpdate = append(ro.Hooks.AfterUpdate, hooks.AfterUpdate...)
+		ro.Hooks.BeforeDelete = append(ro.Hooks.BeforeDelete, hooks.BeforeDelete...)
+		ro.Hooks.AfterDelete = append(ro.Hooks.AfterDelete, hooks.AfterDelete...)
+		ro.Hooks.OnError = append(ro.Hooks.OnError, hooks.OnError...)
 	})
 }
 
@@ -800,7 +1040,7 @@ func Protect(o bool) ResourceOption {
 
 // Provider sets the provider resource to use for a resource's CRUD operations or an invoke's call.
 func Provider(r ProviderResource) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.Provider = r
@@ -843,6 +1083,13 @@ func ReplaceOnChanges(o []string) ResourceOption {
 	})
 }
 
+// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+func ReplacementTrigger(o Input) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ReplacementTrigger = o
+	})
+}
+
 // Timeouts is an optional configuration block used for CRUD operations
 func Timeouts(o *CustomTimeouts) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
@@ -877,7 +1124,7 @@ func URN_(o string) ResourceOption {
 // operating on this resource. This version overrides the version information inferred from the current package and
 // should rarely be used.
 func Version(o string) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.Version = o
@@ -891,7 +1138,7 @@ func Version(o string) ResourceOrInvokeOption {
 // that should be used when operating on this resource. This url overrides the url information
 // inferred from the current package and should rarely be used.
 func PluginDownloadURL(o string) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.PluginDownloadURL = o
@@ -904,7 +1151,7 @@ func PluginDownloadURL(o string) ResourceOrInvokeOption {
 // If set to True, the providers Delete method will not be called for this resource.
 func RetainOnDelete(b bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.RetainOnDelete = b
+		ro.RetainOnDelete = &b
 	})
 }
 
@@ -916,14 +1163,41 @@ func DeletedWith(r Resource) ResourceOption {
 	})
 }
 
+// If set, the providers Replace method will not be called for this resource if
+// any of the specified resources is replaced.
+func ReplaceWith(r []Resource) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ReplaceWith = r
+	})
+}
+
 // If set this resource will be parameterized with the given package reference.
 func Parameterization(parameter []byte) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *InvokeOptions) {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
 			ro.Parameterization = parameter
 		case io != nil:
-			io.parameterization = parameter
+			io.Parameterization = parameter
+		}
+	})
+}
+
+// EnvVarMappings sets environment variable remappings for provider resources.
+// The map should contain NEW_KEY -> OLD_KEY pairs. If NEW_KEY exists in the environment,
+// the provider will see OLD_KEY with that value.
+// For example, {"MY_SPECIAL_AZ_LOGIN": "AZ_LOGIN"} means if MY_SPECIAL_AZ_LOGIN exists,
+// the provider will see AZ_LOGIN=value(MY_SPECIAL_AZ_LOGIN).
+// This option only applies to provider resources (pulumi:providers:*).
+func EnvVarMappings(mappings map[string]string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		if mappings != nil {
+			if ro.EnvVarMappings == nil {
+				ro.EnvVarMappings = make(map[string]string)
+			}
+			for k, v := range mappings {
+				ro.EnvVarMappings[k] = v
+			}
 		}
 	})
 }

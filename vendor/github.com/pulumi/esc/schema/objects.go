@@ -114,6 +114,11 @@ func (b *ObjectBuilder) Examples(vals ...map[string]any) *ObjectBuilder {
 	return b
 }
 
+func (b *ObjectBuilder) RotateOnly(names ...string) *ObjectBuilder {
+	b.s.RotateOnly = names
+	return b
+}
+
 func (b *ObjectBuilder) Schema() *Schema {
 	b.s.Type = "object"
 	return &b.s

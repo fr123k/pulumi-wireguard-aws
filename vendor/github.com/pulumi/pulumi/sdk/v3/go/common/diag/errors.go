@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -89,4 +89,8 @@ func GetDuplicateResourceAliasedError(urn resource.URN) *Diag {
 	return newError(urn, 2016,
 		"Duplicate resource URN '%v' conflicting with alias on resource with URN '%v'",
 	)
+}
+
+func GetCallFailedError() *Diag {
+	return newError("", 2017, "call to function '%v' failed: %v")
 }

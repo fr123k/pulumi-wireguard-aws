@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:lll, interfacer
+//nolint:lll
 package pulumi
 
 import (
@@ -52,10 +52,10 @@ func RegisterInputType(interfaceType reflect.Type, input Input) {
 // OutputState holds the internal details of an Output and implements the Apply and ApplyWithContext methods.
 type OutputState = internal.OutputState
 
-func newAnyOutput(wg *workGroup) (Output, func(interface{}), func(error)) {
+func newAnyOutput(wg *workGroup) (Output, func(any), func(error)) {
 	out := internal.NewOutputState(wg, anyType)
 
-	resolve := func(v interface{}) {
+	resolve := func(v any) {
 		internal.ResolveOutput(out, v, true, false, nil)
 	}
 	reject := func(err error) {
@@ -70,7 +70,7 @@ func newAnyOutput(wg *workGroup) (Output, func(interface{}), func(error)) {
 // error; exactly one function must be called. This acts like a promise.
 //
 // Deprecated: use Context.NewOutput instead.
-func NewOutput() (Output, func(interface{}), func(error)) {
+func NewOutput() (Output, func(any), func(error)) {
 	return newAnyOutput(nil)
 }
 
@@ -96,7 +96,7 @@ func UnsecretWithContext(ctx context.Context, input Output) Output {
 
 // ToSecret wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
-func ToSecret(input interface{}) Output {
+func ToSecret(input any) Output {
 	return internal.ToSecret(input)
 }
 
@@ -110,33 +110,81 @@ func UnsafeUnknownOutput(deps []Resource) Output {
 
 // ToSecretWithContext wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
-func ToSecretWithContext(ctx context.Context, input interface{}) Output {
+func ToSecretWithContext(ctx context.Context, input any) Output {
 	return internal.ToSecretWithContext(ctx, input)
 }
 
 // All returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each element of the
 // array will contain the resolved value of the corresponding output. The output will be rejected if any of the inputs
 // is rejected.
-func All(inputs ...interface{}) ArrayOutput {
+//
+// For example:
+//
+//	connectionString := pulumi.All(sqlServer.Name, database.Name).ApplyT(
+//		func (args []any) pulumi.Output {
+//			return Connection{
+//				Server: args[0].(string),
+//				Database: args[1].(string),
+//			}
+//		}
+//	)
+func All(inputs ...any) ArrayOutput {
 	return AllWithContext(context.Background(), inputs...)
 }
 
 // AllWithContext returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each
 // element of the array will contain the resolved value of the corresponding output. The output will be rejected if any
 // of the inputs is rejected.
-func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
+//
+// For example:
+//
+//	connectionString := pulumi.AllWithContext(ctx.Context(), sqlServer.Name, database.Name).ApplyT(
+//		func (args []any) pulumi.Output {
+//			return Connection{
+//				Server: args[0].(string),
+//				Database: args[1].(string),
+//			}
+//		}
+//	)
+func AllWithContext(ctx context.Context, inputs ...any) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
 // JSONMarshal uses "encoding/json".Marshal to serialize the given Output value into a JSON string.
-func JSONMarshal(v interface{}) StringOutput {
+//
+// JSONMarshal *does not* support marshaling values that contain nested unknowns. You will need to manually create
+// a top level unknown with [pulumi.Input.ApplyT] or [All]. This does not work:
+//
+//	pulumi.JSONMarshal(map[string]any{"key": myResource.Name})
+//
+// You need to move the output myResource.Name to a top level output:
+//
+//	pulumi.JSONMarshal(myResource.Name.Apply(func(name string) map[string]any{
+//		return map[string]any{"key": name}
+//	}))
+//
+// Supporting nested unknowns is tracked in https://github.com/pulumi/pulumi/issues/12460
+func JSONMarshal(v any) StringOutput {
 	return JSONMarshalWithContext(context.Background(), v)
 }
 
 // JSONMarshalWithContext uses "encoding/json".Marshal to serialize the given Output value into a JSON string.
-func JSONMarshalWithContext(ctx context.Context, v interface{}) StringOutput {
+//
+// JSONMarshalWithContext *does not* support marshaling values that contain nested unknowns. You will need to
+// manually create a top level unknown with [pulumi.Input.ApplyT] or [All]. This does not work:
+//
+//	pulumi.JSONMarshalWithContext(ctx.Context(), map[string]any{"key": myResource.Name})
+//
+// You need to move the output myResource.Name to a top level output:
+//
+//	pulumi.JSONMarshalWithContext(ctx.Context(), myResource.Name.Apply(func(name string) map[string]any{
+//		return map[string]any{"key": name}
+//	}))
+//
+// Supporting nested unknowns is tracked in https://github.com/pulumi/pulumi/issues/12460
+func JSONMarshalWithContext(ctx context.Context, v any) StringOutput {
 	o := ToOutputWithContext(ctx, v)
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v interface{}) (string, error) {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v any) (string, error) {
 		json, err := json.Marshal(v)
 		if err != nil {
 			return "", err
@@ -153,8 +201,8 @@ func JSONUnmarshal(data StringInput) AnyOutput {
 // JSONUnmarshalWithContext uses "encoding/json".Unmarshal to deserialize the given Input JSON string into a value.
 func JSONUnmarshalWithContext(ctx context.Context, data StringInput) AnyOutput {
 	o := ToOutputWithContext(ctx, data)
-	return o.ApplyTWithContext(ctx, func(_ context.Context, data string) (interface{}, error) {
-		var v interface{}
+	return o.ApplyTWithContext(ctx, func(_ context.Context, data string) (any, error) {
+		var v any
 		err := json.Unmarshal([]byte(data), &v)
 		if err != nil {
 			return nil, err
@@ -164,14 +212,22 @@ func JSONUnmarshalWithContext(ctx context.Context, data StringInput) AnyOutput {
 }
 
 // ToOutput returns an Output that will resolve when all Inputs contained in the given value have resolved.
-func ToOutput(v interface{}) Output {
+func ToOutput(v any) Output {
 	return internal.ToOutput(v)
 }
 
 // ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given value have
 // resolved.
-func ToOutputWithContext(ctx context.Context, v interface{}) Output {
+func ToOutputWithContext(ctx context.Context, v any) Output {
 	return internal.ToOutputWithContext(ctx, v)
+}
+
+func OutputWithDependencies(ctx context.Context, o Output, deps ...Resource) Output {
+	r := make([]internal.Resource, len(deps))
+	for i, d := range deps {
+		r[i] = d.(internal.Resource)
+	}
+	return internal.OutputWithDependencies(ctx, o, r...)
 }
 
 func init() {
@@ -239,14 +295,33 @@ func init() {
 //	}
 type Input = internal.Input
 
-var anyType = reflect.TypeOf((*interface{})(nil)).Elem()
+var anyType = reflect.TypeOf((*any)(nil)).Elem()
 
-func Any(v interface{}) AnyOutput {
+func Any(v any) AnyOutput {
 	return AnyWithContext(context.Background(), v)
 }
 
-func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
+func AnyWithContext(ctx context.Context, v any) AnyOutput {
 	return internal.ToOutputWithOutputType(ctx, anyOutputType, v).(AnyOutput)
+}
+
+// DeferredOutput creates an Output whose value can be later resolved from another Output instance.
+func DeferredOutput[T any](ctx context.Context) (pulumix.Output[T], func(Output)) {
+	var zero T
+	rt := reflect.TypeOf(zero)
+	state := internal.NewOutputState(nil, rt)
+	out := pulumix.Output[T]{OutputState: state}
+	resolve := func(o Output) {
+		go func() {
+			v, known, secret, deps, err := internal.AwaitOutput(ctx, o)
+			if err != nil {
+				internal.RejectOutput(state, err)
+				return
+			}
+			internal.ResolveOutput(out, v, known, secret, deps)
+		}()
+	}
+	return out, resolve
 }
 
 type AnyOutput struct{ *OutputState }
@@ -315,7 +390,7 @@ func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, bool, error) {
 	return URN(convert(id, stringType).(string)), true, secret, nil
 }
 
-func convert(v interface{}, to reflect.Type) interface{} {
+func convert(v any, to reflect.Type) any {
 	rv := reflect.ValueOf(v)
 	if !rv.Type().ConvertibleTo(to) {
 		panic(fmt.Errorf("cannot convert output value of type %s to %s", rv.Type(), to))
@@ -438,7 +513,7 @@ func (o ResourceArrayOutput) ToResourceArrayOutputWithContext(ctx context.Contex
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
 // type if the index is out of bounds.
 func (o ResourceArrayOutput) Index(i IntInput) ResourceOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) Resource {
+	return All(o, i).ApplyT(func(vs []any) Resource {
 		arr := vs[0].([]Resource)
 		idx := vs[1].(int)
 		var ret Resource
@@ -480,7 +555,7 @@ func init() {
 }
 
 // coerceTypeConversion assigns src to dst, performing deep type coercion as necessary.
-func coerceTypeConversion(src interface{}, dst reflect.Type) (interface{}, error) {
+func coerceTypeConversion(src any, dst reflect.Type) (any, error) {
 	makeError := func(src, dst reflect.Value) error {
 		return fmt.Errorf("expected value of type %s, not %s", dst.Type(), src.Type())
 	}

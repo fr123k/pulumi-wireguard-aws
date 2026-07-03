@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
@@ -26,16 +28,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
-	perrors "github.com/pulumi/pulumi/sdk/v3/go/pulumi/errors"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-type constructFunc func(ctx *Context, typ, name string, inputs map[string]interface{},
+type constructFunc func(ctx *Context, typ, name string, inputs map[string]any,
 	options ResourceOption) (URNInput, Input, error)
 
 // construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
@@ -73,14 +73,14 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
 	}
-	inputs := make(map[string]interface{}, len(deserializedInputs))
+	inputs := make(map[string]any, len(deserializedInputs))
 	for key, value := range deserializedInputs {
 		k := string(key)
-		var deps urnSet
+		var deps map[URN]struct{}
 		if inputDeps, ok := inputDependencies[k]; ok {
-			deps = urnSet{}
+			deps = map[URN]struct{}{}
 			for _, depURN := range inputDeps.GetUrns() {
-				deps.add(URN(depURN))
+				deps[URN(depURN)] = struct{}{}
 			}
 		}
 
@@ -92,8 +92,26 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 
 	// Rebuild the resource options.
 	aliases := make([]Alias, len(req.GetAliases()))
-	for i, urn := range req.GetAliases() {
-		aliases[i] = Alias{URN: URN(urn)}
+	for i, alias := range req.GetAliases() {
+		var result Alias
+		switch a := alias.Alias.(type) {
+		case *pulumirpc.Alias_Spec_:
+			result = Alias{
+				Name:    String(a.Spec.Name),
+				Type:    String(a.Spec.Type),
+				Project: String(a.Spec.Project),
+				Stack:   String(a.Spec.Stack),
+			}
+			switch p := a.Spec.Parent.(type) {
+			case *pulumirpc.Alias_Spec_ParentUrn:
+				result.Parent = pulumiCtx.newDependencyResource(URN(p.ParentUrn))
+			case *pulumirpc.Alias_Spec_NoParent:
+				result.NoParent = Bool(p.NoParent)
+			}
+		case *pulumirpc.Alias_Urn:
+			result = Alias{URN: URN(a.Urn)}
+		}
+		aliases[i] = result
 	}
 
 	dependencies := slice.Prealloc[Resource](len(req.GetDependencies()))
@@ -113,12 +131,53 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	if req.GetParent() != "" {
 		parent = pulumiCtx.newDependencyResource(URN(req.GetParent()))
 	}
+
+	var hooks *ResourceHookBinding
+	binding := req.GetResourceHooks()
+	if binding != nil {
+		hooks = &ResourceHookBinding{}
+		hooks.BeforeCreate = makeStubHooks(binding.GetBeforeCreate())
+		hooks.AfterCreate = makeStubHooks(binding.GetAfterCreate())
+		hooks.BeforeUpdate = makeStubHooks(binding.GetBeforeUpdate())
+		hooks.AfterUpdate = makeStubHooks(binding.GetAfterUpdate())
+		hooks.BeforeDelete = makeStubHooks(binding.GetBeforeDelete())
+		hooks.AfterDelete = makeStubHooks(binding.GetAfterDelete())
+		hooks.OnError = makeStubErrorHooks(binding.GetOnError())
+	}
+
+	var replacementTrigger Input
+	if rt := req.GetReplacementTrigger(); rt != nil {
+		pv, err := plugin.UnmarshalPropertyValue(
+			resource.PropertyKey("replacementTrigger"),
+			rt,
+			plugin.MarshalOptions{
+				KeepSecrets:      true,
+				KeepResources:    true,
+				KeepUnknowns:     req.GetDryRun(),
+				KeepOutputValues: true,
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
+		}
+
+		if pv != nil && !pv.IsNull() { // null = explicitly unset
+			m, err := unmarshalPropertyMap(pulumiCtx, resource.PropertyMap{
+				resource.PropertyKey("replacementTrigger"): *pv,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
+			}
+			replacementTrigger = m["replacementTrigger"]
+		}
+	}
+
 	opts := resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = aliases
 		if len(dependencies) > 0 {
 			ro.DependsOn = append(ro.DependsOn, resourceDependencySet(dependencies))
 		}
-		ro.Protect = req.GetProtect()
+		ro.Protect = req.Protect
 		ro.Providers = providers
 		ro.Parent = parent
 
@@ -128,34 +187,29 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 				Create: t.GetCreate(),
 				Update: t.GetUpdate(),
 				Delete: t.GetDelete(),
+				Read:   t.GetRead(),
+			}
+		}
+		if len(req.GetReplaceWith()) > 0 {
+			ro.ReplaceWith = make([]Resource, len(req.GetReplaceWith()))
+			for i, urn := range req.GetReplaceWith() {
+				ro.ReplaceWith[i] = pulumiCtx.newDependencyResource(URN(urn))
 			}
 		}
 		if urn := req.DeletedWith; urn != "" {
 			ro.DeletedWith = pulumiCtx.newDependencyResource(URN(urn))
 		}
-		ro.DeleteBeforeReplace = req.GetDeleteBeforeReplace()
+		ro.DeleteBeforeReplace = req.DeleteBeforeReplace
 		ro.IgnoreChanges = append(ro.IgnoreChanges, req.GetIgnoreChanges()...)
 		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, req.GetReplaceOnChanges()...)
-		ro.RetainOnDelete = req.GetRetainOnDelete()
+		ro.ReplacementTrigger = replacementTrigger
+		ro.RetainOnDelete = req.RetainOnDelete
+		ro.Hooks = hooks
 	})
 
 	urn, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)
 	if err != nil {
-		var iperr *perrors.InputPropertiesError
-		if errors.As(err, &iperr) {
-			// Convert the errors to a slice of proto messages.
-			errorDetails := pulumirpc.InputPropertiesError{}
-			for _, e := range iperr.Errors {
-				errorDetails.Errors = append(errorDetails.Errors, &pulumirpc.InputPropertiesError_PropertyError{
-					PropertyPath: e.PropertyPath,
-					Reason:       e.Reason,
-				})
-			}
-
-			s, _ := status.Newf(codes.InvalidArgument, "%s", iperr.Message).WithDetails(&errorDetails)
-			return nil, s.Err()
-		}
-		return nil, err
+		return nil, rpcerror.WrapDetailedError(err)
 	}
 
 	rpcURN, _, _, err := urn.ToURNOutput().awaitURN(ctx)
@@ -225,7 +279,7 @@ func createProviderResource(ctx *Context, ref string) (ProviderResource, error) 
 	// the intended provider type with its state, if it's been registered.
 	resource, err := unmarshalResourceReference(ctx, resource.ResourceReference{
 		URN: resource.URN(urn),
-		ID:  resource.NewStringProperty(id),
+		ID:  resource.NewProperty(id),
 	})
 	if err != nil {
 		return nil, err
@@ -235,14 +289,14 @@ func createProviderResource(ctx *Context, ref string) (ProviderResource, error) 
 
 type constructInput struct {
 	value resource.PropertyValue
-	deps  urnSet
+	deps  map[URN]struct{}
 }
 
 func (ci constructInput) Dependencies(ctx *Context) []Resource {
 	if ci.deps == nil {
 		return nil
 	}
-	urns := ci.deps.sortedValues()
+	urns := slices.Sorted(maps.Keys(ci.deps))
 	var result []Resource
 	if len(urns) > 0 {
 		result = make([]Resource, len(urns))
@@ -254,7 +308,7 @@ func (ci constructInput) Dependencies(ctx *Context) []Resource {
 }
 
 // constructInputsMap returns the inputs as a Map.
-func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error) {
+func constructInputsMap(ctx *Context, inputs map[string]any) (Map, error) {
 	result := make(Map, len(inputs))
 	for k, v := range inputs {
 		ci := v.(*constructInput)
@@ -277,7 +331,7 @@ func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error
 	return result, nil
 }
 
-func gatherDeps(v resource.PropertyValue, deps urnSet) {
+func gatherDeps(v resource.PropertyValue, deps map[URN]struct{}) {
 	switch {
 	case v.IsSecret():
 		gatherDeps(v.SecretValue().Element, deps)
@@ -285,11 +339,11 @@ func gatherDeps(v resource.PropertyValue, deps urnSet) {
 		gatherDeps(v.Input().Element, deps)
 	case v.IsOutput():
 		for _, urn := range v.OutputValue().Dependencies {
-			deps.add(URN(urn))
+			deps[URN(urn)] = struct{}{}
 		}
 		gatherDeps(v.OutputValue().Element, deps)
 	case v.IsResourceReference():
-		deps.add(URN(v.ResourceReferenceValue().URN))
+		deps[URN(v.ResourceReferenceValue().URN)] = struct{}{}
 	case v.IsArray():
 		for _, e := range v.ArrayValue() {
 			gatherDeps(e, deps)
@@ -310,7 +364,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 	}
 
 	// Allocate storage as necessary.
-	for dest.Kind() == reflect.Ptr {
+	for dest.Kind() == reflect.Pointer {
 		elem := reflect.New(dest.Type().Elem())
 		dest.Set(elem)
 		dest = elem.Elem()
@@ -324,7 +378,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 			known, element = false, element.Input().Element
 		}
 		// Handle this as a secret output.
-		return copyInputTo(ctx, resource.NewOutputProperty(resource.Output{
+		return copyInputTo(ctx, resource.NewProperty(resource.Output{
 			Element: element,
 			Known:   known,
 			Secret:  true,
@@ -369,7 +423,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 		// Try to determine the input type from the interface.
 		if it := internal.InputInterfaceTypeToConcreteType(dest.Type()); it != nil {
 			inputType := it
-			for inputType.Kind() == reflect.Ptr {
+			for inputType.Kind() == reflect.Pointer {
 				inputType = inputType.Elem()
 			}
 
@@ -604,13 +658,13 @@ func copyToStruct(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest
 }
 
 // constructInputsCopyTo sets the inputs on the given args struct.
-func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args interface{}) error {
+func constructInputsCopyTo(ctx *Context, inputs map[string]any, args any) error {
 	if args == nil {
 		return errors.New("args must not be nil")
 	}
 	argsV := reflect.ValueOf(args)
 	typ := argsV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return errors.New("args must be a pointer to a struct")
 	}
 	argsV, typ = argsV.Elem(), typ.Elem()
@@ -630,12 +684,19 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			}
 
 			// Find all nested dependencies.
-			deps := urnSet{}
+			deps := map[URN]struct{}{}
 			gatherDeps(ci.value, deps)
 
 			// If the top-level property dependencies are equal to (or a subset of) the gathered nested
 			// dependencies, we don't necessarily need to create a top-level output for the property.
-			if deps.contains(ci.deps) {
+			contains := true
+			for v := range ci.deps {
+				if _, ok := deps[v]; !ok {
+					contains = false
+					break
+				}
+			}
+			if contains {
 				if err := copyInputTo(ctx, ci.value, fieldV); err != nil {
 					return fmt.Errorf("copying input %q: %w", k, err)
 				}
@@ -729,7 +790,7 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 
 	resourceV := reflect.ValueOf(resource)
 	typ := resourceV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return nil, nil, errors.New("resource must be a pointer to a struct")
 	}
 	resourceV, typ = resourceV.Elem(), typ.Elem()
@@ -762,7 +823,7 @@ type callFailure struct {
 	Reason   string
 }
 
-type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input, []interface{}, error)
+type callFunc func(ctx *Context, tok string, args map[string]any) (Input, []any, error)
 
 // call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
 func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
@@ -798,14 +859,14 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
 	}
-	args := make(map[string]interface{}, len(deserializedArgs))
+	args := make(map[string]any, len(deserializedArgs))
 	for key, value := range deserializedArgs {
 		k := string(key)
-		var deps urnSet
+		var deps map[URN]struct{}
 		if inputDeps, ok := argDependencies[k]; ok {
-			deps = urnSet{}
+			deps = map[URN]struct{}{}
 			for _, depURN := range inputDeps.GetUrns() {
-				deps.add(URN(depURN))
+				deps[URN(depURN)] = struct{}{}
 			}
 		}
 
@@ -817,6 +878,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 
 	result, failures, err := callF(pulumiCtx, req.GetTok(), args)
 	if err != nil {
+		err = rpcerror.WrapDetailedError(err)
 		return nil, err
 	}
 
@@ -881,7 +943,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 
 // callArgsCopyTo sets the args on the given args struct. If there is a `__self__` argument, it will be
 // returned, otherwise it will return nil.
-func callArgsCopyTo(ctx *Context, source map[string]interface{}, args interface{}) (Resource, error) {
+func callArgsCopyTo(ctx *Context, source map[string]any, args any) (Resource, error) {
 	// Use the same implementation as construct.
 	if err := constructInputsCopyTo(ctx, source, args); err != nil {
 		return nil, err
@@ -898,7 +960,7 @@ func callArgsCopyTo(ctx *Context, source map[string]interface{}, args interface{
 
 // callArgsSelf retrieves the `__self__` argument. If `__self__` is present the value is returned,
 // otherwise the returned value will be nil.
-func callArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error) {
+func callArgsSelf(ctx *Context, source map[string]any) (Resource, error) {
 	v, ok := source["__self__"]
 	if !ok {
 		return nil, nil
@@ -921,14 +983,14 @@ func callArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error)
 }
 
 // newCallResult converts a result struct into an input Map that can be marshalled.
-func newCallResult(result interface{}) (Input, error) {
+func newCallResult(result any) (Input, error) {
 	if result == nil {
 		return nil, errors.New("result must not be nil")
 	}
 
 	resultV := reflect.ValueOf(result)
 	typ := resultV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return nil, errors.New("result must be a pointer to a struct")
 	}
 	resultV, typ = resultV.Elem(), typ.Elem()
@@ -956,7 +1018,7 @@ func newCallResult(result interface{}) (Input, error) {
 }
 
 // newCallFailure creates a call failure.
-func newCallFailure(property, reason string) interface{} {
+func newCallFailure(property, reason string) any {
 	return callFailure{
 		Property: property,
 		Reason:   reason,

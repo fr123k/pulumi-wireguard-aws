@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package plugin
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	"google.golang.org/grpc"
 
@@ -29,6 +30,9 @@ type GrpcServer struct {
 
 	cancel chan bool
 	handle rpcutil.ServeHandle
+
+	closeOnce sync.Once
+	closeErr  error
 }
 
 // NewServer creates a new GrpcServer wired up to the given services and context.
@@ -44,7 +48,7 @@ func NewServer(ctx *Context, registrations ...func(server *grpc.Server)) (*GrpcS
 			}
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
+		Options: rpcutil.TracingServerInterceptorOptions(ctx.tracingSpan),
 	})
 	if err != nil {
 		return nil, err
@@ -57,13 +61,11 @@ func NewServer(ctx *Context, registrations ...func(server *grpc.Server)) (*GrpcS
 }
 
 func (s *GrpcServer) Close() error {
-	if s.cancel != nil {
+	s.closeOnce.Do(func() {
 		s.cancel <- true
-		err := <-s.handle.Done
-		s.cancel = nil
-		return err
-	}
-	return nil
+		s.closeErr = <-s.handle.Done
+	})
+	return s.closeErr
 }
 
 func (s *GrpcServer) Addr() string {

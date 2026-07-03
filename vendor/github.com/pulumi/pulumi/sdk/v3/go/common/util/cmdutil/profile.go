@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -79,16 +79,18 @@ func memoryProfileWriteLoop(prefix string) {
 
 		mem, err := os.Create(fmt.Sprintf("%s.%v.mem.%d", prefix, os.Getpid(), i))
 		if err != nil {
+			contract.IgnoreClose(mem)
 			fmt.Fprintf(os.Stderr, "could not create memory profile: %s\n", err.Error())
+
 			return
 		}
-		defer mem.Close()
 
 		runtime.GC() // get up-to-date statistics
 		if err = pprof.Lookup("allocs").WriteTo(mem, 0); err != nil {
 			fmt.Fprintf(os.Stderr, "could not create memory profile: %s\n", err.Error())
 		}
 
+		contract.IgnoreClose(mem)
 		os.Remove(fmt.Sprintf("%s.%v.mem.%d", prefix, os.Getpid(), i-1))
 	}
 }

@@ -26,8 +26,11 @@ import (
 
 	"github.com/pulumi/esc/syntax"
 	"github.com/pulumi/esc/syntax/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"gopkg.in/yaml.v3"
 )
+
+var ErrInvalidCiphertext = errors.New("invalid ciphertext")
 
 // An Encrypter encrypts plaintext into ciphertext.
 type Encrypter interface {
@@ -118,10 +121,11 @@ func EncryptSecrets(ctx context.Context, filename string, source []byte, encrypt
 		}
 
 		// Encrypt the plaintext.
-		ciphertext, err := encrypter.Encrypt(ctx, []byte(plaintext.Value()))
+		ciphertext, err := EncryptSecret(ctx, encrypter, []byte(plaintext.Value()))
 		if err != nil {
 			return nil, nil, err
 		}
+		encodedCiphertext := base64.StdEncoding.EncodeToString(ciphertext)
 
 		// Replace the original call to `fn::secret` with a new call whose argument is the encrypted ciphertext.
 		//
@@ -133,7 +137,7 @@ func EncryptSecrets(ctx context.Context, filename string, source []byte, encrypt
 				syntax.Object(
 					syntax.ObjectProperty(
 						syntax.String("ciphertext"),
-						syntax.StringSyntax(syntax.CopyTrivia(plaintext.Syntax()), encodeCiphertext(ciphertext)),
+						syntax.StringSyntax(syntax.CopyTrivia(plaintext.Syntax()), encodedCiphertext),
 					),
 				),
 			),
@@ -150,12 +154,17 @@ func DecryptSecrets(ctx context.Context, filename string, source []byte, decrypt
 			return n, nil, nil
 		}
 
-		ciphertext, err := decodeCiphertext(ciphertextNode.Value())
+		// Don't attempt to decrypt secrets outside of "values"
+		path := n.Syntax().Path()
+		propertyPath, err := resource.ParsePropertyPath(path)
 		if err != nil {
-			return nil, nil, fmt.Errorf("invalid ciphertext: %w", err)
+			return nil, nil, fmt.Errorf("parsing property path %q", path)
+		}
+		if propertyPath[0] != "values" {
+			return n, nil, nil
 		}
 
-		plaintext, err := decrypter.Decrypt(ctx, ciphertext)
+		plaintext, err := DecryptSecret(ctx, decrypter, ciphertextNode.Value())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -165,6 +174,26 @@ func DecryptSecrets(ctx context.Context, filename string, source []byte, decrypt
 			syntax.ObjectPropertySyntax(obj.Index(0).Syntax, obj.Index(0).Key, syntax.StringSyntax(ciphertextNode.Syntax(), string(plaintext))),
 		), nil, nil
 	})
+}
+
+// EncryptSecret encrypts a given secret and returns the encoded ciphertext
+func EncryptSecret(ctx context.Context, encrypter Encrypter, plaintext []byte) ([]byte, error) {
+	ciphertext, err := encrypter.Encrypt(ctx, plaintext)
+	if err != nil {
+		return nil, err
+	}
+
+	return encodeCiphertext(ciphertext), nil
+}
+
+// DecryptSecret decrypts a given encoded ciphertext and returns the plaintext
+func DecryptSecret(ctx context.Context, decrypter Decrypter, encodedCiphertext string) ([]byte, error) {
+	ciphertext, err := decodeCiphertext(encodedCiphertext)
+	if err != nil {
+		return nil, errors.Join(ErrInvalidCiphertext, err)
+	}
+
+	return decrypter.Decrypt(ctx, ciphertext)
 }
 
 const envelopeMagic = "escx"
@@ -212,11 +241,11 @@ func decodeCiphertext(repr string) ([]byte, error) {
 	return bin[8 : len(bin)-4], nil
 }
 
-func encodeCiphertext(ciphertext []byte) string {
+func encodeCiphertext(ciphertext []byte) []byte {
 	var b bytes.Buffer
 	b.WriteString(envelopeMagic)                                                            // "escx"
 	b.Write(binary.BigEndian.AppendUint32(nil, envelopeVersion))                            // version
 	b.Write(ciphertext)                                                                     // ciphertext
 	b.Write(binary.BigEndian.AppendUint32(nil, crc32.Checksum(b.Bytes(), crc32.IEEETable))) // crc32
-	return base64.StdEncoding.EncodeToString(b.Bytes())
+	return b.Bytes()
 }

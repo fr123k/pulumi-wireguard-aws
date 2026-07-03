@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@ package plugin
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -36,16 +34,18 @@ type NotForwardCompatibleProvider struct{}
 // implement [Provider].
 type UnimplementedProvider struct{ NotForwardCompatibleProvider }
 
+func (p *UnimplementedProvider) Handshake(
+	context.Context, ProviderHandshakeRequest,
+) (*ProviderHandshakeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+}
+
 func (p *UnimplementedProvider) Close() error {
 	return status.Error(codes.Unimplemented, "Close is not yet implemented")
 }
 
 func (p *UnimplementedProvider) SignalCancellation(context.Context) error {
 	return status.Error(codes.Unimplemented, "SignalCancellation is not yet implemented")
-}
-
-func (p *UnimplementedProvider) Pkg() tokens.Package {
-	return tokens.Package("")
 }
 
 func (p *UnimplementedProvider) Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error) {
@@ -92,6 +92,10 @@ func (p *UnimplementedProvider) Delete(context.Context, DeleteRequest) (DeleteRe
 	return DeleteResponse{}, status.Error(codes.Unimplemented, "Delete is not yet implemented")
 }
 
+func (p *UnimplementedProvider) List(context.Context, ListRequest) (*ListStream, error) {
+	return nil, status.Error(codes.Unimplemented, "List is not yet implemented")
+}
+
 func (p *UnimplementedProvider) Construct(context.Context, ConstructRequest) (ConstructResponse, error) {
 	return ConstructResponse{}, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
@@ -100,16 +104,12 @@ func (p *UnimplementedProvider) Invoke(context.Context, InvokeRequest) (InvokeRe
 	return InvokeResponse{}, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }
 
-func (p *UnimplementedProvider) StreamInvoke(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error) {
-	return StreamInvokeResponse{}, status.Error(codes.Unimplemented, "StreamInvoke is not yet implemented")
-}
-
 func (p *UnimplementedProvider) Call(context.Context, CallRequest) (CallResponse, error) {
 	return CallResponse{}, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
-func (p *UnimplementedProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
-	return workspace.PluginInfo{}, status.Error(codes.Unimplemented, "GetPluginInfo is not yet implemented")
+func (p *UnimplementedProvider) GetPluginInfo(context.Context) (PluginInfo, error) {
+	return PluginInfo{}, status.Error(codes.Unimplemented, "GetPluginInfo is not yet implemented")
 }
 
 func (p *UnimplementedProvider) GetMapping(context.Context, GetMappingRequest) (GetMappingResponse, error) {
