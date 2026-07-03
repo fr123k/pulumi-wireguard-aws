@@ -14,6 +14,7 @@ export DEBIAN_FRONTEND=noninteractive
 echo "=== Setting up SSH user ==="
 useradd -m -s /bin/bash -G sudo frank.ittermann 2>/dev/null || true
 mkdir -p /home/frank.ittermann/.ssh/
+mkdir -p /home/frank.ittermann/github/
 echo "frank.ittermann ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/frank_ittermann
 chmod 0440 /etc/sudoers.d/frank_ittermann
 
@@ -75,8 +76,8 @@ echo "=== Starting services ==="
 systemctl start fail2ban
 
 # Start franky-web-ui
-# systemctl start franky-web-ui
-# systemctl enable franky-web-ui
+systemctl start franky
+systemctl enable franky
 
 # Start dandbox daemon
 # systemctl start dandbox

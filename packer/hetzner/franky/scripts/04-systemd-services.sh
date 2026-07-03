@@ -35,6 +35,7 @@ StartLimitBurst=10
 
 [Service]
 Environment=""
+WorkingDirectory=/home/frank.ittermann/github/
 ExecStart=/usr/bin/franky --profile ollama-deepseek-flash --role full --yes --mode proxy
 Restart=on-failure
 RestartSec=10s
