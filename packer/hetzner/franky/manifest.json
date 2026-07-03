@@ -1,0 +1,41 @@
+{
+  "builds": [
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783091835,
+      "files": null,
+      "artifact_id": "404446055",
+      "packer_run_uuid": "512e9139-892f-998c-dd47-8a795d03a585",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260703-150035"
+      }
+    },
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783113219,
+      "files": null,
+      "artifact_id": "404513616",
+      "packer_run_uuid": "8ae4a1c6-171b-18cd-6fc8-44254498d5ad",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260703-211112"
+      }
+    },
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783113418,
+      "files": null,
+      "artifact_id": "404513632",
+      "packer_run_uuid": "f7dd4064-64bb-7b7b-0d7d-ebfaa14f3083",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260703-211400"
+      }
+    }
+  ],
+  "last_run_uuid": "f7dd4064-64bb-7b7b-0d7d-ebfaa14f3083"
+}

@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/creasty/defaults v1.8.0
 	github.com/pulumi/pulumi-aws/sdk/v6 v6.57.0
+	github.com/pulumi/pulumi-gcp/sdk/v7 v7.38.0
 	github.com/pulumi/pulumi-hcloud/sdk v1.20.5
 	github.com/pulumi/pulumi/sdk/v3 v3.137.0
 	github.com/stretchr/testify v1.9.0
