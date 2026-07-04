@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -42,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/santhosh-tekuri/jsonschema/v5"
-	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
 )
 
@@ -51,6 +51,7 @@ const (
 	integerTypeName = "integer"
 	stringTypeName  = "string"
 	booleanTypeName = "boolean"
+	objectTypeName  = "object"
 )
 
 //go:embed project.json
@@ -73,30 +74,10 @@ func init() {
 type Analyzers []tokens.QName
 
 // ProjectTemplate is a Pulumi project template manifest.
-type ProjectTemplate struct {
-	// DisplayName is an optional user friendly name of the template.
-	DisplayName string `json:"displayName,omitempty" yaml:"displayName,omitempty"`
-	// Description is an optional description of the template.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
-	// Quickstart contains optional text to be displayed after template creation.
-	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
-	// Config is an optional template config.
-	Config map[string]ProjectTemplateConfigValue `json:"config,omitempty" yaml:"config,omitempty"`
-	// Important indicates the template is important.
-	Important bool `json:"important,omitempty" yaml:"important,omitempty"`
-	// Metadata are key/value pairs used to attach additional metadata to a template.
-	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-}
+type ProjectTemplate = apitype.ProjectTemplate
 
 // ProjectTemplateConfigValue is a config value included in the project template manifest.
-type ProjectTemplateConfigValue struct {
-	// Description is an optional description for the config value.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
-	// Default is an optional default value for the config value.
-	Default string `json:"default,omitempty" yaml:"default,omitempty"`
-	// Secret may be set to true to indicate that the config value should be encrypted.
-	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
-}
+type ProjectTemplateConfigValue = apitype.ProjectTemplateConfigValue
 
 // ProjectBackend is the configuration for where the backend state is stored. If unset, will use the
 // system's currently logged-in backend.
@@ -121,6 +102,155 @@ type PluginOptions struct {
 	Path    string `json:"path" yaml:"path"`
 }
 
+// PackageSpec defines the structured format for a package dependency, as represented on disk.
+//
+// When marshaling, PackageSpec will be represented as <source>@<version> if that is
+// sufficient to represent the struct. Otherwise the full object will be used.
+//
+// PackageSpecs are unresolved, and must be resolved before usage.
+type PackageSpec struct {
+	// The "name" of the plugin.
+	//
+	// Source may be one of:
+	// - A simple name, like "pkg"
+	// - A registry double or triple: "org/pkg", "source/org/pkg"
+	// - A git URL, "git://github.com/pulumi/pulumi-example/path"
+	// - An un-prefixed URL, like github.com/pulumi/pulumi-example/path
+	// - A local path, like /usr/bin/pkg
+	Source string
+	// The version of the provider, may be Semver 2.0 or a git hash.
+	Version string
+	// Any parameters needed to configure the package.
+	Parameters []string
+
+	// if set will be used to validate the plugin downloaded matches. This is keyed by
+	// "$os-$arch", e.g. "linux-x64".
+	Checksums map[string][]byte
+
+	// The server to download the plugin from, if needed.
+	PluginDownloadURL string
+
+	// When marshaling, prefer to unmarshal without the <name>@<version> shorthand.
+	unmarshalledFromFull bool
+}
+
+func (p PackageSpec) String() string {
+	if len(p.Parameters) == 0 && len(p.Checksums) == 0 && len(p.PluginDownloadURL) == 0 {
+		if len(p.Version) == 0 {
+			return p.Source
+		}
+		return p.Source + "@" + p.Version
+	}
+
+	var b strings.Builder
+	b.WriteString("{ Source: ")
+	b.WriteString(p.Source)
+
+	if len(p.Version) != 0 {
+		b.WriteString(", Version: ")
+		b.WriteString(p.Version)
+	}
+
+	if len(p.Parameters) != 0 {
+		b.WriteString(", Parameters: ")
+		for i, param := range p.Parameters {
+			b.WriteString(param)
+			if i != len(p.Parameters)-1 {
+				b.WriteRune(' ')
+			}
+		}
+	}
+
+	if len(p.PluginDownloadURL) != 0 {
+		b.WriteString(", PluginDownloadURL: ")
+		b.WriteString(p.PluginDownloadURL)
+	}
+	b.WriteString(" }")
+
+	return b.String()
+}
+
+type packageSpecMarshalled struct {
+	Source            string            `json:"source" yaml:"source"`
+	Version           string            `json:"version,omitzero" yaml:"version,omitempty"`
+	Parameters        []string          `json:"parameters,omitzero" yaml:"parameters,omitempty"`
+	Checksums         map[string][]byte `json:"checksums,omitzero" yaml:"checksums,omitempty"`
+	PluginDownloadURL string            `json:"pluginDownloadURL,omitzero" yaml:"pluginDownloadURL,omitempty"`
+}
+
+func marshalPackageSpec[T any](ps PackageSpec, from func(any) (T, error)) (T, error) {
+	if len(ps.Parameters) == 0 && len(ps.Checksums) == 0 && ps.PluginDownloadURL == "" && !ps.unmarshalledFromFull {
+		name := ps.Source
+		if ps.Version != "" {
+			name += "@" + ps.Version
+		}
+		return from(name)
+	}
+	return from(packageSpecMarshalled{
+		Source:            ps.Source,
+		Version:           ps.Version,
+		Parameters:        ps.Parameters,
+		Checksums:         ps.Checksums,
+		PluginDownloadURL: ps.PluginDownloadURL,
+	})
+}
+
+func (ps *PackageSpec) unmarshal(from func(any) error) error {
+	var s string
+	if err := from(&s); err == nil {
+		var source, version string
+		parts := strings.SplitN(s, "@", 2)
+		source = parts[0]
+		if len(parts) > 1 {
+			version = parts[1]
+		}
+		*ps = PackageSpec{
+			Source:  source,
+			Version: version,
+		}
+		return nil
+	}
+	var full packageSpecMarshalled
+	err := from(&full)
+	if err != nil {
+		return errors.New("package must be either a string or a package specification object")
+	}
+	*ps = PackageSpec{
+		Source:               full.Source,
+		Version:              full.Version,
+		Parameters:           full.Parameters,
+		Checksums:            full.Checksums,
+		PluginDownloadURL:    full.PluginDownloadURL,
+		unmarshalledFromFull: true,
+	}
+	return nil
+}
+
+func (ps PackageSpec) MarshalJSON() ([]byte, error) { return marshalPackageSpec(ps, json.Marshal) }
+
+func (ps *PackageSpec) UnmarshalJSON(bytes []byte) error {
+	return ps.unmarshal(func(v any) error { return json.Unmarshal(bytes, v) })
+}
+
+func (ps PackageSpec) MarshalYAML() (any, error) {
+	return marshalPackageSpec(ps, func(v any) (any, error) { return v, nil })
+}
+
+func (ps *PackageSpec) UnmarshalYAML(unmarshal func(any) error) error {
+	return ps.unmarshal(unmarshal)
+}
+
+// The set of interfaces needed to implement custom marshaling for the formats that Pulumi
+// supports.
+type customMarshal interface {
+	json.Marshaler
+	json.Unmarshaler
+	yaml.Marshaler
+	UnmarshalYAML(unmarshal func(any) error) error
+}
+
+var _ customMarshal = &PackageSpec{}
+
 type Plugins struct {
 	Providers []PluginOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
 	Languages []PluginOptions `json:"languages,omitempty" yaml:"languages,omitempty"`
@@ -136,8 +266,8 @@ type ProjectConfigType struct {
 	Type        *string                 `json:"type,omitempty" yaml:"type,omitempty"`
 	Description string                  `json:"description,omitempty" yaml:"description,omitempty"`
 	Items       *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
-	Default     interface{}             `json:"default,omitempty" yaml:"default,omitempty"`
-	Value       interface{}             `json:"value,omitempty" yaml:"value,omitempty"`
+	Default     any                     `json:"default,omitempty" yaml:"default,omitempty"`
+	Value       any                     `json:"value,omitempty" yaml:"value,omitempty"`
 	Secret      bool                    `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
@@ -156,6 +286,16 @@ func (configType *ProjectConfigType) TypeName() string {
 	return ""
 }
 
+// BaseProject is the base interface for project types. Projects have runtime
+// information (the language and its options) and packages.
+type BaseProject interface {
+	Validate() error
+	Save(path string) error
+	RuntimeInfo() *ProjectRuntimeInfo
+	AddPackage(name string, spec PackageSpec)
+	GetPackageSpecs() map[string]PackageSpec
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -166,8 +306,8 @@ func (configType *ProjectConfigType) TypeName() string {
 type Project struct {
 	// Name is a required fully qualified name.
 	Name tokens.PackageName `json:"name" yaml:"name"`
-	// Runtime is a required runtime that executes code.
-	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Runtime is an optional runtime that executes code. Its name may be empty.
+	Runtime ProjectRuntimeInfo `json:"runtime,omitempty" yaml:"runtime,omitempty"`
 	// Main is an optional override for the program's main entry-point location.
 	Main string `json:"main,omitempty" yaml:"main,omitempty"`
 
@@ -196,20 +336,81 @@ type Project struct {
 	// Options is an optional set of project options
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
+	// Packages is a map of package dependencies that can be either strings or PackageSpecs
+	Packages map[string]PackageSpec `json:"packages,omitempty" yaml:"packages,omitempty"`
+
 	Plugins *Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
-	AdditionalKeys map[string]interface{} `yaml:",inline"`
+	AdditionalKeys map[string]any `yaml:",inline"`
+
+	// Optional, validates that the CLI version satisfies the passed version range. The supported syntax for ranges is
+	// that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be
+	// AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly
+	// 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than
+	// 3.8.0.
+	RequiredPulumiVersion string `json:"requiredPulumiVersion,omitempty" yaml:"requiredPulumiVersion,omitempty"`
 
 	// The original byte representation of the file, used to attempt trivia-preserving edits
 	raw []byte
 }
 
+var _ BaseProject = (*Project)(nil)
+
 func (proj Project) RawValue() []byte {
 	return proj.raw
 }
 
-func isPrimitiveValue(value interface{}) bool {
+func (proj Project) RuntimeInfo() *ProjectRuntimeInfo {
+	return &proj.Runtime
+}
+
+// GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
+func (proj *Project) GetPackageSpecs() map[string]PackageSpec {
+	return maps.Clone(proj.Packages)
+}
+
+func (proj *Project) AddPackage(name string, spec PackageSpec) {
+	addPackageToMap(&proj.Packages, name, spec)
+}
+
+func addPackageToMap(packages *map[string]PackageSpec, name string, spec PackageSpec) {
+	if *packages == nil {
+		*packages = make(map[string]PackageSpec)
+	}
+
+	// We default to using the simple string format, but if the package
+	// - has parameters or
+	// - if all existing packages use the PackageSpec format or
+	// - if this same package was already added using the PackageSpec format
+	// we use the PackageSpec format.
+	useStringFormat := true
+	if len(spec.Parameters) > 0 || len(spec.Checksums) > 0 || spec.PluginDownloadURL != "" {
+		// Simple string format does not support parameters
+		useStringFormat = false
+	} else if existingSpec, ok := (*packages)[name]; ok && existingSpec.unmarshalledFromFull {
+		// If the existing spec is a PackageSpec, keep its format
+		useStringFormat = false
+	} else if len(*packages) > 0 {
+		// Check if all existing packages are PackageSpec
+		// If all packages are already using the PackageSpec format, maintain consistency
+		allPackageSpecs := true
+		for _, existingPackage := range *packages {
+			if !existingPackage.unmarshalledFromFull {
+				allPackageSpecs = false
+				break
+			}
+		}
+		if allPackageSpecs {
+			useStringFormat = false
+		}
+	}
+
+	spec.unmarshalledFromFull = !useStringFormat
+	(*packages)[name] = spec
+}
+
+func isPrimitiveValue(value any) bool {
 	switch value.(type) {
 	case string, int, bool:
 		return true
@@ -218,8 +419,8 @@ func isPrimitiveValue(value interface{}) bool {
 	}
 }
 
-func isArray(value interface{}) bool {
-	_, ok := value.([]interface{})
+func isArray(value any) bool {
+	_, ok := value.([]any)
 	return ok
 }
 
@@ -227,7 +428,7 @@ func isArray(value interface{}) bool {
 // to declare a path to the stack configuration directory. If that is the case, we rewrite it
 // such that the value in config: {value} is moved to stackConfigDir: {value}.
 // if the user defines both values as strings, we error out.
-func RewriteConfigPathIntoStackConfigDir(project map[string]interface{}) (map[string]interface{}, error) {
+func RewriteConfigPathIntoStackConfigDir(project map[string]any) (map[string]any, error) {
 	config, hasConfig := project["config"]
 	_, hasStackConfigDir := project["stackConfigDir"]
 
@@ -265,7 +466,7 @@ func RewriteConfigPathIntoStackConfigDir(project map[string]interface{}) (map[st
 //
 // Note that short-hand values without namespaces (project config) are turned into a type
 // where as short-hand values with namespaces (such as aws:region) are turned into a value.
-func RewriteShorthandConfigValues(project map[string]interface{}) map[string]interface{} {
+func RewriteShorthandConfigValues(project map[string]any) map[string]any {
 	configMap, foundConfig := project["config"]
 	projectName := project["name"].(string)
 	if !foundConfig {
@@ -273,7 +474,7 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 		return project
 	}
 
-	config, ok := configMap.(map[string]interface{})
+	config, ok := configMap.(map[string]any)
 
 	if !ok {
 		return project
@@ -281,7 +482,7 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 
 	for key, value := range config {
 		if isPrimitiveValue(value) || isArray(value) {
-			configTypeDefinition := make(map[string]interface{})
+			configTypeDefinition := make(map[string]any)
 			if configKeyIsNamespacedByProject(projectName, key) {
 				// then this is a project namespaced config _type_ with a default value
 				configTypeDefinition["default"] = value
@@ -298,12 +499,12 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 	return project
 }
 
-// Cast any map[interface{}] from the yaml decoder to map[string]
-func SimplifyMarshalledValue(raw interface{}) (interface{}, error) {
-	var cast func(value interface{}) (interface{}, error)
-	cast = func(value interface{}) (interface{}, error) {
-		if objMap, ok := value.(map[interface{}]interface{}); ok {
-			strMap := make(map[string]interface{})
+// Cast any map[any] from the yaml decoder to map[string]
+func SimplifyMarshalledValue(raw any) (any, error) {
+	var cast func(value any) (any, error)
+	cast = func(value any) (any, error) {
+		if objMap, ok := value.(map[any]any); ok {
+			strMap := make(map[string]any)
 			for key, value := range objMap {
 				if strKey, ok := key.(string); ok {
 					innerValue, err := cast(value)
@@ -316,8 +517,8 @@ func SimplifyMarshalledValue(raw interface{}) (interface{}, error) {
 				}
 			}
 			return strMap, nil
-		} else if objArray, ok := value.([]interface{}); ok {
-			strArray := make([]interface{}, len(objArray))
+		} else if objArray, ok := value.([]any); ok {
+			strArray := make([]any, len(objArray))
 			for key, value := range objArray {
 				innerValue, err := cast(value)
 				if err != nil {
@@ -333,22 +534,22 @@ func SimplifyMarshalledValue(raw interface{}) (interface{}, error) {
 	return cast(raw)
 }
 
-func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) {
+func SimplifyMarshalledProject(raw any) (map[string]any, error) {
 	result, err := SimplifyMarshalledValue(raw)
 	if err != nil {
 		return nil, err
 	}
 
 	var ok bool
-	var obj map[string]interface{}
-	if obj, ok = result.(map[string]interface{}); !ok {
+	var obj map[string]any
+	if obj, ok = result.(map[string]any); !ok {
 		return nil, fmt.Errorf("expected project to be an object, was '%T'", result)
 	}
 
 	return obj, nil
 }
 
-func ValidateProject(raw interface{}) error {
+func ValidateProject(raw any) error {
 	project, err := SimplifyMarshalledProject(raw)
 	if err != nil {
 		return err
@@ -373,17 +574,6 @@ func ValidateProject(raw interface{}) error {
 		return errors.New("project is missing a non-empty string 'name' attribute")
 	}
 
-	if _, ok := project["runtime"]; !ok {
-		closest := findClosestKey("runtime", project, maxValidationAttributeDistance)
-		if closest != "" {
-			return fmt.Errorf(
-				"project is missing a 'runtime' attribute; found '%s' instead",
-				closest,
-			)
-		}
-		return errors.New("project is missing a 'runtime' attribute")
-	}
-
 	// We'll catch everything else with JSON schema, though we'll still try to
 	// suggest fixes for common mistakes.
 	if err = ProjectSchema.Validate(project); err == nil {
@@ -400,7 +590,7 @@ func ValidateProject(raw interface{}) error {
 	var appendError func(err *jsonschema.ValidationError)
 	appendError = func(err *jsonschema.ValidationError) {
 		if err.InstanceLocation != "" && err.Message != "" {
-			errorf := func(path, message string, args ...interface{}) error {
+			errorf := func(path, message string, args ...any) error {
 				contract.Requiref(path != "", "path", "path must not be empty")
 				return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
 			}
@@ -451,16 +641,13 @@ const maxValidationAttributeDistance = 2
 // (and be the first alphabetically).
 func findClosestKey(
 	needle string,
-	haystack map[string]interface{},
+	haystack map[string]any,
 	maxDistance int,
 ) string {
 	match := ""
 	closest := maxDistance + 1
 
-	keys := maps.Keys(haystack)
-	slices.Sort(keys)
-
-	for _, key := range keys {
+	for _, key := range slices.Sorted(maps.Keys(haystack)) {
 		d := levenshtein.DistanceForStrings(
 			[]rune(strings.ToLower(needle)),
 			[]rune(strings.ToLower(key)),
@@ -487,7 +674,7 @@ func findClosestKey(
 // getSchemaPathAttributes walks the given path into the project schema and
 // returns a list of attributes that can be subsequently traversed at the end of
 // that path.
-func getSchemaPathAttributes(path string) map[string]interface{} {
+func getSchemaPathAttributes(path string) map[string]any {
 	elements := strings.Split(path, "/")
 	isNumber := regexp.MustCompile(`^\d+$`)
 
@@ -537,7 +724,7 @@ func getSchemaPathAttributes(path string) map[string]interface{} {
 		curr = curr.Ref
 	}
 
-	knownProperties := make(map[string]interface{})
+	knownProperties := make(map[string]any)
 	for k, v := range curr.Properties {
 		knownProperties[k] = v
 	}
@@ -564,7 +751,7 @@ func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) strin
 // ValidateConfig validates the config value against its config type definition.
 // We use this to validate the default config values alongside their type definition but
 // also to validate config values coming from individual stacks.
-func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value interface{}) bool {
+func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value any) bool {
 	if typeName == stringTypeName {
 		_, ok := value.(string)
 		return ok
@@ -602,7 +789,13 @@ func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, val
 		return ok
 	}
 
-	items, isArray := value.([]interface{})
+	if typeName == objectTypeName {
+		// validate that the item is a map
+		_, ok := value.(map[string]any)
+		return ok
+	}
+
+	items, isArray := value.([]any)
 
 	if !isArray || itemsType == nil {
 		return false
@@ -627,9 +820,6 @@ func configKeyIsNamespacedByProject(projectName string, configKey string) bool {
 func (proj *Project) Validate() error {
 	if proj.Name == "" {
 		return errors.New("project is missing a 'name' attribute")
-	}
-	if proj.Runtime.Name() == "" {
-		return errors.New("project is missing a 'runtime' attribute")
 	}
 
 	projectName := proj.Name.String()
@@ -738,6 +928,46 @@ func (proj *PolicyPackProject) Save(path string) error {
 type PluginProject struct {
 	// Runtime is a required runtime that executes code.
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+	// Packages is a map of package dependencies that can be either strings or PackageSpecs
+	Packages map[string]PackageSpec `json:"packages,omitempty" yaml:"packages,omitempty"`
+	// The CLI version range required for this provider to work correctly. If no version range is specified, the
+	// provider will be considered compatible with any CLI version. The supported syntax for ranges is that of
+	// https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
+	// together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
+	// Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
+	RequiredPulumiVersion string `json:"requiredPulumiVersion,omitempty" yaml:"requiredPulumiVersion,omitempty"`
+	// Template is an optional template manifest, if this directory is a package template.
+	Template *PluginTemplate `json:"template,omitempty" yaml:"template,omitempty"`
+}
+
+// PluginTemplate is a manifest describing a package template, embedded in PulumiPlugin.yaml.
+type PluginTemplate struct {
+	// Description is an optional description of the template.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Quickstart contains optional text to be displayed after template creation.
+	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
+}
+
+var _ BaseProject = (*PluginProject)(nil)
+
+func (proj *PluginProject) AddPackage(name string, spec PackageSpec) {
+	addPackageToMap(&proj.Packages, name, spec)
+}
+
+func (proj *PluginProject) Save(path string) error {
+	contract.Requiref(path != "", "path", "must not be empty")
+	contract.Requiref(proj != nil, "proj", "must not be nil")
+	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
+	return save(path, proj, false /*mkDirAll*/)
+}
+
+func (proj *PluginProject) RuntimeInfo() *ProjectRuntimeInfo {
+	return &proj.Runtime
+}
+
+// GetPackageSpecs returns a map of package names to their corresponding PackageSpecs
+func (proj *PluginProject) GetPackageSpecs() map[string]PackageSpec {
+	return maps.Clone(proj.Packages)
 }
 
 func (proj *PluginProject) Validate() error {
@@ -884,7 +1114,7 @@ func (e *Environment) Remove(env string) *Environment {
 					case string:
 						match = e == env
 					case map[string]any:
-						match = len(e) == 1 && maps.Keys(e)[0] == env
+						match = len(e) == 1 && slices.Collect(maps.Keys(e))[0] == env
 					}
 					if match {
 						m["imports"] = append(imports[:i], imports[i+1:]...)
@@ -1014,7 +1244,7 @@ func (ps *ProjectStack) Save(path string) error {
 
 type ProjectRuntimeInfo struct {
 	name    string
-	options map[string]interface{}
+	options map[string]any
 }
 
 type ProjectStackDeployment struct {
@@ -1027,34 +1257,40 @@ func (psd *ProjectStackDeployment) Save(path string) error {
 	return save(path, psd, true /*mkDirAll*/)
 }
 
-func NewProjectRuntimeInfo(name string, options map[string]interface{}) ProjectRuntimeInfo {
+func NewProjectRuntimeInfo(name string, options map[string]any) ProjectRuntimeInfo {
+	contract.Requiref(name != "", "name", "must not be empty")
 	return ProjectRuntimeInfo{
 		name:    name,
 		options: options,
 	}
 }
 
+// Used for json/yaml marshalling so omitempty works.
+func (info ProjectRuntimeInfo) IsZero() bool {
+	return info.name == "" && len(info.options) == 0
+}
+
 func (info *ProjectRuntimeInfo) Name() string {
 	return info.name
 }
 
-func (info *ProjectRuntimeInfo) Options() map[string]interface{} {
+func (info *ProjectRuntimeInfo) Options() map[string]any {
 	return info.options
 }
 
-func (info *ProjectRuntimeInfo) SetOption(key string, value interface{}) {
+func (info *ProjectRuntimeInfo) SetOption(key string, value any) {
 	if info.options == nil {
-		info.options = make(map[string]interface{})
+		info.options = make(map[string]any)
 	}
 	info.options[key] = value
 }
 
-func (info ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
+func (info ProjectRuntimeInfo) MarshalYAML() (any, error) {
 	if len(info.options) == 0 {
 		return info.name, nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"name":    info.name,
 		"options": info.options,
 	}, nil
@@ -1065,7 +1301,7 @@ func (info ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
 		return json.Marshal(info.name)
 	}
 
-	return json.Marshal(map[string]interface{}{
+	return json.Marshal(map[string]any{
 		"name":    info.name,
 		"options": info.options,
 	})
@@ -1077,8 +1313,8 @@ func (info *ProjectRuntimeInfo) UnmarshalJSON(data []byte) error {
 	}
 
 	var payload struct {
-		Name    string                 `json:"name"`
-		Options map[string]interface{} `json:"options"`
+		Name    string         `json:"name"`
+		Options map[string]any `json:"options"`
 	}
 
 	if err := json.Unmarshal(data, &payload); err == nil {
@@ -1090,14 +1326,14 @@ func (info *ProjectRuntimeInfo) UnmarshalJSON(data []byte) error {
 	return errors.New("runtime section must be a string or an object with name and options attributes")
 }
 
-func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(any) error) error {
 	if err := unmarshal(&info.name); err == nil {
 		return nil
 	}
 
 	var payload struct {
-		Name    string                 `yaml:"name"`
-		Options map[string]interface{} `yaml:"options"`
+		Name    string         `yaml:"name"`
+		Options map[string]any `yaml:"options"`
 	}
 
 	if err := unmarshal(&payload); err == nil {
@@ -1119,7 +1355,7 @@ func marshallerForPath(path string) (encoding.Marshaler, error) {
 	return m, nil
 }
 
-func save(path string, value interface{}, mkDirAll bool) error {
+func save(path string, value any, mkDirAll bool) error {
 	contract.Requiref(path != "", "path", "must not be empty")
 	contract.Requiref(value != nil, "value", "must not be nil")
 

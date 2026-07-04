@@ -6,7 +6,7 @@ import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -27,7 +27,7 @@ func CreateSecurityGroups(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (
 			return nil, nil, err
 		}
 		ec2SecGroups = append(ec2SecGroups, sgExternal)
-		securityGroup.State = sgExternal.CustomResourceState
+		securityGroup.State = &sgExternal.CustomResourceState
 	}
 	return computeArgs.SecurityGroups, ec2SecGroups, nil
 }
@@ -56,7 +56,7 @@ func GetImage(ctx *pulumi.Context, imageArgs []*model.ImageArgs) (*string, error
 			return nil, err
 		}
 
-		if amiIds.Ids != nil && len(amiIds.Ids) > 0 {
+		if len(amiIds.Ids) > 0 {
 			return &amiIds.Ids[0], nil
 		}
 	}

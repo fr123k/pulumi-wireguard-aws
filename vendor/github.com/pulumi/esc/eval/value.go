@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/ast"
 	"github.com/pulumi/esc/schema"
+	"github.com/pulumi/esc/syntax"
 	"golang.org/x/exp/maps"
 )
 
@@ -41,11 +42,14 @@ type value struct {
 
 	mergedKeys []string   // the value's merged keys. computed lazily--use keys().
 	exported   *esc.Value // non-nil if this value has already been exported
+	exporting  bool       // true if this value is in the process of being exported. See (*value).export for details.
 
 	// true if the value is unknown (e.g. because it did not evaluate successfully or is the result of an unevaluated
 	// fn::open)
-	unknown bool
-	secret  bool // true if the value is secret
+	unknown    bool
+	rotateOnly bool
+	secret     bool // true if the value is secret
+	final      bool // true if the value is final and cannot be overridden by child environments
 
 	repr any // nil | bool | json.Number | string | []*value | map[string]*value
 }
@@ -76,6 +80,35 @@ func (v *value) containsUnknowns() bool {
 	case map[string]*value:
 		for _, k := range v.keys() {
 			if v.property(v.def.repr.syntax(), k).containsUnknowns() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// containsObservableUnknowns returns true if the value contains any unknown values.
+// the rotating flag indicate our tolerance of unknown rotateOnly values.
+func (v *value) containsObservableUnknowns(rotating bool) bool {
+	if v == nil {
+		return false
+	}
+	if v.unknown {
+		if v.rotateOnly && !rotating {
+			return false // this unknown value will not be observed
+		}
+		return true
+	}
+	switch repr := v.repr.(type) {
+	case []*value:
+		for _, v := range repr {
+			if v.containsObservableUnknowns(rotating) {
+				return true
+			}
+		}
+	case map[string]*value:
+		for _, k := range v.keys() {
+			if v.property(v.def.repr.syntax(), k).containsObservableUnknowns(rotating) {
 				return true
 			}
 		}
@@ -287,25 +320,39 @@ func (v *value) toString() (str string, unknown bool, secret bool) {
 }
 
 // export converts the value into its serializable representation.
-func (v *value) export(environment string) esc.Value {
+func (v *value) export(environment string) (esc.Value, syntax.Diagnostics) {
 	if v.exported != nil {
-		return *v.exported
+		return *v.exported, nil
 	}
+	if v.exporting {
+		// NOTE: it is always a bug to encounter a value in the process of being exported. The only case in which we
+		// should hit this is if the value chain contains cycles, which should not be possible.
+		return esc.Value{Unknown: true}, syntax.Diagnostics{
+			syntax.NodeError(v.def.repr.syntax().Syntax(), "internal error: cyclic export"),
+		}
+	}
+	v.exporting = true
+	defer func() { v.exporting = false }()
 
+	var diags syntax.Diagnostics
 	var pv any
 	switch repr := v.repr.(type) {
 	case []*value:
+		var elemDiags syntax.Diagnostics
 		a := make([]esc.Value, len(repr))
 		for i, v := range repr {
-			a[i] = v.export(environment)
+			a[i], elemDiags = v.export(environment)
+			diags.Extend(elemDiags...)
 		}
 		pv = a
 	case map[string]*value:
+		var elemDiags syntax.Diagnostics
 		keys := v.keys()
 		pm := make(map[string]esc.Value, len(keys))
 		for _, k := range keys {
 			pv := v.property(v.def.repr.syntax(), k)
-			pm[k] = pv.export(environment)
+			pm[k], elemDiags = pv.export(environment)
+			diags.Extend(elemDiags...)
 		}
 		pv = pm
 	default:
@@ -314,7 +361,8 @@ func (v *value) export(environment string) esc.Value {
 
 	var base *esc.Value
 	if v.base != nil {
-		b := v.base.export("<import>")
+		b, baseDiags := v.base.export("<import>")
+		diags.Extend(baseDiags...)
 		base = &b
 	}
 
@@ -327,7 +375,7 @@ func (v *value) export(environment string) esc.Value {
 			Base: base,
 		},
 	}
-	return *v.exported
+	return *v.exported, diags
 }
 
 // unexport creates a value from a Value. This is used when interacting with providers, as the Provider API works on
@@ -446,6 +494,7 @@ func (c copier) copy(v *value) *value {
 		schema:  v.schema,
 		unknown: v.unknown,
 		secret:  v.secret,
+		final:   v.final,
 		repr:    repr,
 	}
 	return copy

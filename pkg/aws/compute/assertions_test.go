@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,7 +27,7 @@ func assertUserDataNotNil(t *testing.T, infra *Infrastructure, wg *sync.WaitGrou
 	wg.Add(1)
 	pulumi.All(infra.Server.URN(), infra.Server.UserData).ApplyT(func(all []interface{}) error {
 		urn := all[0].(pulumi.URN)
-		userData := all[1].(string)
+		userData := all[1].(*string)
 
 		assert.NotNil(t, userData, "expect userData set on server on server %v", urn)
 		assert.NotEmpty(t, userData, "expect userData set on server on server %v", urn)

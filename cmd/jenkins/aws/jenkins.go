@@ -7,7 +7,7 @@ import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/aws/network"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/iam"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -91,17 +91,17 @@ func main() {
 			return err
 		}
 
-		iam.NewUserPolicyAttachment(ctx, username+"-user-policy-attachment-s3", &iam.UserPolicyAttachmentArgs{
+		_, _ = iam.NewUserPolicyAttachment(ctx, username+"-user-policy-attachment-s3", &iam.UserPolicyAttachmentArgs{
 			User:      iamUser.ID(),
 			PolicyArn: s3IamPolicy.ID(),
 		})
 
-		iam.NewUserPolicyAttachment(ctx, username+"-user-policy-attachment-ec2", &iam.UserPolicyAttachmentArgs{
+		_, _ = iam.NewUserPolicyAttachment(ctx, username+"-user-policy-attachment-ec2", &iam.UserPolicyAttachmentArgs{
 			User:      iamUser.ID(),
 			PolicyArn: ec2IamPolicy.ID(),
 		})
 
-		iam.NewUserPolicyAttachment(ctx, username+"-user-policy-attachment-iam", &iam.UserPolicyAttachmentArgs{
+		_, _ = iam.NewUserPolicyAttachment(ctx, username+"-user-policy-attachment-iam", &iam.UserPolicyAttachmentArgs{
 			User:      iamUser.ID(),
 			PolicyArn: iamIamPolicy.ID(),
 		})
@@ -168,10 +168,10 @@ func createInfraStructure(ctx *pulumi.Context) error {
 
 	sshConnector := shared.JenkinsProvisioner(ctx, keyPair)
 
-	compute.ProvisionVM(ctx, &model.ProvisionArgs{
+	_ = compute.ProvisionVM(ctx, &model.ProvisionArgs{
 		ExportName: "wireguard.publicKey",
 		SourceCompute: &model.ComputeResult{
-			Compute: vm.Server.CustomResourceState,
+			Compute: &vm.Server.CustomResourceState,
 		},
 	}, &sshConnector)
 

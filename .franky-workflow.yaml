@@ -1,0 +1,14 @@
+stages:
+  - name: build
+    command: "go build ./..."
+    timeout_ms: 120000
+
+  - name: lint
+    command: "/home/agent/go/bin/golangci-lint run --timeout 5m --fix"
+    timeout_ms: 120000
+    needs: [build]
+
+  - name: test
+    command: "go test ./... -v"
+    timeout_ms: 120000
+    needs: [build]

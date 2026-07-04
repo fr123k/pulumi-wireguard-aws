@@ -138,7 +138,7 @@ func executeCommand(client *ssh.Client, command string) (string, int, error) {
 	if err != nil {
 		return "", -1, fmt.Errorf("failed to create session: %w", err)
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	output, err := session.CombinedOutput(command)
 	outputStr := string(output)

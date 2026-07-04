@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
 package cmdutil
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -27,10 +27,8 @@ func ArgsFunc(argsValidator cobra.PositionalArgs) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := argsValidator(cmd, args)
 		if err != nil {
-			contract.IgnoreError(cmd.Help())
-			Exit(err)
+			return errors.Join(cmd.Help(), err)
 		}
-
 		return nil
 	}
 }
@@ -75,6 +73,6 @@ func SpecificArgs(argNames []string) cobra.PositionalArgs {
 
 // RangeArgs is the same as cobra.RangeArgs, except it is wrapped with ArgsFunc to provide standard
 // Pulumi error handling.
-func RangeArgs(min int, max int) cobra.PositionalArgs {
-	return ArgsFunc(cobra.RangeArgs(min, max))
+func RangeArgs(minimum int, maximum int) cobra.PositionalArgs {
+	return ArgsFunc(cobra.RangeArgs(minimum, maximum))
 }

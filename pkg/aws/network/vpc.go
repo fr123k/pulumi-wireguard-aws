@@ -3,7 +3,7 @@ package network
 import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/creasty/defaults"
@@ -30,7 +30,7 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 		VpcId: vpc.ID(),
 	})
 
-	ec2.NewRoute(ctx, vpcArgs.Name, &ec2.RouteArgs{
+	_, _ = ec2.NewRoute(ctx, vpcArgs.Name, &ec2.RouteArgs{
 		RouteTableId:         vpc.MainRouteTableId,
 		DestinationCidrBlock: pulumi.String("0.0.0.0/0"),
 		GatewayId:            internetGW.ID(),
@@ -53,12 +53,12 @@ func CreateVPC(ctx *pulumi.Context, vpcArgs *model.VpcArgs) (*model.VpcResult, e
 
 		ctx.Export("subnetId", subnet.ID())
 		subnets[i] = model.SubnetResult{
-			Subnet: subnet.CustomResourceState,
+			Subnet: &subnet.CustomResourceState,
 		}
 	}
 
 	vpcResult := &model.VpcResult{
-		Vpc:           vpc.CustomResourceState,
+		Vpc:           &vpc.CustomResourceState,
 		SubnetResults: subnets,
 	}
 

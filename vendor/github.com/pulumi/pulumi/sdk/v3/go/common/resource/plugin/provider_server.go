@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -27,30 +27,37 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	perrors "github.com/pulumi/pulumi/sdk/v3/go/pulumi/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type providerServer struct {
 	pulumirpc.UnsafeResourceProviderServer // opt out of forward compat
 
-	provider      Provider
-	keepSecrets   bool
-	keepResources bool
+	provider                       Provider
+	acceptSecrets, sendSecrets     bool
+	acceptResources, sendResources bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
-	return &providerServer{provider: provider}
+	return &providerServer{
+		provider: provider,
+		// Apply defaults unless Handshake overrides
+		acceptSecrets: true, sendSecrets: true,
+		acceptResources: true, sendResources: true,
+	}
 }
 
 func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) MarshalOptions {
 	return MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
+		KeepSecrets:      p.acceptSecrets,
+		KeepResources:    p.acceptResources,
 		KeepOutputValues: keepOutputValues,
+		PropagateNil:     true,
 	}
 }
 
@@ -58,8 +65,9 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 	return MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
-		KeepSecrets:   p.keepSecrets,
-		KeepResources: p.keepResources,
+		KeepSecrets:   p.sendSecrets,
+		KeepResources: p.sendResources,
+		PropagateNil:  true,
 	}
 }
 
@@ -129,6 +137,37 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 		Changes:             changes,
 		Diffs:               diffs,
 		DetailedDiff:        detailedDiff,
+	}, nil
+}
+
+func (p *providerServer) Handshake(
+	ctx context.Context,
+	req *pulumirpc.ProviderHandshakeRequest,
+) (*pulumirpc.ProviderHandshakeResponse, error) {
+	res, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
+		EngineAddress:               req.EngineAddress,
+		RootDirectory:               req.RootDirectory,
+		ProgramDirectory:            req.ProgramDirectory,
+		ConfigureWithUrn:            req.ConfigureWithUrn,
+		SupportsViews:               req.SupportsViews,
+		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
+		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	p.acceptSecrets = res.AcceptSecrets
+	p.acceptResources = res.AcceptResources
+
+	return &pulumirpc.ProviderHandshakeResponse{
+		AcceptSecrets:                   res.AcceptSecrets,
+		AcceptResources:                 res.AcceptResources,
+		AcceptOutputs:                   res.AcceptOutputs,
+		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
 	}, nil
 }
 
@@ -329,13 +368,13 @@ func (p *providerServer) Configure(ctx context.Context,
 		inputs = args
 	} else {
 		inputs = make(resource.PropertyMap)
-		for k, v := range req.GetVariables() {
+		for k, v := range req.GetVariables() { //nolint:staticcheck // maintain backwards compatibility
 			key, err := config.ParseKey(k)
 			if err != nil {
 				return nil, err
 			}
 
-			var value interface{}
+			var value any
 			if err = json.Unmarshal([]byte(v), &value); err != nil {
 				// If we couldn't unmarshal a JSON value, just pass the raw string through.
 				value = v
@@ -345,14 +384,42 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 	}
 
-	if _, err := p.provider.Configure(ctx, ConfigureRequest{inputs}); err != nil {
+	var urn *resource.URN
+	if req.Urn != nil {
+		urnVal := resource.URN(*req.Urn)
+		urn = &urnVal
+	}
+	var id *resource.ID
+	if req.Id != nil {
+		idVal := resource.ID(*req.Id)
+		id = &idVal
+	}
+	var typ *tokens.Type
+	if req.Type != nil {
+		typVal := tokens.Type(*req.Type)
+		typ = &typVal
+	}
+
+	_, err := p.provider.Configure(ctx, ConfigureRequest{
+		URN:    urn,
+		Name:   req.Name,
+		Type:   typ,
+		ID:     id,
+		Inputs: inputs,
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	p.keepSecrets = req.GetAcceptSecrets()
-	p.keepResources = req.GetAcceptResources()
+	p.sendSecrets = req.GetAcceptSecrets()
+	p.sendResources = req.GetAcceptResources()
 	return &pulumirpc.ConfigureResponse{
-		AcceptSecrets: true, SupportsPreview: true, AcceptResources: true, AcceptOutputs: true,
+		AcceptSecrets:   p.acceptSecrets,
+		AcceptResources: p.acceptResources,
+		// providerServer can shim support for all these features, so we always set them to true. Note that we do the same
+		// in Handshake (though Handshake implies SupportsPreview, so we don't shim that there).
+		SupportsPreview: true,
+		AcceptOutputs:   true,
 	}, nil
 }
 
@@ -383,6 +450,14 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
+	var autonaming *AutonamingOptions
+	if req.Autonaming != nil {
+		autonaming = &AutonamingOptions{
+			ProposedName: req.Autonaming.ProposedName,
+			Mode:         AutonamingMode(req.Autonaming.Mode),
+		}
+	}
+
 	resp, err := p.provider.Check(ctx, CheckRequest{
 		URN:           urn,
 		Name:          req.Name,
@@ -391,6 +466,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		News:          inputs,
 		AllowUnknowns: true,
 		RandomSeed:    req.RandomSeed,
+		Autonaming:    autonaming,
 	})
 	if err != nil {
 		return nil, err
@@ -484,12 +560,14 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	}
 
 	resp, err := p.provider.Create(ctx, CreateRequest{
-		URN:        urn,
-		Name:       req.Name,
-		Type:       tokens.Type(req.Type),
-		Properties: inputs,
-		Timeout:    req.GetTimeout(),
-		Preview:    req.GetPreview(),
+		URN:                   urn,
+		Name:                  req.Name,
+		Type:                  tokens.Type(req.Type),
+		Properties:            inputs,
+		Timeout:               req.GetTimeout(),
+		Preview:               req.GetPreview(),
+		ResourceStatusAddress: req.GetResourceStatusAddress(),
+		ResourceStatusToken:   req.GetResourceStatusToken(),
 	})
 	if err != nil {
 		return nil, err
@@ -501,8 +579,9 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	}
 
 	return &pulumirpc.CreateResponse{
-		Id:         string(resp.ID),
-		Properties: rpcState,
+		Id:                  string(resp.ID),
+		Properties:          rpcState,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
 }
 
@@ -533,13 +612,22 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
+	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := p.provider.Read(ctx, ReadRequest{
-		URN:    urn,
-		Name:   req.Name,
-		Type:   tokens.Type(req.Type),
-		ID:     requestID,
-		Inputs: inputs,
-		State:  state,
+		URN:                   urn,
+		Name:                  req.Name,
+		Type:                  tokens.Type(req.Type),
+		ID:                    requestID,
+		Inputs:                inputs,
+		State:                 state,
+		Timeout:               req.GetTimeout(),
+		ResourceStatusAddress: req.GetResourceStatusAddress(),
+		ResourceStatusToken:   req.GetResourceStatusToken(),
+		OldViews:              oldViews,
 	})
 	if err != nil {
 		return nil, err
@@ -556,10 +644,63 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 	}
 
 	return &pulumirpc.ReadResponse{
-		Id:         string(resp.ID),
-		Properties: rpcState,
-		Inputs:     rpcInputs,
+		Id:                  string(resp.ID),
+		Properties:          rpcState,
+		Inputs:              rpcInputs,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
+}
+
+func (p *providerServer) List(
+	req *pulumirpc.ListRequest,
+	stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+) error {
+	query, err := UnmarshalProperties(req.GetQuery(), p.unmarshalOptions("list.query", false))
+	if err != nil {
+		return err
+	}
+	listStream, err := p.provider.List(stream.Context(), ListRequest{
+		Token:             tokens.Type(req.GetToken()),
+		Query:             query,
+		Limit:             req.GetLimit(),
+		PageSize:          req.GetPageSize(),
+		ContinuationToken: req.GetContinuationToken(),
+	})
+	if err != nil {
+		return err
+	}
+	for result, err := range listStream.Items {
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{
+					Id:   string(result.ID),
+					Name: result.Name,
+				},
+			},
+		}); err != nil {
+			return err
+		}
+	}
+	if listStream.Computed {
+		return stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Computed_{
+				Computed: &pulumirpc.ListResponse_Computed{},
+			},
+		})
+	}
+	if listStream.ContinuationToken != "" {
+		return stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Continuation_{
+				Continuation: &pulumirpc.ListResponse_Continuation{
+					ContinuationToken: listStream.ContinuationToken,
+				},
+			},
+		})
+	}
+	return nil
 }
 
 func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
@@ -597,17 +738,26 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
+	oldViews, err := unmarshalViews(
+		req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := p.provider.Update(ctx, UpdateRequest{
-		URN:           urn,
-		Name:          req.Name,
-		Type:          tokens.Type(req.Type),
-		ID:            id,
-		OldInputs:     oldInputs,
-		OldOutputs:    oldOutputs,
-		NewInputs:     newInputs,
-		Timeout:       req.GetTimeout(),
-		IgnoreChanges: req.GetIgnoreChanges(),
-		Preview:       req.GetPreview(),
+		URN:                   urn,
+		Name:                  req.Name,
+		Type:                  tokens.Type(req.Type),
+		ID:                    id,
+		OldInputs:             oldInputs,
+		OldOutputs:            oldOutputs,
+		NewInputs:             newInputs,
+		Timeout:               req.GetTimeout(),
+		IgnoreChanges:         req.GetIgnoreChanges(),
+		Preview:               req.GetPreview(),
+		ResourceStatusAddress: req.GetResourceStatusAddress(),
+		ResourceStatusToken:   req.GetResourceStatusToken(),
+		OldViews:              oldViews,
 	})
 	if err != nil {
 		return nil, err
@@ -618,7 +768,10 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	return &pulumirpc.UpdateResponse{Properties: rpcState}, nil
+	return &pulumirpc.UpdateResponse{
+		Properties:          rpcState,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+	}, nil
 }
 
 func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
@@ -648,14 +801,22 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		return nil, err
 	}
 
+	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
 	if _, err = p.provider.Delete(ctx, DeleteRequest{
-		URN:     urn,
-		Name:    req.Name,
-		Type:    tokens.Type(req.Type),
-		ID:      id,
-		Inputs:  inputs,
-		Outputs: outputs,
-		Timeout: req.GetTimeout(),
+		URN:                   urn,
+		Name:                  req.Name,
+		Type:                  tokens.Type(req.Type),
+		ID:                    id,
+		Inputs:                inputs,
+		Outputs:               outputs,
+		Timeout:               req.GetTimeout(),
+		ResourceStatusAddress: req.GetResourceStatusAddress(),
+		ResourceStatusToken:   req.GetResourceStatusToken(),
+		OldViews:              oldViews,
 	}); err != nil {
 		return nil, err
 	}
@@ -694,16 +855,36 @@ func (p *providerServer) Construct(ctx context.Context,
 	info := ConstructInfo{
 		Project:          req.GetProject(),
 		Stack:            req.GetStack(),
+		Organization:     req.GetOrganization(),
 		Config:           cfg,
 		ConfigSecretKeys: cfgSecretKeys,
 		DryRun:           req.GetDryRun(),
 		Parallel:         req.GetParallel(),
 		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
 	}
 
 	aliases := make([]resource.Alias, len(req.GetAliases()))
-	for i, urn := range req.GetAliases() {
-		aliases[i] = resource.Alias{URN: resource.URN(urn)}
+	for i, alias := range req.GetAliases() {
+		var result resource.Alias
+		switch a := alias.Alias.(type) {
+		case *pulumirpc.Alias_Spec_:
+			result = resource.Alias{
+				Name:    a.Spec.Name,
+				Type:    a.Spec.Type,
+				Project: a.Spec.Project,
+				Stack:   a.Spec.Stack,
+			}
+			switch p := a.Spec.Parent.(type) {
+			case *pulumirpc.Alias_Spec_ParentUrn:
+				result.Parent = resource.URN(p.ParentUrn)
+			case *pulumirpc.Alias_Spec_NoParent:
+				result.NoParent = p.NoParent
+			}
+		case *pulumirpc.Alias_Urn:
+			result = resource.Alias{URN: resource.URN(a.Urn)}
+		}
+		aliases[i] = result
 	}
 	dependencies := make([]resource.URN, len(req.GetDependencies()))
 	for i, urn := range req.GetDependencies() {
@@ -717,12 +898,49 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
+
+	var hooks map[resource.HookType][]string
+	binding := req.GetResourceHooks()
+	if binding != nil {
+		hooks = make(map[resource.HookType][]string)
+		hooks[resource.BeforeCreate] = binding.GetBeforeCreate()
+		hooks[resource.AfterCreate] = binding.GetAfterCreate()
+		hooks[resource.BeforeUpdate] = binding.GetBeforeUpdate()
+		hooks[resource.AfterUpdate] = binding.GetAfterUpdate()
+		hooks[resource.BeforeDelete] = binding.GetBeforeDelete()
+		hooks[resource.AfterDelete] = binding.GetAfterDelete()
+		hooks[resource.OnError] = binding.GetOnError()
+	}
+
+	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))
+	for i, urn := range req.GetReplaceWith() {
+		replaceWith[i] = resource.URN(urn)
+	}
+
+	var replacementTrigger resource.PropertyValue
+	if trigger := req.GetReplacementTrigger(); trigger != nil {
+		rt, err := UnmarshalPropertyValue("replacementTrigger", trigger, p.unmarshalOptions(
+			"replacementTrigger", true /* keepOutputValues */))
+		if err != nil {
+			return nil, err
+		}
+		if rt != nil {
+			replacementTrigger = *rt
+		}
+	}
+
 	options := ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
-		Protect:              req.GetProtect(),
+		Protect:              req.Protect,
 		Providers:            req.GetProviders(),
 		PropertyDependencies: propertyDependencies,
+		ResourceHooks:        hooks,
+		DeletedWith:          resource.URN(req.DeletedWith),
+		ReplaceWith:          replaceWith,
+		ReplacementTrigger:   resource.FromResourcePropertyValue(replacementTrigger),
+		IgnoreChanges:        req.GetIgnoreChanges(),
+		ReplaceOnChanges:     req.GetReplaceOnChanges(),
 	}
 
 	resp, err := p.provider.Construct(ctx, ConstructRequest{
@@ -734,21 +952,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		Options: options,
 	})
 	if err != nil {
-		var iperr *perrors.InputPropertiesError
-		if errors.As(err, &iperr) {
-			// Convert the errors to a slice of proto messages.
-			errorDetails := pulumirpc.InputPropertiesError{}
-			for _, e := range iperr.Errors {
-				errorDetails.Errors = append(errorDetails.Errors, &pulumirpc.InputPropertiesError_PropertyError{
-					PropertyPath: e.PropertyPath,
-					Reason:       e.Reason,
-				})
-			}
-
-			s, _ := status.Newf(codes.InvalidArgument, "%s", iperr.Message).WithDetails(&errorDetails)
-			return nil, s.Err()
-		}
-		return nil, err
+		return nil, rpcerror.WrapDetailedError(err)
 	}
 
 	opts := p.marshalOptions("outputs")
@@ -781,8 +985,9 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
-		Tok:  tokens.ModuleMember(req.GetTok()),
-		Args: args,
+		Tok:     tokens.ModuleMember(req.GetTok()),
+		Args:    args,
+		Preview: req.GetPreview(),
 	})
 	if err != nil {
 		return nil, err
@@ -804,41 +1009,6 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}, nil
 }
 
-func (p *providerServer) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", false /* keepOutputValues */))
-	if err != nil {
-		return err
-	}
-
-	resp, err := p.provider.StreamInvoke(context.TODO(), StreamInvokeRequest{
-		Tok:  tokens.ModuleMember(req.GetTok()),
-		Args: args,
-		OnNext: func(item resource.PropertyMap) error {
-			rpcItem, err := MarshalProperties(item, p.marshalOptions("item"))
-			if err != nil {
-				return err
-			}
-
-			return server.Send(&pulumirpc.InvokeResponse{Return: rpcItem})
-		},
-	})
-	if err != nil {
-		return err
-	}
-	if len(resp.Failures) == 0 {
-		return nil
-	}
-
-	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
-	for i, f := range resp.Failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
-	}
-
-	return server.Send(&pulumirpc.InvokeResponse{Failures: rpcFailures})
-}
-
 func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", true /* keepOutputValues */))
 	if err != nil {
@@ -854,12 +1024,13 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		cfg[configKey] = v
 	}
 	info := CallInfo{
-		Project:        req.GetProject(),
-		Stack:          req.GetStack(),
-		Config:         cfg,
-		DryRun:         req.GetDryRun(),
-		Parallel:       req.GetParallel(),
-		MonitorAddress: req.GetMonitorEndpoint(),
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           cfg,
+		DryRun:           req.GetDryRun(),
+		Parallel:         req.GetParallel(),
+		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
 	}
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {
@@ -880,6 +1051,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		Options: options,
 	})
 	if err != nil {
+		err = rpcerror.WrapDetailedError(err)
 		return nil, err
 	}
 
@@ -934,4 +1106,41 @@ func (p *providerServer) GetMappings(ctx context.Context,
 		return nil, err
 	}
 	return &pulumirpc.GetMappingsResponse{Providers: providers.Keys}, nil
+}
+
+// unmarshalViews is a helper that unmarshals a slice of views from gRPC into a slice of View structs.
+func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error) {
+	return slice.MapError(views, func(v *pulumirpc.View) (View, error) {
+		return unmarshalView(v, opts)
+	})
+}
+
+// unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.
+func unmarshalView(v *pulumirpc.View, opts MarshalOptions) (View, error) {
+	var err error
+
+	var inputs resource.PropertyMap
+	if v.Inputs != nil {
+		inputs, err = UnmarshalProperties(v.Inputs, opts)
+		if err != nil {
+			return View{}, err
+		}
+	}
+
+	var outputs resource.PropertyMap
+	if v.Outputs != nil {
+		outputs, err = UnmarshalProperties(v.Outputs, opts)
+		if err != nil {
+			return View{}, err
+		}
+	}
+
+	return View{
+		Type:       tokens.Type(v.Type),
+		Name:       v.Name,
+		ParentType: tokens.Type(v.ParentType),
+		ParentName: v.ParentName,
+		Inputs:     inputs,
+		Outputs:    outputs,
+	}, nil
 }

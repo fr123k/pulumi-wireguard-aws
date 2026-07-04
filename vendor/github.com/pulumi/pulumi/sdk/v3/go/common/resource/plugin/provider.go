@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,14 @@ import (
 	"context"
 	"errors"
 	"io"
+	"iter"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type GetSchemaRequest struct {
@@ -36,37 +37,138 @@ type GetSchemaRequest struct {
 	SubpackageVersion *semver.Version
 }
 
+// The type of requests sent as part of a Handshake call.
+type ProviderHandshakeRequest struct {
+	// The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance of
+	// the Engine service.
+	EngineAddress string
+
+	// A *root directory* where the provider's binary, `PulumiPlugin.yaml`, or other identifying source code is located.
+	// In the event that the provider is *not* being booted by the engine (e.g. in the case that the engine has been asked
+	// to attach to an existing running provider instance via a host/port number), this field will be empty.
+	RootDirectory *string
+
+	// A *program directory* in which the provider should execute. This is generally a subdirectory of the root directory,
+	// though this is not required. In the event that the provider is *not* being booted by the engine (e.g. in the case
+	// that the engine has been asked to attach to an existing running provider instance via a host/port number), this
+	// field will be empty.
+	ProgramDirectory *string
+
+	// If true the engine will send URN, Name, Type and ID to the provider as part of the configuration.
+	ConfigureWithUrn bool
+
+	// If true the engine supports views and can send an address of the resource status service that
+	// can be used to create or update view resources.
+	SupportsViews bool
+
+	// If true the engine supports letting the provider mark resource states as requiring refresh before update.
+	SupportsRefreshBeforeUpdate bool
+
+	// If true the engine will send `Preview` to `Invoke` methods to let them know if the current operation is a preview
+	// or up.
+	InvokeWithPreview bool
+
+	// The target of a codegen.Mapper service the provider can use to retrieve mappings from other ecosystems to
+	// Pulumi. May be nil on older engines.
+	MapperTarget *string
+
+	// The target of a codegen.Loader service the provider can use to load the schemas of other Pulumi packages.
+	// May be nil on older engines.
+	LoaderTarget *string
+
+	// The target of a PackageResolver service the provider can use to resolve package specifications to concrete
+	// package dependencies. May be nil on older engines.
+	ResolverTarget *string
+}
+
+// The type of responses sent as part of a Handshake call.
+type ProviderHandshakeResponse struct {
+	// True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
+	// values to the provider.
+	AcceptSecrets bool
+
+	// True if and only if the provider supports strongly typed resources. If true, the caller should pass resources as
+	// strongly typed values to the provider.
+	AcceptResources bool
+
+	// True if and only if the provider supports output values as inputs. If true, the engine should pass output values
+	// to the provider where possible.
+	AcceptOutputs bool
+
+	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
+	// user.
+	SupportsAutonamingConfiguration bool
+}
+
+// ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing
+// a provider from either the command line or from within a Pulumi program, respectively.
 type ParameterizeParameters interface {
 	isParameterizeParameters()
+
+	// Empty returns true if the parameterization is empty or nil.
+	Empty() bool
 }
 
 type (
+	// ParameterizeArgs is used when parameterizing a provider from command line arguments.
 	ParameterizeArgs struct {
+		// The arguments passed on the command line following the provider name.
 		Args []string
 	}
 
+	// ParameterizeValue is used when parameterizing a provider from within a Pulumi program.
 	ParameterizeValue struct {
-		Name    string
+		// The name of the parameterization.
+		Name string
+		// The version of the parameterization.
 		Version semver.Version
-		Value   []byte
+		// The binary parameterization value as returned from a previous parameterization call.
+		// This can be any data the provider needs to parameterize itself - such as the data needed to turn resource
+		// requests into API calls.
+		Value []byte
 	}
 )
 
-func (*ParameterizeArgs) isParameterizeParameters()  {}
+// isParameterizeParameters is a no-op method that marks ParameterizeArgs as implementing ParameterizeParameters.
+func (*ParameterizeArgs) isParameterizeParameters() {}
+
+// Empty returns true if the parameterization is empty or nil.
+func (p *ParameterizeArgs) Empty() bool {
+	return p == nil || len(p.Args) == 0
+}
+
+// isParameterizeParameters is a no-op method that marks ParameterizeValue as implementing ParameterizeParameters.
 func (*ParameterizeValue) isParameterizeParameters() {}
 
+// Empty returns true if the parameterization is empty or nil.
+func (p *ParameterizeValue) Empty() bool {
+	return p == nil || len(p.Value) == 0
+}
+
+// The type of requests sent as part of a Parameterize call.
 type ParameterizeRequest struct {
+	// The parameters to use when parameterizing the provider instance.
 	Parameters ParameterizeParameters
 }
 
+// The type of responses sent as part of a Parameterize call.
 type ParameterizeResponse struct {
-	Name    string
+	// The name of the parameterization. This must be unique in the context of a program.
+	// If the request parameter was a ParameterizeValue, then this field must match the input name.
+	Name string
+	// The version of the parameterization. This is required to be set by the provider. It does not have to match the
+	// version of the provider itself, but can be used however the provider sees fit. If the request parameter was a
+	// ParameterizeValue, then this field must match the input version.
 	Version semver.Version
 }
 
+// GetSchemaResponse is the response to a GetSchema call.
 type GetSchemaResponse struct {
+	// The bytes of the JSON serialized Pulumi schema for generating the provider's SDK.
 	Schema []byte
 }
+
+var ErrDoubleParameterized = errors.New("cannot specify parameterization for a parameterized provider")
 
 type CheckConfigRequest struct {
 	URN           resource.URN
@@ -93,10 +195,50 @@ type DiffConfigRequest struct {
 type DiffConfigResponse = DiffResult
 
 type ConfigureRequest struct {
+	// The URN of the provider being configured. N.B. This will be null if configure_with_urn was false in
+	// Handshake.
+	URN *resource.URN
+	// The name of the provider being configured. This must match the name specified by the `urn` field, and
+	// is passed so that providers do not have to implement URN parsing in order to extract the name of the
+	// provider.  N.B. This will be null if configure_with_urn was false in Handshake.
+	Name *string
+	// The type of the provider being configured. This must match the type specified by the `urn` field, and
+	// is passed so that providers do not have to implement URN parsing in order to extract the type of the
+	// provider. N.B. This will be null if configure_with_urn was false in Handshake.
+	Type *tokens.Type
+	// The ID of the provider being configured. N.B. This will be null if configure_with_urn was false in
+	// Handshake.
+	ID *resource.ID
+	// A map of input properties for the provider.
 	Inputs resource.PropertyMap
 }
 
 type ConfigureResponse struct{}
+
+// The mode that controls how the provider handles the proposed name. If not specified, defaults to `Propose`.
+type AutonamingMode int32
+
+const (
+	// Propose: The provider may use the proposed name as a suggestion but is free to modify it.
+	AutonamingModePropose AutonamingMode = iota
+	// Enforce: The provider must use exactly the proposed name or return an error.
+	AutonamingModeEnforce = 1
+	// Disabled: The provider should disable automatic naming and return an error if no explicit name is provided
+	// by user's program.
+	AutonamingModeDisabled = 2
+)
+
+// Configuration for automatic resource naming behavior. This structure contains fields that control how the provider
+// handles resource names, including proposed names and naming modes.
+type AutonamingOptions struct {
+	// ProposedName is the name that the provider should use for the resource.
+	ProposedName string
+	// Mode is the mode that controls how the provider handles the proposed name.
+	Mode AutonamingMode
+	// WarnIfNoSupport indicates whether the provider plugin should log a warning if the provider does not support
+	// autonaming configuration.
+	WarnIfNoSupport bool
+}
 
 type CheckRequest struct {
 	URN  resource.URN
@@ -106,6 +248,7 @@ type CheckRequest struct {
 	Olds, News    resource.PropertyMap
 	AllowUnknowns bool
 	RandomSeed    []byte
+	Autonaming    *AutonamingOptions
 }
 
 type CheckResponse struct {
@@ -133,12 +276,18 @@ type CreateRequest struct {
 	Properties resource.PropertyMap
 	Timeout    float64
 	Preview    bool
+	// The gRPC address of the ResourceStatus service which can be used to create view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
 }
 
 type CreateResponse struct {
 	ID         resource.ID
 	Properties resource.PropertyMap
 	Status     resource.Status
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 type ReadRequest struct {
@@ -147,6 +296,15 @@ type ReadRequest struct {
 	Type          tokens.Type
 	ID            resource.ID
 	Inputs, State resource.PropertyMap
+	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
+	Timeout float64
+	// The gRPC address of the ResourceStatus service which can be used to read view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views for the resource being read. These will only be populated when the Read call is being made as part
+	// of a refresh operation.
+	OldViews []View
 }
 
 type ReadResponse struct {
@@ -163,11 +321,19 @@ type UpdateRequest struct {
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
+	// The gRPC address of the ResourceStatus service which can be used to update view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views for the resource being updated.
+	OldViews []View
 }
 
 type UpdateResponse struct {
 	Properties resource.PropertyMap
 	Status     resource.Status
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 type DeleteRequest struct {
@@ -177,10 +343,101 @@ type DeleteRequest struct {
 	ID              resource.ID
 	Inputs, Outputs resource.PropertyMap
 	Timeout         float64
+	// The gRPC address of the ResourceStatus service which can be used to delete view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views of the resource being deleted.
+	OldViews []View
 }
 
 type DeleteResponse struct {
 	Status resource.Status
+}
+
+// ListRequest is the type of requests sent as part of a [Provider.List] call.
+type ListRequest struct {
+	// Token is the resource type to enumerate.
+	Token tokens.Type
+	// Query is an optional provider-defined filter over resource state. It may contain unknown values, in which case
+	// the provider should respond with a [ListResponse] whose Computed flag is set.
+	Query resource.PropertyMap
+	// Limit caps the total number of results across the entire enumeration. A value of zero means "no limit". The
+	// provider may return fewer results than Limit even when more match.
+	Limit int64
+	// PageSize is the maximum number of results the caller wants in a single page. The provider is free to return
+	// fewer than PageSize, but should not exceed it. A value of zero lets the provider choose.
+	PageSize int64
+	// ContinuationToken is the opaque token returned by a previous List call. Empty for the first page; non-empty to
+	// fetch the next page using the same Token/Query/Limit as the original call.
+	ContinuationToken string
+}
+
+// ListResult is a single resource returned by a [Provider.List] call.
+type ListResult struct {
+	// ID is an importable identifier for the resource. It can be passed to [Provider.Read] to fetch full state.
+	ID resource.ID
+	// Name is the provider-supplied name for the resource, or empty if the provider does not supply one.
+	Name string
+}
+
+// ListStream is the streamed response of a [Provider.List] call. The caller iterates Items to receive each
+// resource one at a time; after iteration completes, Computed and ContinuationToken hold any trailing metadata
+// the provider returned.
+//
+// The contract for Items is:
+//
+//   - Each yield delivers either (item, nil) for a successful result, or (zero, err) for an error. An error pair is
+//     always the final yield — the iterator returns immediately afterwards.
+//   - Items must be drained to completion to ensure the underlying transport is closed and Computed /
+//     ContinuationToken are populated. Stopping early (e.g. break out of the range loop) is allowed but those
+//     metadata fields may not reflect the full stream.
+//   - Items may only be iterated once.
+//
+// A typical caller looks like:
+//
+//	stream, err := p.List(req)
+//	if err != nil { return err }
+//	for item, err := range stream.Items {
+//	    if err != nil { return err }
+//	    // process item
+//	}
+//	if stream.Computed { /* query had unknowns */ }
+//	next := stream.ContinuationToken
+type ListStream struct {
+	// Items yields each list result. See the [ListStream] doc comment for the iteration contract.
+	Items iter.Seq2[ListResult, error]
+	// Computed is set after Items completes if the provider could not compute the list, typically because the query
+	// contained unknown values. When true, no items will have been yielded.
+	Computed bool
+	// ContinuationToken is set after Items completes to the cursor for the next page. Empty when there are no more
+	// pages.
+	ContinuationToken string
+}
+
+// NewListStream builds a ListStream that yields each entry in results, then exposes the supplied continuationToken.
+// It is intended for synthetic implementations such as test doubles. The returned stream's Items can be iterated
+// exactly once.
+func NewListStream(results []ListResult, continuationToken string) *ListStream {
+	return &ListStream{
+		Items: func(yield func(ListResult, error) bool) {
+			for _, r := range results {
+				if !yield(r, nil) {
+					return
+				}
+			}
+		},
+		ContinuationToken: continuationToken,
+	}
+}
+
+// NewComputedListStream builds a ListStream that yields no items and reports Computed=true. It is intended for
+// providers that detect unknown values in the query at construction time.
+func NewComputedListStream() *ListStream {
+	return &ListStream{
+		Items:    func(yield func(ListResult, error) bool) {},
+		Computed: true,
+	}
 }
 
 type ConstructRequest struct {
@@ -195,23 +452,14 @@ type ConstructRequest struct {
 type ConstructResponse = ConstructResult
 
 type InvokeRequest struct {
-	Tok  tokens.ModuleMember
-	Args resource.PropertyMap
+	Tok     tokens.ModuleMember
+	Args    resource.PropertyMap
+	Preview bool
 }
 
 type InvokeResponse struct {
 	Properties resource.PropertyMap
 	Failures   []CheckFailure
-}
-
-type StreamInvokeRequest struct {
-	Tok    tokens.ModuleMember
-	Args   resource.PropertyMap
-	OnNext func(resource.PropertyMap) error
-}
-
-type StreamInvokeResponse struct {
-	Failures []CheckFailure
 }
 
 type CallRequest struct {
@@ -263,8 +511,12 @@ type Provider interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
 
-	// Pkg fetches this provider's package.
-	Pkg() tokens.Package
+	// Handshake is the first call made by the engine to a provider. It is used to pass the engine's address to the
+	// provider so that it may establish its own connections back, and to establish protocol configuration that will be
+	// used to communicate between the two parties. Providers that support Handshake should return a response consistent
+	// with those returned in response to Configure calls where there is overlap due to the use of Configure prior to
+	// Handshake's introduction.
+	Handshake(context.Context, ProviderHandshakeRequest) (*ProviderHandshakeResponse, error)
 
 	// Parameterize adds a sub-package to this provider instance.
 	Parameterize(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
@@ -294,20 +546,22 @@ type Provider interface {
 	Update(context.Context, UpdateRequest) (UpdateResponse, error)
 	// Delete tears down an existing resource. The inputs and outputs are the last recorded ones from state.
 	Delete(context.Context, DeleteRequest) (DeleteResponse, error)
+	// List enumerates resources of the given type managed by this provider. The returned ListStream yields each
+	// resource one at a time; after Items has finished iterating, ContinuationToken (if non-empty) can be passed
+	// back in a follow-up ListRequest to fetch the next page, and Computed reports whether the provider could not
+	// compute the list (typically because the query contained unknown values).
+	List(context.Context, ListRequest) (*ListStream, error)
 
 	// Construct creates a new component resource.
 	Construct(context.Context, ConstructRequest) (ConstructResponse, error)
 
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, InvokeRequest) (InvokeResponse, error)
-	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-	// of responses.
-	StreamInvoke(context.Context, StreamInvokeRequest) (StreamInvokeResponse, error)
 	// Call dynamically executes a method in the provider associated with a component resource.
 	Call(context.Context, CallRequest) (CallResponse, error)
 
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo(context.Context) (workspace.PluginInfo, error)
+	GetPluginInfo(context.Context) (PluginInfo, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -569,11 +823,14 @@ func (r DiffResult) Replace() bool {
 // Invert computes the inverse diff of the receiver -- the diff that would be
 // required to "undo" this one.
 func (r DiffResult) Invert() DiffResult {
-	detailedDiff := make(map[string]PropertyDiff)
-	for k, v := range r.DetailedDiff {
-		detailedDiff[k] = PropertyDiff{
-			Kind:      v.Kind.Invert(),
-			InputDiff: v.InputDiff,
+	var detailedDiff map[string]PropertyDiff
+	if r.DetailedDiff != nil {
+		detailedDiff = make(map[string]PropertyDiff)
+		for k, v := range r.DetailedDiff {
+			detailedDiff[k] = PropertyDiff{
+				Kind:      v.Kind.Invert(),
+				InputDiff: v.InputDiff,
+			}
 		}
 	}
 
@@ -613,17 +870,23 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
+	// Indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool
 }
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.
 type ConstructInfo struct {
 	Project          string                // the project name housing the program being run.
 	Stack            string                // the stack name being evaluated.
+	Organization     string                // the organization name housing the program being run (might be empty).
 	Config           map[config.Key]string // the configuration variables to apply before running.
 	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
 	DryRun           bool                  // true if we are performing a dry-run (preview).
 	Parallel         int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress   string                // the RPC address to the host resource monitor.
+
+	// A handle to the stack trace that originated the Construct. Used to stitch together stack traces across plugins.
+	StackTraceHandle string
 }
 
 // ConstructOptions captures options for a call to Construct.
@@ -635,7 +898,7 @@ type ConstructOptions struct {
 	Dependencies []resource.URN
 
 	// Protect is true if the component is protected.
-	Protect bool
+	Protect *bool
 
 	// Providers is a map from package name to provider reference.
 	Providers map[string]string
@@ -654,9 +917,13 @@ type ConstructOptions struct {
 	// it will also delete this resource.
 	DeletedWith resource.URN
 
+	// ReplaceWith specifies that if any of the given resources are replaced,
+	// this resource will also be replaced.
+	ReplaceWith []resource.URN
+
 	// DeleteBeforeReplace specifies that replacements of this resource
 	// should delete the old resource before creating the new resource.
-	DeleteBeforeReplace bool
+	DeleteBeforeReplace *bool
 
 	// IgnoreChanges lists properties that should be ignored
 	// when determining whether the resource should has changed.
@@ -666,9 +933,17 @@ type ConstructOptions struct {
 	// the resource to be replaced.
 	ReplaceOnChanges []string
 
+	// ReplacementTrigger specifies that if set, the engine will diff this with
+	// the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger property.Value
+
 	// RetainOnDelete is true if deletion of the resource should not
 	// delete the resource in the provider.
-	RetainOnDelete bool
+	RetainOnDelete *bool
+
+	// ResourceHooks specifies hooks to be executed before and after
+	// resource operations.
+	ResourceHooks map[resource.HookType][]string
 }
 
 // CustomTimeouts overrides default timeouts for resource operations.
@@ -677,6 +952,7 @@ type CustomTimeouts struct {
 	Create string
 	Update string
 	Delete string
+	Read   string
 }
 
 // ConstructResult is the result of a call to Construct.
@@ -697,6 +973,9 @@ type CallInfo struct {
 	DryRun         bool                  // true if we are performing a dry-run (preview).
 	Parallel       int32                 // the degree of parallelism for resource operations (<=1 for serial).
 	MonitorAddress string                // the RPC address to the host resource monitor.
+
+	// A handle to the stack trace that originated the Call. Used to stitch together stack traces across plugins.
+	StackTraceHandle string
 }
 
 // CallOptions captures options for a call to Call.
@@ -708,9 +987,32 @@ type CallOptions struct {
 // CallResult is the result of a call to Call.
 type CallResult struct {
 	// The returned values, if the call was successful.
+	// In the case of a scalar/non-map result, a single key with any name can be used to return the
+	// value.
 	Return resource.PropertyMap
 	// A map from return value keys to the dependencies of the return value.
 	ReturnDependencies map[resource.PropertyKey][]resource.URN
 	// The failures if any arguments didn't pass verification.
 	Failures []CheckFailure
+}
+
+// View represents the state of a view resource.
+type View struct {
+	// The type of the view resource.
+	Type tokens.Type
+
+	// The name of the view resource.
+	Name string
+
+	// An optional type of the parent view resource.
+	ParentType tokens.Type
+
+	// An optional name of the parent view resource.
+	ParentName string
+
+	// The view resource's inputs.
+	Inputs resource.PropertyMap
+
+	// The view resource's outputs.
+	Outputs resource.PropertyMap
 }

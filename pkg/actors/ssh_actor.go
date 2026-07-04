@@ -43,7 +43,7 @@ func NewSSHConnector(args SSHConnectorArgs, log utility.Logger) SSHConnector {
 // Connect this function is called when the virtual instance is created and can recevie connection.
 // TODO implements retries ssh attemps because after an virtual machine is ready doesn't
 func (c *SSHConnector) Connect(address string) string {
-	resultChan := make(chan string, 0)
+	resultChan := make(chan string)
 	c.actions <- func() {
 		sshClient := ssh.SSHClientConfig{
 			Hostname:      address,
@@ -62,7 +62,7 @@ func (c *SSHConnector) Connect(address string) string {
 			result, err := sshClient.SSHCommand(cmd.Command)
 			if err != nil {
 				c.log.Error("Failed to run cmd '%s' with error '%s'", cmd.Command, err)
-				panic(fmt.Errorf("Failed to run cmd '%s' with error '%s'", cmd.Command, err))
+				panic(fmt.Errorf("failed to run cmd '%s' with error '%s'", cmd.Command, err))
 			}
 			c.log.Info("Result: %s", *result)
 			if cmd.Output {

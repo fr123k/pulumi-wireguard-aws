@@ -122,9 +122,13 @@ func (x *expr) export(environment string) esc.Expr {
 			if p.value != nil {
 				value = make([]esc.PropertyAccessor, len(p.value.accessors))
 				for i, a := range p.value.accessors {
+					var rng esc.Range
+					if a.value != nil {
+						rng = a.value.def.defRange(environment)
+					}
 					value[i] = esc.PropertyAccessor{
 						Accessor: exportAccessor(a.accessor, environment),
-						Value:    a.value.def.defRange(environment),
+						Value:    rng,
 					}
 				}
 			}
@@ -137,9 +141,13 @@ func (x *expr) export(environment string) esc.Expr {
 	case *symbolExpr:
 		value := make([]esc.PropertyAccessor, len(repr.property.accessors))
 		for i, a := range repr.property.accessors {
+			var rng esc.Range
+			if a.value != nil {
+				rng = a.value.def.defRange(environment)
+			}
 			value[i] = esc.PropertyAccessor{
 				Accessor: exportAccessor(a.accessor, environment),
-				Value:    a.value.def.defRange(environment),
+				Value:    rng,
 			}
 		}
 		ex.Symbol = value
@@ -161,12 +169,35 @@ func (x *expr) export(environment string) esc.Expr {
 			ArgSchema: schema.String().Schema(),
 			Arg:       repr.string.export(environment),
 		}
+	case *validateExpr:
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+			ArgSchema: schema.Record(schema.SchemaMap{
+				"schema": schema.JSONSchemaSchema(),
+				"value":  schema.Always(),
+			}).Schema(),
+			Arg: esc.Expr{
+				Range: convertRange(repr.node.Args().Syntax().Syntax().Range(), environment),
+				Object: map[string]esc.Expr{
+					"schema": repr.schemaExpr.export(environment),
+					"value":  repr.value.export(environment),
+				},
+			},
+		}
 	case *fromJSONExpr:
 		ex.Builtin = &esc.BuiltinExpr{
 			Name:      repr.node.Name().Value,
 			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.string.export(environment),
+		}
+	case *concatExpr:
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+			ArgSchema: schema.Array().Items(schema.Array().Items(schema.Always())).Schema(),
+			Arg:       repr.arrays.export(environment),
 		}
 	case *joinExpr:
 		argRange := convertRange(repr.node.Args().Syntax().Syntax().Range(), environment)
@@ -177,6 +208,17 @@ func (x *expr) export(environment string) esc.Expr {
 			Arg: esc.Expr{
 				Range: argRange,
 				List:  []esc.Expr{repr.delimiter.export(environment), repr.values.export(environment)},
+			},
+		}
+	case *splitExpr:
+		argRange := convertRange(repr.node.Args().Syntax().Syntax().Range(), environment)
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+			ArgSchema: schema.Tuple(schema.String(), schema.String()).Schema(),
+			Arg: esc.Expr{
+				Range: argRange,
+				List:  []esc.Expr{repr.delimiter.export(environment), repr.string.export(environment)},
 			},
 		}
 	case *openExpr:
@@ -202,6 +244,41 @@ func (x *expr) export(environment string) esc.Expr {
 				NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
 				ArgSchema: repr.inputSchema,
 				Arg:       repr.inputs.export(environment),
+			}
+		}
+	case *rotateExpr:
+		name := repr.node.Name().Value
+		if name == "fn::rotate" {
+			ex.Builtin = &esc.BuiltinExpr{
+				Name:      name,
+				NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+				ArgSchema: schema.Record(schema.SchemaMap{
+					"provider": schema.String().Schema(),
+					"inputs":   repr.inputSchema,
+					"state":    repr.stateSchema,
+				}).Schema(),
+				Arg: esc.Expr{
+					Object: map[string]esc.Expr{
+						"provider": repr.provider.export(environment),
+						"inputs":   repr.inputs.export(environment),
+						"state":    repr.state.export(environment),
+					},
+				},
+			}
+		} else {
+			ex.Builtin = &esc.BuiltinExpr{
+				Name:      name,
+				NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+				ArgSchema: schema.Record(schema.SchemaMap{
+					"inputs": repr.inputSchema,
+					"state":  repr.stateSchema,
+				}).Schema(),
+				Arg: esc.Expr{
+					Object: map[string]esc.Expr{
+						"inputs": repr.inputs.export(environment),
+						"state":  repr.state.export(environment),
+					},
+				},
 			}
 		}
 	case *secretExpr:
@@ -243,6 +320,13 @@ func (x *expr) export(environment string) esc.Expr {
 			ArgSchema: schema.Always().Schema(),
 			Arg:       repr.value.export(environment),
 		}
+	case *finalExpr:
+		ex.Builtin = &esc.BuiltinExpr{
+			Name:      repr.node.Name().Value,
+			NameRange: convertRange(repr.node.Name().Syntax().Syntax().Range(), environment),
+			ArgSchema: schema.Always().Schema(),
+			Arg:       repr.value.export(environment),
+		}
 	case *arrayExpr:
 		ex.List = make([]esc.Expr, len(repr.elements))
 		for i, el := range repr.elements {
@@ -251,7 +335,9 @@ func (x *expr) export(environment string) esc.Expr {
 	case *objectExpr:
 		ex.KeyRanges = make(map[string]esc.Range, len(repr.node.Entries))
 		for _, kvp := range repr.node.Entries {
-			ex.KeyRanges[kvp.Key.Value] = convertRange(kvp.Key.Syntax().Syntax().Range(), environment)
+			if kvp.Key != nil {
+				ex.KeyRanges[kvp.Key.Value] = convertRange(kvp.Key.Syntax().Syntax().Range(), environment)
+			}
 		}
 
 		ex.Object = make(map[string]esc.Expr, len(repr.properties))
@@ -371,6 +457,22 @@ func (x *openExpr) syntax() ast.Expr {
 	return x.node
 }
 
+// rotateExpr represents a call to the fn::rotate builtin.
+type rotateExpr struct {
+	node *ast.RotateExpr
+
+	provider *expr
+	inputs   *expr
+	state    *expr
+
+	inputSchema *schema.Schema
+	stateSchema *schema.Schema
+}
+
+func (x *rotateExpr) syntax() ast.Expr {
+	return x.node
+}
+
 // toJSONExpr represents a call to the fn::toJSON builtin.
 type toJSONExpr struct {
 	node *ast.ToJSONExpr
@@ -416,6 +518,29 @@ func (x *joinExpr) syntax() ast.Expr {
 	return x.node
 }
 
+// splitExpr represents a call to the fn::split builtin.
+type splitExpr struct {
+	node *ast.SplitExpr
+
+	delimiter *expr
+	string    *expr
+}
+
+func (x *splitExpr) syntax() ast.Expr {
+	return x.node
+}
+
+// concatExpr represents a call to the fn::concat builtin.
+type concatExpr struct {
+	node *ast.ConcatExpr
+
+	arrays *expr
+}
+
+func (x *concatExpr) syntax() ast.Expr {
+	return x.node
+}
+
 // secretExpr represents a call to the fn::secret builtin.
 type secretExpr struct {
 	node *ast.SecretExpr
@@ -447,5 +572,30 @@ type fromBase64Expr struct {
 }
 
 func (x *fromBase64Expr) syntax() ast.Expr {
+	return x.node
+}
+
+// finalExpr represents a call to the fn::final builtin.
+type finalExpr struct {
+	node *ast.FinalExpr
+
+	value *expr
+}
+
+func (x *finalExpr) syntax() ast.Expr {
+	return x.node
+}
+
+// validateExpr represents a call to the fn::validate builtin.
+type validateExpr struct {
+	node *ast.ValidateExpr
+
+	schemaExpr *expr // The schema expression (evaluated to get schema value)
+	value      *expr // The value expression to validate
+
+	conformSchema *schema.Schema // Computed schema (populated during evaluation)
+}
+
+func (x *validateExpr) syntax() ast.Expr {
 	return x.node
 }

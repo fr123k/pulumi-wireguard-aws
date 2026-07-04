@@ -128,6 +128,9 @@ func (d *MapDecl[T]) parse(name string, node syntax.Node) syntax.Diagnostics {
 
 		var v T
 		vname := name + "." + kvp.Key.Value()
+		if strings.HasPrefix(kvp.Key.Value(), "fn::") {
+			diags.Extend(syntax.NodeError(kvp.Key, fmt.Sprintf("builtin function call %q not allowed at the top level", kvp.Key.Value())))
+		}
 		vdiags := parseNode(vname, &v, kvp.Value)
 		diags.Extend(vdiags...)
 
@@ -237,7 +240,7 @@ func Environment(description *StringExpr, imports ImportListDecl, values Propert
 func ParseEnvironment(source []byte, node syntax.Node) (*EnvironmentDecl, syntax.Diagnostics) {
 	environment := EnvironmentDecl{source: source}
 
-	diags := parseRecord("environment", &environment, node, false)
+	diags := parseRecord("environment", &environment, node, true)
 	return &environment, diags
 }
 
@@ -317,10 +320,20 @@ func parseRecord(objName string, dest recordDecl, node syntax.Node, noMatchWarni
 	t := v.Type()
 
 	var diags syntax.Diagnostics
+	seenKeys := make(map[string]bool)
 	for i := 0; i < obj.Len(); i++ {
 		kvp := obj.Index(i)
 
 		key := kvp.Key.Value()
+
+		// Add warning diagnostic for duplicate top-level keys
+		if seenKeys[key] {
+			nodeError := syntax.NodeError(kvp.Key, fmt.Sprintf("duplicate key %q", key))
+			nodeError.Severity = hcl.DiagWarning
+			diags = append(diags, nodeError)
+		}
+		seenKeys[key] = true
+
 		var hasMatch bool
 		for _, f := range reflect.VisibleFields(t) {
 			if f.IsExported() && strings.EqualFold(f.Name, key) {

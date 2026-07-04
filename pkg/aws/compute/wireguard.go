@@ -10,7 +10,7 @@ import (
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
-	"github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -109,7 +109,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, expo
 	}
 
 	return &model.ComputeResult{
-		Compute: infra.Server.CustomResourceState,
+		Compute: &infra.Server.CustomResourceState,
 	}, err
 }
 

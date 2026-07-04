@@ -3,7 +3,6 @@ package main
 import (
     "fmt"
     _ "io"
-    _ "io/ioutil"
     _ "os"
 
     "github.com/fr123k/pulumi-wireguard-aws/pkg/ssh"
@@ -23,7 +22,7 @@ func main() {
 
     result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
     if err != nil {
-        panic(fmt.Errorf("Failed to create session: %s", err))
+        panic(fmt.Errorf("failed to create session: %s", err))
     }
     fmt.Printf("Result: %s", *result)
 }

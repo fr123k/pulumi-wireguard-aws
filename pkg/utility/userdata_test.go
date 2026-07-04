@@ -5,13 +5,6 @@ import (
     "testing"
 )
 
-const fileContent = `
-MYV4IP=$(curl {{ METADATA_URL }})
-
-PublicKey = {{ CLIENT_PUBLICKEY }}
-PersistentKeepalive = 25
-EOF`
-
 func assert(t *testing.T, err error) {
     if err != nil {
         t.Error(err.Error())

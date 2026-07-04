@@ -19,11 +19,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+
+	fxm "github.com/pgavlin/fx/v2/maps"
+	fxs "github.com/pgavlin/fx/v2/slices"
 )
 
 type Builder interface {
@@ -120,7 +125,8 @@ type Schema struct {
 	Examples    []any  `json:"examples,omitempty"`
 
 	// Environments extensions
-	Secret bool `json:"secret,omitempty"`
+	Secret     bool     `json:"secret,omitempty"`
+	RotateOnly []string `json:"rotateOnly,omitempty"`
 
 	ref              *Schema
 	multipleOf       *big.Float
@@ -135,6 +141,7 @@ type Schema struct {
 	minItems         *uint
 	maxProperties    *uint
 	minProperties    *uint
+	rotateOnly       bool
 
 	compiled bool
 }
@@ -216,6 +223,10 @@ func (s *Schema) Property(name string) *Schema {
 	return union(oneOf)
 }
 
+func (s *Schema) IsRotateOnly() bool {
+	return s.rotateOnly
+}
+
 func (s *Schema) GetRef() *Schema                 { return s.ref }
 func (s *Schema) GetMultipleOf() *big.Float       { return s.multipleOf }
 func (s *Schema) GetMaximum() *big.Float          { return s.maximum }
@@ -236,6 +247,27 @@ func (s *Schema) Compile() error {
 	}
 
 	return s.compile(s)
+}
+
+// setRotateOnly transitively sets the rotateOnly flag on the input schema, making a copy if necessary.
+func setRotateOnly(s *Schema) *Schema {
+	if s == nil || s.rotateOnly {
+		return s
+	}
+
+	copy := *s
+	copy.rotateOnly = true
+
+	copy.ref = setRotateOnly(s.ref)
+	copy.AnyOf = slices.Collect(fxs.Map(s.AnyOf, setRotateOnly))
+	copy.OneOf = slices.Collect(fxs.Map(s.OneOf, setRotateOnly))
+	copy.PrefixItems = slices.Collect(fxs.Map(s.PrefixItems, setRotateOnly))
+	copy.Items = setRotateOnly(s.Items)
+	copy.AdditionalProperties = setRotateOnly(s.AdditionalProperties)
+	copy.Properties = maps.Collect(fxm.Map(s.Properties, func(k string, s *Schema) (string, *Schema) { return k, setRotateOnly(s) }))
+	copy.RotateOnly = slices.Collect(maps.Keys(s.Properties))
+
+	return &copy
 }
 
 func (s *Schema) compile(root *Schema) error {
@@ -279,6 +311,12 @@ func (s *Schema) compile(root *Schema) error {
 	for _, v := range s.Properties {
 		if err := v.compile(root); err != nil {
 			return err
+		}
+	}
+	for _, name := range s.RotateOnly {
+		// need to push the rotateOnly flag down onto the actual properties, so it is available to the evaluator while evaluating object properties
+		if p, ok := s.Properties[name]; ok {
+			s.Properties[name] = setRotateOnly(p)
 		}
 	}
 
@@ -401,10 +439,11 @@ func buildOneOf[T Builder](b T, oneOf []Builder) T {
 
 func union(oneOf []*Schema) *Schema {
 	// Filter out Never schemas.
-	n := 0
+	n, rotateOnly := 0, true
 	for _, s := range oneOf {
 		if s != nil && !s.Never {
 			oneOf[n] = s
+			rotateOnly = rotateOnly && s.rotateOnly
 			n++
 		}
 	}
@@ -419,6 +458,6 @@ func union(oneOf []*Schema) *Schema {
 		return oneOf[0]
 	default:
 		// Otherwise, return a OneOf.
-		return &Schema{OneOf: oneOf}
+		return &Schema{OneOf: oneOf, rotateOnly: rotateOnly}
 	}
 }

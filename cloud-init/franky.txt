@@ -1,0 +1,89 @@
+#!/bin/bash -v
+
+# Cloud-init for franky (Sandbox) VM
+# Runtime-specific configuration:
+# - SSH user setup
+# - Nginx SSL configuration (certificates from Secret Manager)
+# - Service startup
+
+export DEBIAN_FRONTEND=noninteractive
+
+# ============================================
+# SSH User Setup
+# ============================================
+echo "=== Setting up SSH user ==="
+useradd -m -s /bin/bash -G sudo frank.ittermann 2>/dev/null || true
+mkdir -p /home/frank.ittermann/.ssh/
+mkdir -p /home/frank.ittermann/github/
+echo "frank.ittermann ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/frank_ittermann
+chmod 0440 /etc/sudoers.d/frank_ittermann
+
+# Copy SSH key if not already present (handles Hetzner and GCP)
+if [ ! -s /home/frank.ittermann/.ssh/authorized_keys ] && [ -f /root/.ssh/authorized_keys ]; then
+    cp /root/.ssh/authorized_keys /home/frank.ittermann/.ssh/authorized_keys
+fi
+chmod 600 /home/frank.ittermann/.ssh/authorized_keys
+chown -R frank.ittermann:frank.ittermann /home/frank.ittermann
+
+# Finalize SSH hardening
+sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+if ! grep -q "AllowUsers frank.ittermann" /etc/ssh/sshd_config; then
+    echo "AllowUsers frank.ittermann" >> /etc/ssh/sshd_config
+fi
+systemctl reload ssh.service
+
+# ============================================
+# Nginx Configuration
+# ============================================
+echo "=== Configuring Nginx ==="
+
+cat > /etc/nginx/sites-available/franky <<EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name franky.fr123k.uk;
+
+    access_log /var/log/nginx/franky.access.log;
+    error_log /var/log/nginx/franky.error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_http_version 1.1;
+        proxy_read_timeout 300;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-PORT \$remote_port;
+        error_page 403 = /custom_444;
+
+        location = /custom_444 {
+            return 444;
+        }
+    }
+}
+EOF
+
+# Enable franky site
+ln -sf /etc/nginx/sites-available/franky /etc/nginx/conf.d/franky.conf
+
+# ============================================
+# Start Services
+# ============================================
+echo "=== Starting services ==="
+
+# Start fail2ban
+systemctl start fail2ban
+
+# Start franky-web-ui
+systemctl start franky
+systemctl enable franky
+
+# Start dandbox daemon
+# systemctl start dandbox
+# systemctl enable dandbox
+
+# Start Nginx
+systemctl restart nginx
+
+echo "=== franky setup complete ==="

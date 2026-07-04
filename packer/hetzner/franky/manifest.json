@@ -1,0 +1,17 @@
+{
+  "builds": [
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783117272,
+      "files": null,
+      "artifact_id": "404536320",
+      "packer_run_uuid": "c3e8b8ec-7b80-0402-f1f6-b3b673770cfc",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260703-221844"
+      }
+    }
+  ],
+  "last_run_uuid": "c3e8b8ec-7b80-0402-f1f6-b3b673770cfc"
+}

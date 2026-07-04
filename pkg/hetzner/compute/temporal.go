@@ -137,10 +137,10 @@ func CreateTemporalVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP 
 	}
 
 	if isPrebakedImage(imageName) {
-		ctx.Log.Info("Using pre-baked image, loading minimal cloud-init", nil)
+		_ = ctx.Log.Info("Using pre-baked image, loading minimal cloud-init", nil)
 		userData, err = shared.TemporalPrebakedUserData()
 	} else {
-		ctx.Log.Info("Using base image, loading full cloud-init", nil)
+		_ = ctx.Log.Info("Using base image, loading full cloud-init", nil)
 		userData, err = shared.TemporalUserData()
 	}
 
@@ -159,7 +159,7 @@ func CreateTemporalVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP 
 	//     Implement firewall provisioning based on userdata script or cloud-init.
 
 	return &model.ComputeResult{
-		Compute: infra.Server.CustomResourceState,
+		Compute: &infra.Server.CustomResourceState,
 	}, nil
 }
 

@@ -93,7 +93,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
 
     sshConnector := shared.WireguardProvisioner(ctx, keyPair)
 
-    compute.ProvisionVM(ctx, &model.ProvisionArgs{
+    _ = compute.ProvisionVM(ctx, &model.ProvisionArgs{
         ExportName:    "wireguard.publicKey",
         SourceCompute: vm,
     }, &sshConnector)

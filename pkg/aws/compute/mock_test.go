@@ -2,7 +2,6 @@ package compute
 
 import (
     "fmt"
-    "io/ioutil"
     "os"
     "path/filepath"
     "testing"
@@ -52,7 +51,7 @@ func (fileReader ProjectRootFileReader) ReadFile(filename string) ([]byte, error
             break
         }
     }
-    return ioutil.ReadFile(fmt.Sprintf("%s/%s", wd, filename))
+    return os.ReadFile(fmt.Sprintf("%s/%s", wd, filename))
 }
 
 func Exists(name string) bool {

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,4 +40,11 @@ type Operation struct {
 // NewOperation constructs a new Operation from a state and an operation name.
 func NewOperation(state *State, op OperationType) Operation {
 	return Operation{state, op}
+}
+
+func (op Operation) Copy() Operation {
+	return Operation{
+		Resource: op.Resource.Copy(),
+		Type:     op.Type,
+	}
 }

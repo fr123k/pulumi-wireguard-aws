@@ -149,8 +149,8 @@ func TestNewUserDataWithContentAndUndefineEnvironmentVariables(t *testing.T) {
 }
 
 func TestNewUserDataWithContentAndEnvironmentVariables(t *testing.T) {
-    os.Setenv("TEST_CLIENT_PUBLICKEY", "ENV_CLIENT_PUBLICKEY")
-    os.Setenv("TEST_METADATA_URL", "ENV_TEST_METADATA_URL")
+    _ = os.Setenv("TEST_CLIENT_PUBLICKEY", "ENV_CLIENT_PUBLICKEY")
+    _ = os.Setenv("TEST_METADATA_URL", "ENV_TEST_METADATA_URL")
     userData, err := NewUserDataWithContent(userDataContent, TemplateVariablesEnvironment(userDataVariables()))
 
     assert(t, err)
@@ -206,8 +206,8 @@ func TestNewUserDataNoVariables(t *testing.T) {
 
 //TestNewUserDataWithEnvironmentVariables test the method NewUserData with environment variables
 func TestNewUserDataWithEnvironmentVariables(t *testing.T) {
-    os.Setenv("TEST_CLIENT_PUBLICKEY", "ENV_CLIENT_PUBLICKEY")
-    os.Setenv("TEST_METADATA_URL", "ENV_TEST_METADATA_URL")
+    _ = os.Setenv("TEST_CLIENT_PUBLICKEY", "ENV_CLIENT_PUBLICKEY")
+    _ = os.Setenv("TEST_METADATA_URL", "ENV_TEST_METADATA_URL")
 
     MockFileContent(userDataContent)
 
@@ -225,8 +225,8 @@ func TestNewUserDataWithEnvironmentVariables(t *testing.T) {
 }
 
 func TestNewUserDataWithEnvPropertyVariables(t *testing.T) {
-    os.Setenv("TEST_CLIENT_PUBLICKEY", "ENV_CLIENT_PUBLICKEY")
-    os.Setenv("TEST_METADATA_URL", "ENV_TEST_METADATA_URL")
+    _ = os.Setenv("TEST_CLIENT_PUBLICKEY", "ENV_CLIENT_PUBLICKEY")
+    _ = os.Setenv("TEST_METADATA_URL", "ENV_TEST_METADATA_URL")
 
     MockFileContent(userDataContent)
 
