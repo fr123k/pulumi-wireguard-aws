@@ -19,3 +19,12 @@ echo "=== Verifying franky binary ==="
 head -c 4 /usr/bin/franky | od -An -tx1 | grep -q '7f 45 4c 46' && echo "valid ELF binary" || echo "WARNING: not an ELF binary"
 
 echo "=== franky installation complete ==="
+
+echo "=== install tools (zig) ==="
+
+cd /tmp
+wget https://ziglang.org/builds/zig-aarch64-linux-0.17.0-dev.1267+300116b02.tar.xz
+tar -xf zig-aarch64-linux-0.17.0-dev.1267+300116b02.tar.xz -C /usr/local/bin --strip-components=1
+rm zig-aarch64-linux-0.17.0-dev.1267+300116b02.tar.xz
+
+echo "=== tools installation complete ==="
