@@ -18,6 +18,7 @@ apt-get install -y \
     ca-certificates \
     curl \
     fail2ban \
+    golang \
     gnupg2 \
     jq \
     lsb-release \

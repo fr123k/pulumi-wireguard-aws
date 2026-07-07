@@ -109,9 +109,11 @@ SNAPSHOT_KEEP_COUNT ?= 3
 ifeq ($(ENV),test)
   TEMPORAL_DOMAIN ?= temporal-test.dunebot.io
   DUNEBOT_DOMAIN ?= githubapp-test.dunebot.io
+  FRANKY_DOMAIN ?= franky-test.dunebot.io
 else
   TEMPORAL_DOMAIN ?= temporal.dunebot.io
   DUNEBOT_DOMAIN ?= githubapp.dunebot.io
+  FRANKY_DOMAIN ?= franky.dunebot.io
 endif
 
 packer-init:
