@@ -20,11 +20,17 @@ head -c 4 /usr/bin/franky | od -An -tx1 | grep -q '7f 45 4c 46' && echo "valid E
 
 echo "=== franky installation complete ==="
 
-echo "=== install tools (zig) ==="
+echo "=== install tools (zig, golang) ==="
 
 cd /tmp
 wget https://ziglang.org/builds/zig-aarch64-linux-0.17.0-dev.1267+300116b02.tar.xz
 tar -xf zig-aarch64-linux-0.17.0-dev.1267+300116b02.tar.xz -C /usr/local/bin --strip-components=1
 rm zig-aarch64-linux-0.17.0-dev.1267+300116b02.tar.xz
+
+wget https://go.dev/dl/go1.26.4.linux-amd64.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzf go1.26.4.linux-amd64.tar.gz
+ln -sf /usr/local/go/bin/go /usr/local/bin/go
+ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 
 echo "=== tools installation complete ==="
