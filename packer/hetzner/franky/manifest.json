@@ -35,7 +35,43 @@
         "franky_version": "0.32.1",
         "snapshot_name": "franky-prebaked-20260707-115915"
       }
+    },
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783460746,
+      "files": null,
+      "artifact_id": "405973912",
+      "packer_run_uuid": "ecc35764-c748-5fed-6a2f-d19ccefb0765",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260707-214331"
+      }
+    },
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783461090,
+      "files": null,
+      "artifact_id": "405973945",
+      "packer_run_uuid": "5c08f4d3-2db0-0c9a-c768-08ae41250127",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260707-214922"
+      }
+    },
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783461458,
+      "files": null,
+      "artifact_id": "405973973",
+      "packer_run_uuid": "6942a21d-dfb6-b18e-740a-c07a8b474d81",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260707-215508"
+      }
     }
   ],
-  "last_run_uuid": "af50bd1e-2172-c68f-d5b8-6996c990a1f1"
+  "last_run_uuid": "6942a21d-dfb6-b18e-740a-c07a8b474d81"
 }
