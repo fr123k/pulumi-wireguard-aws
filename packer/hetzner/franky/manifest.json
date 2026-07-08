@@ -71,7 +71,31 @@
         "franky_version": "0.32.1",
         "snapshot_name": "franky-prebaked-20260707-215508"
       }
+    },
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783499317,
+      "files": null,
+      "artifact_id": "406157268",
+      "packer_run_uuid": "9e8eec99-fdc1-49db-592d-c186c8466342",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260708-082535"
+      }
+    },
+    {
+      "name": "franky",
+      "builder_type": "hcloud",
+      "build_time": 1783518924,
+      "files": null,
+      "artifact_id": "406218678",
+      "packer_run_uuid": "ad1102a9-9210-8e1c-4fbd-5a98bc96877b",
+      "custom_data": {
+        "franky_version": "0.32.1",
+        "snapshot_name": "franky-prebaked-20260708-135241"
+      }
     }
   ],
-  "last_run_uuid": "6942a21d-dfb6-b18e-740a-c07a8b474d81"
+  "last_run_uuid": "ad1102a9-9210-8e1c-4fbd-5a98bc96877b"
 }
