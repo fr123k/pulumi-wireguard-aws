@@ -1,0 +1,326 @@
+#!/bin/bash -v
+
+# Cloud-init for mini PC / physical server
+# This script bootstraps a physical Ubuntu server with:
+# - SSH hardening and user setup (franky user)
+# - Firewall (nftables)
+# - WireGuard VPN client (connects to remote WireGuard server)
+# - Franky AI coding agent
+# - Development tools (Go, Zig)
+# - fail2ban intrusion prevention
+# - Docker (optional)
+# - Automatic security updates
+
+export DEBIAN_FRONTEND=noninteractive
+
+# ============================================
+# Helper: systemctl fallback for containers without systemd PID 1
+# ============================================
+sctl() {
+    if [ -d /run/systemd/system ]; then
+        systemctl "$@"
+    else
+        # Fallback: map common systemctl commands to direct service actions
+        action="$1"; shift
+        case "$action" in
+            enable)
+                # no-op without systemd
+                ;;
+            start|restart|reload)
+                service="$1"
+                if [ "$service" = "ssh" ]; then service="ssh"; fi
+                service "$service" "$action" 2>/dev/null || true
+                ;;
+            is-active)
+                service="$1"
+                service "$service" status 2>/dev/null && echo active || echo inactive
+                ;;
+            *)
+                systemctl "$action" "$@" 2>/dev/null || true
+                ;;
+        esac
+    fi
+}
+
+# ============================================
+# Configuration (override via template variables)
+# ============================================
+MINIPC_USER="{{ MINIPC_USER }}"
+MINIPC_SSH_PORT="{{ MINIPC_SSH_PORT }}"
+MINIPC_DOCKER="{{ MINIPC_DOCKER }}"
+MINIPC_NIC="{{ MINIPC_NIC }}"
+FRANKY_VERSION="{{ FRANKY_VERSION }}"
+
+# Set defaults for empty template variables
+[ -z "$MINIPC_USER" ] && MINIPC_USER="frank.ittermann"
+[ -z "$MINIPC_SSH_PORT" ] && MINIPC_SSH_PORT="22"
+[ -z "$MINIPC_DOCKER" ] && MINIPC_DOCKER="true"
+[ -z "$FRANKY_VERSION" ] && FRANKY_VERSION="0.32.1"
+if [ -z "$MINIPC_NIC" ]; then
+    # Try iproute2 first, fall back to /sys or 'eth0' for minimal containers
+    if command -v ip >/dev/null 2>&1; then
+        MINIPC_NIC="$(ip route | grep default | awk '{print $5}' | head -1)"
+    elif [ -d /sys/class/net ]; then
+        # Pick the first non-loopback interface
+        MINIPC_NIC="$(ls /sys/class/net | grep -v lo | head -1)"
+    fi
+    [ -z "$MINIPC_NIC" ] && MINIPC_NIC="eth0"
+fi
+1
+# ============================================
+# System Update
+# ============================================
+echo "=== Updating system ==="
+apt-get update -y
+apt-get upgrade -y
+apt-get dist-upgrade -y
+
+# ============================================
+# Base Packages
+# ============================================
+echo "=== Installing base packages ==="
+apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    fail2ban \
+    gnupg2 \
+    jq \
+    lsb-release \
+    pwgen \
+    software-properties-common \
+    ubuntu-keyring \
+    wireguard-tools
+
+# ============================================
+# SSH User Setup
+# ============================================
+echo "=== Setting up SSH user ==="
+useradd -m -s /bin/bash -G sudo "$MINIPC_USER" 2>/dev/null || true
+mkdir -p "/home/$MINIPC_USER/.ssh/"
+mkdir -p "/home/$MINIPC_USER/github/"
+echo "$MINIPC_USER ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/$MINIPC_USER"
+chmod 0440 "/etc/sudoers.d/$MINIPC_USER"
+
+# Copy root's authorized keys if they exist (for Hetzner/cloud-init provisioned machines)
+if [ ! -s "/home/$MINIPC_USER/.ssh/authorized_keys" ] && [ -f /root/.ssh/authorized_keys ]; then
+    cp /root/.ssh/authorized_keys "/home/$MINIPC_USER/.ssh/authorized_keys"
+fi
+[ -f "/home/$MINIPC_USER/.ssh/authorized_keys" ] && chmod 600 "/home/$MINIPC_USER/.ssh/authorized_keys"
+chown -R "$MINIPC_USER:$MINIPC_USER" "/home/$MINIPC_USER"
+
+# ============================================
+# SSH Hardening
+# ============================================
+echo "=== Hardening SSH ==="
+sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's|[#]*PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config
+if ! grep -q "PubkeyAcceptedAlgorithms" /etc/ssh/sshd_config; then
+    echo "PubkeyAcceptedAlgorithms +ssh-rsa" >> /etc/ssh/sshd_config
+fi
+if ! grep -q "AllowUsers" /etc/ssh/sshd_config; then
+    echo "AllowUsers $MINIPC_USER" >> /etc/ssh/sshd_config
+fi
+
+# Change SSH port if non-default
+if [ "$MINIPC_SSH_PORT" != "22" ]; then
+    sed -i "s/^#*Port .*/Port $MINIPC_SSH_PORT/" /etc/ssh/sshd_config
+fi
+
+sctl reload ssh.service
+
+# ============================================
+# Firewall Setup (nftables)
+# ============================================
+echo "=== Setting up nftables firewall ==="
+apt-get install -y nftables
+
+cat > /etc/nftables.conf <<- 'NFTABLES'
+#!/usr/sbin/nft -f
+# Mini PC firewall rules
+
+table inet filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Allow loopback
+        iif "lo" accept
+
+        # Allow established/related connections
+        ct state established,related accept
+        ct state invalid drop
+
+        # Allow ICMP (ping)
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # Allow SSH
+        tcp dport { 22 } accept
+
+        # Allow WireGuard client port (for outgoing connections)
+        udp sport { 51820 } accept
+
+        # Allow HTTP/HTTPS
+        tcp dport { 80, 443 } accept
+
+        # Allow DNS (responses from DNS servers)
+        udp sport { 53 } accept
+        tcp sport { 53 } accept
+
+        # Allow mDNS for local network discovery
+        udp dport { 5353 } accept
+
+        # Allow franky web UI
+        tcp dport { 8787 } accept
+
+        # Log dropped packets
+        log prefix "nftables-drop: " drop
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+
+        # Allow established/related
+        ct state established,related accept
+
+        # Log dropped packets
+        log prefix "nftables-fwd-drop: " drop
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}
+NFTABLES
+
+# Update SSH port in nftables if non-default
+if [ "$MINIPC_SSH_PORT" != "22" ]; then
+    sed -i "s/tcp dport { 22 }/tcp dport { $MINIPC_SSH_PORT }/" /etc/nftables.conf
+fi
+
+sctl enable nftables
+sctl restart nftables
+
+# ============================================
+# fail2ban
+# ============================================
+echo "=== Setting up fail2ban ==="
+
+sctl enable fail2ban
+sctl restart fail2ban
+
+# ============================================
+# Install Franky
+# ============================================
+echo "=== Installing franky v${FRANKY_VERSION} ==="
+cd /tmp
+curl -OL "https://github.com/fr12k/franky/releases/download/v${FRANKY_VERSION}/franky_linux_amd64"
+mv franky_linux_amd64 /usr/bin/franky
+chmod +x /usr/bin/franky
+
+# Verify it's a valid ELF binary
+head -c 4 /usr/bin/franky | od -An -tx1 | grep -q '7f 45 4c 46' && echo "valid ELF binary" || echo "WARNING: not an ELF binary"
+
+echo "=== franky installation complete ==="
+
+# ============================================
+# Install Development Tools (Go, Zig)
+# ============================================
+echo "=== Installing tools (zig, golang) ==="
+
+# Detect architecture for binary downloads
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)  ZIG_ARCH="x86_64"; GO_ARCH="amd64" ;;
+    aarch64)  ZIG_ARCH="aarch64"; GO_ARCH="arm64" ;;
+    armv7l)   ZIG_ARCH="armv7a"; GO_ARCH="arm" ;;
+    *)        ZIG_ARCH="x86_64"; GO_ARCH="amd64" ;;
+esac
+
+cd /tmp
+ZIG_URL="https://ziglang.org/builds/zig-${ZIG_ARCH}-linux-0.17.0-dev.1267+300116b02.tar.xz"
+wget -q "$ZIG_URL"
+tar -xf zig-${ZIG_ARCH}-linux-*.tar.xz -C /usr/local/bin --strip-components=1
+rm -f zig-${ZIG_ARCH}-linux-*.tar.xz
+
+GO_VERSION="1.26.4"
+wget -q "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+rm -rf /usr/local/go
+tar -C /usr/local -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+ln -sf /usr/local/go/bin/go /usr/local/bin/go
+ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+rm -f "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+
+echo "=== tools installation complete ==="
+
+# ============================================
+# Franky Systemd Service
+# ============================================
+echo "=== Creating franky systemd service ==="
+
+cat > /etc/systemd/system/franky.service <<EOF
+[Unit]
+Description=franky
+After=network.target
+StartLimitIntervalSec=120s
+StartLimitBurst=10
+
+[Service]
+Environment=""
+WorkingDirectory=/home/$MINIPC_USER/github/
+ExecStart=/usr/bin/franky --profile ollama-deepseek-flash --role full --yes --mode proxy
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# ============================================
+# Docker (optional)
+# ============================================
+if [ "$MINIPC_DOCKER" = "true" ]; then
+    echo "=== Installing Docker ==="
+    curl -fsSL https://get.docker.com | sh -
+
+    # Add user to docker group
+    usermod -aG docker "$MINIPC_USER"
+
+    sctl enable docker
+    sctl start docker
+fi
+
+# ============================================
+# Automatic Security Updates
+# ============================================
+echo "=== Setting up automatic security updates ==="
+apt-get install -y unattended-upgrades
+dpkg-reconfigure -plow unattended-upgrades
+
+cat > /etc/apt/apt.conf.d/20auto-upgrades <<- EOF
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOF
+
+# ============================================
+# Start Services
+# ============================================
+echo "=== Starting services ==="
+
+# Start fail2ban
+sctl start fail2ban
+
+# Start franky
+sctl start franky
+sctl enable franky
+
+# ============================================
+# Cleanup
+# ============================================
+echo "=== Cleaning up ==="
+rm -f /tmp/go*.tar.gz /tmp/zig*.tar.xz
+apt-get autoremove -y
+apt-get clean
+
+echo "=== mini PC setup complete ==="

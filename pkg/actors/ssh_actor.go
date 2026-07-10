@@ -26,8 +26,9 @@ type SSHConnector struct {
 }
 
 type SSHCommand struct {
-	Command string
-	Output  bool
+	Command     string
+	Output      bool
+	StdinContent string // If non-empty, pipe this content to the command's stdin
 }
 
 // NewSSHConnector initialize an ssh connector
@@ -59,7 +60,13 @@ func (c *SSHConnector) Connect(address string) string {
 
 		var output strings.Builder
 		for _, cmd := range c.args.Commands {
-			result, err := sshClient.SSHCommand(cmd.Command)
+			var result *string
+			var err error
+			if cmd.StdinContent != "" {
+				result, err = sshClient.SSHCommandWithStdin(cmd.Command, cmd.StdinContent)
+			} else {
+				result, err = sshClient.SSHCommand(cmd.Command)
+			}
 			if err != nil {
 				c.log.Error("Failed to run cmd '%s' with error '%s'", cmd.Command, err)
 				panic(fmt.Errorf("failed to run cmd '%s' with error '%s'", cmd.Command, err))
@@ -70,19 +77,6 @@ func (c *SSHConnector) Connect(address string) string {
 			}
 		}
 		resultChan <- output.String()
-		// result, err := sshClient.SSHCommand("sudo cloud-init status --wait")
-		// if err != nil {
-		//     c.log.Error("Failed to run cmd : %s", err)
-		//     panic(fmt.Errorf("Failed to run cmd : %s", err))
-		// }
-		// c.log.Info("Result: %s", *result)
-
-		// result, err = sshClient.SSHCommand("sudo cat /tmp/server_publickey")
-		// if err != nil {
-		//     c.log.Error("Failed to run cmd : %s", err)
-		//     panic(fmt.Errorf("Failed to run cmd : %s", err))
-		// }
-		// resultChan <- *result
 	}
 	return <-resultChan
 }
