@@ -1,18 +1,20 @@
 package ssh
 
 import (
-	"context"
+	"bytes"
+	"crypto"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/utility"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -29,7 +31,7 @@ type SSHClientConfig struct {
 
 type SSHKey struct {
 	PublicKeyStr *string
-	PrivateKey   *rsa.PrivateKey
+	PrivateKey   crypto.PrivateKey
 }
 
 func publicKeyFile(keyPair SSHKey) (ssh.AuthMethod, error) {
@@ -40,12 +42,13 @@ func publicKeyFile(keyPair SSHKey) (ssh.AuthMethod, error) {
 	return ssh.PublicKeys(key), nil
 }
 
-// SSHSession open ann ssh client session
-func (sshClientConfig SSHClientConfig) SSHSession() (*ssh.Session, error) {
+// SSHSession opens an SSH connection with retry and returns a client and session.
+// It retries until the configured Timeout is reached when dialing fails
+// (e.g. due to temporary connection issues or rate limiting by fail2ban).
+func (sshClientConfig SSHClientConfig) SSHSession() (*ssh.Client, *ssh.Session, error) {
 	publicKey, err := publicKeyFile(sshClientConfig.SSHKeyPair)
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to read key file: %s", err)
+		return nil, nil, fmt.Errorf("failed to read key file: %w", err)
 	}
 
 	sshConfig := &ssh.ClientConfig{
@@ -57,87 +60,134 @@ func (sshClientConfig SSHClientConfig) SSHSession() (*ssh.Session, error) {
 		Timeout:         10 * time.Second,
 	}
 
-	_, connection, err := retry.Until(context.Background(), retry.Acceptor{
-		Accept: func(retries int, nextRetryTime time.Duration) (bool, interface{}, error) {
-			con, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", sshClientConfig.Hostname, sshClientConfig.Port), sshConfig)
-			if err != nil {
-				if retries > 10 {
-					sshClientConfig.Log.Error("failed to dial: %s", err)
-					return true, nil, fmt.Errorf("failed to dial: %s", err)
-				}
-				sshClientConfig.Log.Debug("Retry ssh connection retries: %d, error: %s", retries, err)
-				return false, nil, nil
-			}
-			return true, con, nil
-		},
-	})
+	// Use the configured Timeout as the overall deadline for retries.
+	// Default to 5 minutes if not set.
+	timeout := sshClientConfig.Timeout
+	if timeout == 0 {
+		timeout = 5 * time.Minute
+	}
+	deadline := time.Now().Add(timeout)
 
-	if err != nil || connection == nil {
-		sshClientConfig.Log.Error("failed to dial: %s", err)
-		return nil, fmt.Errorf("failed to dial: %s", err)
+	var connection *ssh.Client
+	attempt := 0
+	for {
+		connection, err = ssh.Dial("tcp", fmt.Sprintf("%s:%d", sshClientConfig.Hostname, sshClientConfig.Port), sshConfig)
+		if err == nil {
+			break
+		}
+
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			sshClientConfig.Log.Error("failed to dial %s:%d within %v: %s", sshClientConfig.Hostname, sshClientConfig.Port, timeout, err)
+			return nil, nil, fmt.Errorf("failed to dial %s:%d within %v: %w", sshClientConfig.Hostname, sshClientConfig.Port, timeout, err)
+		}
+
+		// Exponential backoff: 2s, 4s, 8s, ... up to 30s max, but never exceed the deadline.
+		backoff := time.Duration(attempt+1) * 2 * time.Second
+		if backoff > 30*time.Second {
+			backoff = 30 * time.Second
+		}
+		if backoff > remaining {
+			backoff = remaining
+		}
+
+		sshClientConfig.Log.Info("SSH connection attempt %d failed (%v), retrying in %v (deadline in %v): %s", attempt+1, timeout, backoff, remaining.Round(time.Second), err)
+		time.Sleep(backoff)
+		attempt++
 	}
 
-	// connection, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", sshClientConfig.Hostname, sshClientConfig.Port), sshConfig)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Failed to dial: %s", err)
-	// }
-
-	session, err := connection.(*ssh.Client).NewSession()
+	session, err := connection.NewSession()
 	if err != nil {
+		_ = connection.Close()
 		sshClientConfig.Log.Error("failed to create session: %s", err)
-		return nil, fmt.Errorf("failed to create session: %s", err)
+		return nil, nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
-	modes := ssh.TerminalModes{
-		ssh.ECHO:  0, // disable echoing
-		ssh.IGNCR: 1, // Ignore CR on input.
+	return connection, session, nil
+}
+
+// runSession is a helper that runs a command on the remote session, capturing both
+// stdout and stderr. It returns the combined output and any error with details.
+func (sshClientConfig SSHClientConfig) runSession(command string, setupSession func(s *ssh.Session) error) (string, error) {
+	client, session, err := sshClientConfig.SSHSession()
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = client.Close() }()
+	defer func() { _ = session.Close() }()
+
+	if err := setupSession(session); err != nil {
+		return "", err
 	}
 
-	// stdin, err := session.StdinPipe()
-	// if err != nil {
-	// 	panic(fmt.Errorf("Unable to setup stdin for session: %v", err))
-	// }
-	// go io.Copy(stdin, os.Stdin)
+	var stdout, stderr bytes.Buffer
+	session.Stdout = &stdout
+	session.Stderr = &stderr
 
-	// stdout, err := session.StdoutPipe()
-	// if err != nil {
-	// 	panic(fmt.Errorf("Unable to setup stdout for session: %v", err))
-	// }
-	// go io.Copy(os.Stdout, stdout)
+	sshClientConfig.Log.Info("Run SSH command: %s", command)
 
-	// stderr, err := session.StderrPipe()
-	// if err != nil {
-	// 	panic(fmt.Errorf("Unable to setup stderr for session: %v", err))
-	// }
-	// go io.Copy(os.Stderr, stderr)
+	err = session.Run(command)
+	stdoutStr := stdout.String()
+	stderrStr := stderr.String()
 
-	if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
-		_ = session.Close()
-		return nil, fmt.Errorf("request for pseudo terminal failed: %s", err)
+	if err != nil {
+		return stdoutStr, fmt.Errorf("SSH command '%s' failed (exit code: %v): %s\nstdout: %s\nstderr: %s", command, err, err, truncate(stdoutStr, 500), truncate(stderrStr, 1000))
 	}
-	return session, err
+
+	sshClientConfig.Log.Info("SSH command '%s' completed successfully", command)
+	if stdoutStr != "" {
+		sshClientConfig.Log.Debug("stdout: %s", truncate(stdoutStr, 200))
+	}
+	if stderrStr != "" {
+		sshClientConfig.Log.Debug("stderr: %s", truncate(stderrStr, 200))
+	}
+
+	return stdoutStr, nil
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 func (sshClientConfig SSHClientConfig) SSHCommand(command string) (*string, error) {
-
-	session, err := sshClientConfig.SSHSession()
+	result, err := sshClientConfig.runSession(command, func(s *ssh.Session) error {
+		// Request PTY for interactive commands
+		modes := ssh.TerminalModes{
+			ssh.ECHO:  0,    // disable echoing
+			ssh.IGNCR: 1,    // Ignore CR on input.
+		}
+		return s.RequestPty("xterm", 80, 40, modes)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to run ssh command: %s", err)
+		return nil, err
 	}
-	defer func() { _ = session.Close() }()
+	return &result, nil
+}
 
-	sshClientConfig.Log.Info("Run SSH command to %s", command)
-
-	result, err := session.Output(command)
+// SSHCommandWithStdin runs a command on the remote host, piping the provided
+// stdinContent to the command's stdin. This is useful for executing scripts
+// without writing them to a temporary file on the remote host first.
+// No PTY is requested for stdin-piped commands to avoid interference.
+func (sshClientConfig SSHClientConfig) SSHCommandWithStdin(command string, stdinContent string) (*string, error) {
+	result, err := sshClientConfig.runSession(command, func(s *ssh.Session) error {
+		// No PTY for stdin commands — PTY interferes with piped input
+		stdinPipe, err := s.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create stdin pipe: %w", err)
+		}
+		go func() {
+			_, _ = io.WriteString(stdinPipe, stdinContent)
+			_ = stdinPipe.Close()
+		}()
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to run ssh command: %s", err)
+		return nil, err
 	}
-	sshClientConfig.Log.Info("Result: %s", result)
-
-	fmt.Printf("Result: %s", result)
-
-	str := string(result)
-	return &str, nil
+	return &result, nil
 }
 
 func GenerateKeyPair() *SSHKey {
@@ -147,11 +197,9 @@ func GenerateKeyPair() *SSHKey {
 	key, err := rsa.GenerateKey(reader, bitSize)
 	checkError(err)
 
-	publicKey := key.PublicKey
-
 	savePEMKey("private.pem", key)
 
-	publicKeyStr := exportRsaPublicKeyAsPemStr(&publicKey)
+	publicKeyStr := exportPublicKeyAsPemStr(key)
 
 	return &SSHKey{
 		PrivateKey:   key,
@@ -159,7 +207,7 @@ func GenerateKeyPair() *SSHKey {
 	}
 }
 
-func parsePrivateKeyFile(file string) (*rsa.PrivateKey, error) {
+func parsePrivateKeyFile(file string) (crypto.PrivateKey, error) {
 	buffer, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -169,19 +217,18 @@ func parsePrivateKeyFile(file string) (*rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	rsaKey := key.(*rsa.PrivateKey)
-	return rsaKey, nil
+	return key, nil
 }
 
 func ReadPrivateKey(privateKeyFile string) *SSHKey {
 	privateKey, err := parsePrivateKeyFile(privateKeyFile)
 	checkError(err)
 
-	publicKey := exportRsaPublicKeyAsPemStr(&privateKey.PublicKey)
+	publicKeyStr := exportPublicKeyAsPemStr(privateKey)
 
 	return &SSHKey{
 		PrivateKey:   privateKey,
-		PublicKeyStr: &publicKey,
+		PublicKeyStr: &publicKeyStr,
 	}
 }
 
@@ -206,15 +253,25 @@ func savePEMKey(fileName string, key *rsa.PrivateKey) *pem.Block {
 	return privateKey
 }
 
-func exportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) string {
-	// Generate the ssh public key
-	pub, err := ssh.NewPublicKey(pubkey)
+func exportPublicKeyAsPemStr(privateKey crypto.PrivateKey) string {
+	var cryptoPublicKey crypto.PublicKey
+
+	switch k := privateKey.(type) {
+	case *rsa.PrivateKey:
+		cryptoPublicKey = &k.PublicKey
+	case *ed25519.PrivateKey:
+		cryptoPublicKey = k.Public()
+	default:
+		checkError(fmt.Errorf("unsupported private key type: %T", privateKey))
+	}
+
+	pub, err := ssh.NewPublicKey(cryptoPublicKey)
 	checkError(err)
 
-	// Encode to store to file
 	sshPubKey := base64.StdEncoding.EncodeToString(pub.Marshal())
 
-	return fmt.Sprintf("ssh-rsa %s", sshPubKey)
+	keyType := pub.Type()
+	return fmt.Sprintf("%s %s", keyType, sshPubKey)
 }
 
 func checkError(err error) {

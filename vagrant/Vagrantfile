@@ -1,0 +1,254 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile for testing the mini PC setup locally
+#
+# Supports multiple providers:
+#   - Docker (default on macOS without VirtualBox)
+#   - VirtualBox (if installed)
+#   - VMware Fusion (if installed)
+#   - Parallels (if installed)
+#
+# Usage:
+#   vagrant up                              # Auto-detect provider
+#   vagrant up --provider=docker           # Force Docker provider
+#   vagrant up --provider=virtualbox       # Force VirtualBox
+#   vagrant up --provider=vmware_desktop   # Force VMware
+#
+
+Vagrant.configure("2") do |config|
+  # ============================================
+  # Provider detection and configuration
+  # ============================================
+
+  # Determine which provider to use based on what's available
+  # Priority: Docker (always works on macOS) > VirtualBox > VMware > Parallels
+
+  config.vm.provider "docker" do |docker, override|
+    # Build our own image from Dockerfile.test which includes systemd + SSH.
+    # This ensures systemd runs as PID 1 and systemctl works properly.
+    # Third-party images like jrei/systemd-ubuntu are amd64-only and
+    # pentatonicfunk images don't boot with systemd as PID 1.
+    docker.build_dir = ".."
+    docker.dockerfile = "vagrant/Dockerfile.test"
+    docker.create_args = ["--privileged", "--cap-add=NET_ADMIN", "--cap-add=SYS_ADMIN", "--cgroupns=host"]
+    docker.has_ssh = true
+    docker.remains_running = true
+
+    # Docker provider needs a separate SSH port forward
+    override.vm.network "forwarded_port", guest: 22, host: 2222, host_ip: "127.0.0.1", id: "ssh", auto_correct: true
+    override.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
+    override.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
+
+    # Docker provider doesn't need a Vagrant box when building from Dockerfile
+    override.vm.box = nil
+    override.ssh.insert_key = false
+  end
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "minipc-test"
+    vb.memory = "4096"
+    vb.cpus = 2
+    vb.gui = false
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+  end
+
+  config.vm.provider "vmware_desktop" do |vmw|
+    vmw.name = "minipc-test"
+    vmw.memory = "4096"
+    vmw.cpus = 2
+  end
+
+  config.vm.provider "parallels" do |prl|
+    prl.name = "minipc-test"
+    prl.memory = "4096"
+    prl.cpus = 2
+  end
+
+  # ============================================
+  # Common configuration (applies to all providers)
+  # ============================================
+
+  # Use Ubuntu 26.04 (Resolute Raccoon, matches Docker provider image)
+  # For Docker provider, this is overridden above
+  config.vm.box = "bento/ubuntu-26.04"
+
+  # Private network for SSH access (becomes the "physical server" IP)
+  # Skip for Docker provider - it uses port forwarding instead
+  config.vm.network "private_network", ip: "192.168.56.10"
+
+  # Port forwarding for franky web UI and nginx
+  config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
+  config.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
+
+  # Sync the project root so provisioning scripts can access cloud-init/ etc.
+  # ("." is relative to this Vagrantfile, which is in vagrant/ -- so ".." is the project root)
+  config.vm.synced_folder "..", "/vagrant"
+
+  # ============================================
+  # Provisioning: render the cloud-init template and run it
+  # ============================================
+
+  # Step 1: Render the cloud-init template with defaults
+  config.vm.provision "shell", name: "render-cloud-init", inline: <<-SHELL
+    echo "=== Rendering cloud-init template for Vagrant test ==="
+    SOURCE="/vagrant/cloud-init/minipc.txt"
+    TARGET="/tmp/minipc-rendered.sh"
+
+    if [ ! -f "$SOURCE" ]; then
+      echo "ERROR: cloud-init template not found at $SOURCE"
+      exit 1
+    fi
+
+    # The template uses {{ VAR }} placeholders. For Vagrant testing,
+    # we leave them empty so defaults kick in (the script has fallback logic).
+    sed -e 's/{{ MINIPC_USER }}//g' \
+        -e 's/{{ MINIPC_SSH_PORT }}//g' \
+        -e 's/{{ MINIPC_DOCKER }}/true/g' \
+        -e 's/{{ MINIPC_NIC }}//g' \
+        -e 's/{{ FRANKY_VERSION }}//g' \
+        "$SOURCE" > "$TARGET"
+
+    chmod +x "$TARGET"
+    echo "Rendered cloud-init saved to $TARGET"
+    echo "Template size: $(wc -l < "$TARGET") lines"
+  SHELL
+
+  # Step 2: Run the rendered cloud-init script
+  # NOTE: Some steps may fail in Vagrant/Docker (e.g., SSH hardening
+  # may lock out the default SSH key). Workarounds are applied below.
+  # The script is run with bash (not bash -v) to avoid verbose output noise.
+  config.vm.provision "shell", name: "run-minipc-setup", inline: <<-SHELL
+    echo "=== Running mini PC setup script ==="
+    bash /tmp/minipc-rendered.sh || {
+      echo "WARNING: Some setup steps failed (this can be expected in Vagrant/Docker)"
+      echo "Key services will be verified in the next step"
+    }
+  SHELL
+
+  # Step 3: Provider-specific workarounds
+  # Ensure the Vagrant/Docker SSH key still works after hardening
+  config.vm.provision "shell", name: "vagrant-workarounds", inline: <<-SHELL
+    echo "=== Applying Vagrant/Docker workarounds ==="
+
+    # Ensure vagrant user can still SSH in after hardening
+    VAGRANT_USER="vagrant"
+    if id "$VAGRANT_USER" &>/dev/null; then
+      # Add vagrant user to AllowUsers in sshd_config
+      if grep -q "^AllowUsers" /etc/ssh/sshd_config; then
+        sed -i "s/^AllowUsers .*/& $VAGRANT_USER/" /etc/ssh/sshd_config
+      fi
+
+      # Ensure vagrant SSH directory exists
+      mkdir -p "/home/$VAGRANT_USER/.ssh/"
+      if [ -f /root/.ssh/authorized_keys ]; then
+        cp /root/.ssh/authorized_keys "/home/$VAGRANT_USER/.ssh/authorized_keys" 2>/dev/null || true
+      fi
+      chown -R "$VAGRANT_USER:$VAGRANT_USER" "/home/$VAGRANT_USER/.ssh/" 2>/dev/null || true
+      chmod 600 "/home/$VAGRANT_USER/.ssh/authorized_keys" 2>/dev/null || true
+
+      # Add vagrant to sudoers
+      echo "$VAGRANT_USER ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$VAGRANT_USER" 2>/dev/null || true
+      chmod 0440 "/etc/sudoers.d/$VAGRANT_USER" 2>/dev/null || true
+    fi
+
+    # Re-enable password auth for Vagrant/Docker (they need it for SSH)
+    sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+    # Restart SSH to pick up changes (fallback for containers without systemd)
+    if [ -d /run/systemd/system ]; then
+      systemctl restart ssh.service || systemctl restart sshd || true
+    else
+      service ssh restart 2>/dev/null || service sshd restart 2>/dev/null || true
+    fi
+
+    echo "=== Workarounds applied ==="
+  SHELL
+
+  # Step 4: Verify key services are running
+  config.vm.provision "shell", name: "verify-setup", inline: <<-SHELL
+    echo "=== Verifying mini PC setup ==="
+
+    check() {
+      local name="$1"
+      local cmd="$2"
+      local expected="$3"
+      local actual
+      actual=$(eval "$cmd" 2>/dev/null)
+      if echo "$actual" | grep -q "$expected"; then
+        echo "[ok] $name"
+      else
+        echo "[!!] $name - expected '$expected', got '$actual'"
+      fi
+    }
+
+    # Define systemctl fallback for Docker containers without systemd PID 1
+    sctl_status() {
+      if [ -d /run/systemd/system ]; then
+        systemctl is-active "$1" 2>/dev/null || systemctl is-active "$2" 2>/dev/null
+      else
+        service "$1" status 2>/dev/null && echo active || echo inactive
+      fi
+    }
+
+    # SSH
+    check "SSH service running" "sctl_status ssh sshd" "active"
+
+    # nftables
+    check "nftables service running" "sctl_status nftables" "active"
+
+    # fail2ban
+    check "fail2ban service running" "sctl_status fail2ban" "active"
+
+    # WireGuard tools
+    check "WireGuard tools installed" "which wg && echo installed" "installed"
+
+    # Franky
+    check "franky binary exists" "test -f /usr/bin/franky && echo exists" "exists"
+
+    # Nginx
+    check "Nginx service running" "sctl_status nginx" "active"
+
+    # Go
+    check "Go installed" "go version && echo installed" "installed"
+
+    # User
+    check "franky user exists" "id frank.ittermann && echo exists" "exists"
+
+    # Security
+    check "Unattended upgrades configured" "test -f /etc/apt/apt.conf.d/20auto-upgrades && echo configured" "configured"
+
+    echo "=== Verification complete ==="
+  SHELL
+
+  # Helpful message after provisioning
+  config.vm.post_up_message = <<-MSG
+    +--------------------------------------------------------------+
+    |           Mini PC Vagrant Test Environment Ready             |
+    +--------------------------------------------------------------+
+    |                                                               |
+    |  SSH:       vagrant ssh                                       |
+    |  Franky UI: http://localhost:8788  (guest:8787)                        |
+    |  Nginx:     http://localhost:8080                              |
+    |                                                               |
+    |  Test with Pulumi (if using VirtualBox/VMware):               |
+    |    export MINIPC_SERVER_IP=192.168.56.10                      |
+    |    make minipc-create                                          |
+    |                                                               |
+    |  Test with Pulumi (if using Docker):                          |
+    |    export MINIPC_SERVER_IP=127.0.0.1                          |
+    |    export MINIPC_SSH_PORT=2222                                 |
+    |    make minipc-create                                          |
+    |                                                               |
+    |  Re-provision:  vagrant provision                              |
+    |  Tear down:     vagrant destroy                                |
+    |                                                               |
+    |  Useful commands inside the VM:                                |
+    |    sudo systemctl status franky                                 |
+    |    sudo systemctl status nginx                                  |
+    |    sudo systemctl status nftables                               |
+    |    sudo nft list ruleset                                        |
+    |                                                               |
+    +--------------------------------------------------------------+
+  MSG
+end

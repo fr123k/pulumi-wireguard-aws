@@ -1,0 +1,86 @@
+FROM ubuntu:26.04
+
+# Docker-based test environment for mini PC cloud-init
+# This simulates a mini PC server without requiring Vagrant or VM providers.
+# Builds on Ubuntu 26.04 with systemd + SSH so systemctl works properly.
+#
+# Usage (standalone Docker):
+#   docker build -t minipc-test -f Dockerfile.test ..
+#   docker run --privileged -d --name minipc-test \
+#     --cap-add=NET_ADMIN --cap-add=SYS_ADMIN --cgroupns=host \
+#     -p 2222:22 -p 8080:80 -p 8788:8787 \
+#     minipc-test
+#   docker exec -it minipc-test bash
+#
+# Usage (Vagrant):
+#   vagrant up --provider=docker
+#
+# To test the cloud-init script:
+#   docker exec -it minipc-test bash /tmp/minipc-rendered.sh
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install systemd, SSH, and basic tools
+RUN apt-get update && apt-get install -y \
+    systemd \
+    openssh-server \
+    sudo \
+    curl \
+    wget \
+    gnupg2 \
+    ca-certificates \
+    iproute2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configure systemd for container use:
+# Remove units that fail or are useless inside a Docker container,
+# but KEEP ssh.service and other essential service units.
+RUN rm -f /lib/systemd/system/systemd-udevd.service \
+    /lib/systemd/system/systemd-udevd-control.socket \
+    /lib/systemd/system/systemd-udevd-kernel.socket \
+    /lib/systemd/system/plymouth* \
+    /lib/systemd/system/systemd-update-utmp* \
+    /lib/systemd/system/modprobe@*.service \
+    && systemctl set-default multi-user.target
+
+# Enable SSH service (must be done after unit cleanup)
+RUN systemctl enable ssh
+
+# Configure SSH — allow root login and password auth for development
+RUN mkdir -p /run/sshd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    echo "root:root" | chpasswd
+
+# Create the vagrant user for Vagrant SSH access
+RUN useradd -m -s /bin/bash -G sudo vagrant && \
+    echo "vagrant:vagrant" | chpasswd && \
+    echo "vagrant ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    mkdir -p /home/vagrant/.ssh && \
+    curl -sL https://raw.githubusercontent.com/hashicorp/vagrant/main/keys/vagrant.pub \
+        > /home/vagrant/.ssh/authorized_keys && \
+    chmod 0600 /home/vagrant/.ssh/authorized_keys && \
+    chown -R vagrant:vagrant /home/vagrant/.ssh
+
+# Also allow root SSH with the vagrant insecure key for provisioning
+RUN mkdir -p /root/.ssh && \
+    curl -sL https://raw.githubusercontent.com/hashicorp/vagrant/main/keys/vagrant.pub \
+        > /root/.ssh/authorized_keys && \
+    chmod 0600 /root/.ssh/authorized_keys
+
+# Ensure /run/sshd and SSH host keys exist at build time
+RUN ssh-keygen -A
+
+# Copy the project for access to cloud-init scripts
+WORKDIR /vagrant
+
+# Render and prepare the cloud-init script
+COPY cloud-init/minipc.txt /tmp/minipc-template.txt
+
+# Copy the entrypoint
+COPY vagrant/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 22 80 443 8787
+
+ENTRYPOINT ["/entrypoint.sh"]

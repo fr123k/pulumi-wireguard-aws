@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
 
-# 07-cleanup.sh
+# 06-cleanup.sh
 # Cleans up apt cache, temporary files, and logs for a smaller image
 
 echo "=== Cleaning up for snapshot ==="
@@ -11,9 +11,8 @@ apt-get clean
 apt-get autoremove -y
 rm -rf /var/lib/apt/lists/*
 
-# Remove our uploaded scripts and temp files (be selective to avoid
-# deleting Packer's SSH communicator files, which would disconnect us)
-rm -f /tmp/*.sh /tmp/versions.env
+# Remove temporary files
+rm -rf /tmp/*
 rm -rf /var/tmp/*
 
 # Clean up cloud-init artifacts (will run fresh on boot)

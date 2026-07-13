@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euxo pipefail
 
+# 02-franky-binaries.sh
+# Installs franky, Go, and Zig
+
 echo "=== Installing franky ==="
 
 # Version is expected from versions.env
@@ -23,11 +26,11 @@ echo "=== franky installation complete ==="
 echo "=== install tools (zig, golang) ==="
 
 cd /tmp
-wget https://ziglang.org/builds/zig-x86_64-linux-0.17.0-dev.1267+300116b02.tar.xz
+wget -q https://ziglang.org/builds/zig-x86_64-linux-0.17.0-dev.1267+300116b02.tar.xz
 tar -xf zig-x86_64-linux-0.17.0-dev.1267+300116b02.tar.xz -C /usr/local/bin --strip-components=1
-rm zig-x86_64-linux-0.17.0-dev.1267+300116b02.tar.xz
+rm -f zig-x86_64-linux-0.17.0-dev.1267+300116b02.tar.xz
 
-wget https://go.dev/dl/go1.26.4.linux-amd64.tar.gz
+wget -q https://go.dev/dl/go1.26.4.linux-amd64.tar.gz
 rm -rf /usr/local/go
 tar -C /usr/local -xzf go1.26.4.linux-amd64.tar.gz
 ln -sf /usr/local/go/bin/go /usr/local/bin/go

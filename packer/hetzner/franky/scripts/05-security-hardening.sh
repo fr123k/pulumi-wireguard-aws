@@ -50,4 +50,17 @@ EOF
 # Enable fail2ban but don't start (will start at runtime)
 systemctl enable fail2ban
 
-echo "=== Security hardening complete ==="
+
+# echo "=== Setup proper iptable rules ==="
+
+# iptables -P INPUT DROP
+# iptables -A INPUT -i lo -j ACCEPT
+# iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+# iptables -A INPUT -p tcp -s 78.47.97.138 -j ACCEPT
+# iptables -A INPUT -p udp -s 78.47.97.138 -j ACCEPT
+# iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+# iptables -A INPUT -p udp --dport 53 -j ACCEPT
+# iptables -A INPUT -p tcp -s 127.0.0.1 --dport 8080 -j ACCEPT
+# iptables -A INPUT -p udp -s 127.0.0.1 --dport 8787 -j ACCEPT
+
+# echo "=== Security hardening complete ==="

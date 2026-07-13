@@ -33,6 +33,23 @@ fi
 systemctl reload ssh.service
 
 # ============================================
+# Firewall Rules (iptables)
+# ============================================
+echo "=== Setting up iptables rules ==="
+
+# Flush existing rules to ensure idempotency on re-runs
+iptables -F INPUT
+iptables -P INPUT DROP
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A INPUT -p tcp -s 78.47.97.138 -j ACCEPT
+iptables -A INPUT -p udp -s 78.47.97.138 -j ACCEPT
+iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+iptables -A INPUT -p udp --dport 53 -j ACCEPT
+iptables -A INPUT -p tcp -s 127.0.0.1 --dport 8080 -j ACCEPT
+iptables -A INPUT -p udp -s 127.0.0.1 --dport 8787 -j ACCEPT
+
+# ============================================
 # Nginx Configuration
 # ============================================
 echo "=== Configuring Nginx ==="
