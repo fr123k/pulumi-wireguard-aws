@@ -5,10 +5,10 @@ go 1.26.4
 replace github.com/temporalio/cli/cliext => github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7
 
 require (
-	github.com/containifyci/dunebot v0.3.13
+	github.com/containifyci/dunebot v0.3.14
 	github.com/containifyci/oauth2-storage v0.2.2
 	github.com/containifyci/secret-operator v0.6.0
-	github.com/containifyci/temporal-worker v0.10.1
+	github.com/containifyci/temporal-worker v0.10.4
 	github.com/temporalio/cli v1.7.2
 	github.com/temporalio/ui-server/v2 v2.51.1
 	go.temporal.io/server v1.31.1
@@ -178,9 +178,9 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
-	go.temporal.io/api v1.63.1 // indirect
+	go.temporal.io/api v1.63.3 // indirect
 	go.temporal.io/auto-scaled-workers v0.0.0-20260407181057-edd947d743d2 // indirect
-	go.temporal.io/sdk v1.45.0 // indirect
+	go.temporal.io/sdk v1.46.0 // indirect
 	go.temporal.io/sdk/contrib/envconfig v1.0.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
