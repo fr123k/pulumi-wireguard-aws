@@ -9,7 +9,7 @@ require (
 	github.com/containifyci/oauth2-storage v0.2.2
 	github.com/containifyci/secret-operator v0.6.0
 	github.com/containifyci/temporal-worker v0.10.1
-	github.com/temporalio/cli v1.8.0
+	github.com/temporalio/cli v1.8.1
 	github.com/temporalio/ui-server/v2 v2.52.1
 	go.temporal.io/server v1.31.2
 )

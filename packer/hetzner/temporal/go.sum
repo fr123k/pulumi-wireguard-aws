@@ -389,8 +389,8 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/temporalio/cli v1.8.0 h1:s0jE99CrTHaXhxvw4f7EbrlRCGre6NyKBVbf3/rmjBw=
-github.com/temporalio/cli v1.8.0/go.mod h1:IJPR2OzbZ56kaMpj3hrL7hqq0remXp/HW1FtUrSwuLw=
+github.com/temporalio/cli v1.8.1 h1:vKoepvDddi7qR03euA1WtBn0QInBiJkijJfZ+jTKuoY=
+github.com/temporalio/cli v1.8.1/go.mod h1:IJPR2OzbZ56kaMpj3hrL7hqq0remXp/HW1FtUrSwuLw=
 github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7 h1:+QDWuw3C/PMxuWPBl7H5qt5Ov5OJWD7c7l0lQMad8ZQ=
 github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7/go.mod h1:407OzviUHSjy16uZdWXinyL7/XjK1pddCv3ggt43/Vc=
 github.com/temporalio/ringpop-go v0.0.0-20250130211428-b97329e994f7 h1:lEebX/hZss+TSH3EBwhztnBavJVj7pWGJOH8UgKHS0w=
