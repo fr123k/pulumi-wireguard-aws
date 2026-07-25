@@ -39,7 +39,7 @@ variable "snapshot_name" {
 // Component Version Pins
 variable "temporal_cli_version" {
   type        = string
-  default     = "1.8.0"
+  default     = "1.8.1"
   description = "Temporal CLI version"
 }
 
