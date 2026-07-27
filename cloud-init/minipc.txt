@@ -5,6 +5,7 @@
 # - SSH hardening and user setup (franky user)
 # - Firewall (nftables)
 # - WireGuard VPN client (connects to remote WireGuard server)
+# - WireGuard TCP tuning (BBR congestion control, MSS clamping, MTU probing)
 # - Franky AI coding agent
 # - Development tools (Go, Zig)
 # - fail2ban intrusion prevention
@@ -191,6 +192,15 @@ table inet filter {
         type filter hook output priority 0; policy accept;
     }
 }
+
+# MSS clamping for WireGuard tunnel (mtu 1420 < ethernet 1500).
+# Prevents PMTU blackholes that stall HTTP/SSE/bulk transfers over the VPN.
+table ip mangle {
+    chain postrouting {
+        type filter hook postrouting priority mangle; policy accept;
+        oifname "wg0" tcp flags syn / syn,rst counter tcp option maxseg size set rt mtu
+    }
+}
 NFTABLES
 
 # Update SSH port in nftables if non-default
@@ -200,6 +210,24 @@ fi
 
 sctl enable nftables
 sctl restart nftables
+
+# ============================================
+# WireGuard TCP Tuning (BBR + MTU probing)
+# ============================================
+echo "=== Tuning TCP for WireGuard (BBR + MTU probing) ==="
+
+# Load tcp_bbr now and at boot; fall back silently if unavailable.
+modprobe tcp_bbr 2>/dev/null || true
+echo "tcp_bbr" > /etc/modules-load.d/tcp_bbr.conf
+
+# BBR beats CUBIC on high-RTT, high-jitter tunnels: it models bandwidth+RTT
+# instead of reacting to loss, so bursts drain in ~1 RTT instead of stuttering.
+# MTU probing self-heals PMTU blackholes (DF packets that vanish without ICMP).
+cat > /etc/sysctl.d/99-wg-bbr-mtu.conf <<'EOF'
+net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_mtu_probing = 1
+EOF
+sysctl --system >/dev/null 2>&1
 
 # ============================================
 # fail2ban
