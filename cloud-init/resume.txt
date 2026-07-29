@@ -94,10 +94,10 @@ systemctl start nginx
 # ============================================
 echo "=== Configuring GDPR notification endpoint ==="
 
-# Custom log format: timestamp \t ip \t request_id \t user_agent \t body
+# Custom log format: timestamp \t ip \t status \t method \t path \t request_id \t user_agent \t body
 cat > /etc/nginx/conf.d/gdpr-log-format.conf <<'EOF'
-log_format gdpr_fmt '$time_iso8601\t$remote_addr\t$request_id\t'
-                    '$http_user_agent\t$request_body';
+log_format gdpr_fmt '$time_iso8601\t$remote_addr\t$status\t$request_method\t$request_uri\t'
+                    '$request_id\t$http_user_agent\t$request_body';
 EOF
 
 # GDPR nginx config (serves api.resume.fr123k.uk with dedicated SSL cert)
@@ -133,7 +133,7 @@ server {
         add_header Content-Type application/json;
     }
 
-    # Static info page
+    # Static info page (exact match for root only)
     location = / {
         root /var/www/gdpr-notify;
         try_files /index.html =404;
@@ -162,6 +162,13 @@ server {
         # Proxy to internal handler so \$request_body is populated
         proxy_pass http://127.0.0.1:8081;
         proxy_set_header Content-Type \$http_content_type;
+    }
+
+    # Deny everything else — no file access, no directory listing, no errors logged
+    # Prevents scanner noise (.env, .git/config, robots.txt, favicon.ico, etc.)
+    location / {
+        access_log off;
+        return 444;
     }
 }
 
