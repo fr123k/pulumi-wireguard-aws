@@ -16,3 +16,8 @@ packer/hetzner/temporal/manifest.json
 packer/hetzner/temporal/temporal-verify
 *.pkrvars.hcl
 !*.pkrvars.hcl.example
+
+# Builds
+artifacts.txt
+pulumi-wireguard-darwin-arm64
+pulumi-wireguard-linux-arm64
