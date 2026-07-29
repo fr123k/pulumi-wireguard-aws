@@ -17,11 +17,12 @@ func main() {
 	opts.SourcePackages = []string{}
 	opts.SourceFiles = []string{}
 	opts.Verbose = false
+	opts.Image = ""
 	opts.File = "cmd/wireguard/hetzner/wireguard.go"
 	opts.Properties = map[string]*build.ListValue{
 		//TODO add a good documentation of possible values (best would build from code)
-		"pulumi": build.NewList("true"),
-		"stack":  build.NewList("wireguard-hetzner"),
+		// "pulumi": build.NewList("true"), //disable pulumi for now
+		"stack": build.NewList("wireguard-hetzner"),
 		// "cmd":    build.NewList("up --yes"),
 	}
 	//TODO: adjust the registry to your own container registry
