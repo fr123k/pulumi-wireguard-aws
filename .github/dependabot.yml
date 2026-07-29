@@ -1,16 +1,49 @@
 version: 2
 updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    groups:
+      minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "gomod"
+    directory: "."
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    groups:
+      minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "gomod"
+    directory: ".containifyci"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    groups:
+      minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "gomod"
     directory: "/packer/hetzner/temporal"
     schedule:
       interval: "weekly"
+      day: "sunday"
     labels:
       - "dependencies"
     groups:
-      temporal:
+      all:
         patterns:
-          - "github.com/temporalio/*"
-          - "go.temporal.io/*"
-      containifyci:
-        patterns:
-          - "github.com/containifyci/*"
+          - "*"
