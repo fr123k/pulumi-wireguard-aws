@@ -4458,10 +4458,14 @@ func (o GetLoadBalancerTargetTypeArrayOutput) Index(i pulumi.IntInput) GetLoadBa
 }
 
 type GetLoadBalancerTypesLoadBalancerType struct {
+	// Date of the Load Balancer Type deprecation announcement.
+	DeprecationAnnounced string `pulumi:"deprecationAnnounced"`
 	// Description of the Load Balancer Type.
 	Description string `pulumi:"description"`
 	// ID of the Load Balancer Type.
 	Id int `pulumi:"id"`
+	// Whether the Load Balancer Type is deprecated.
+	IsDeprecated bool `pulumi:"isDeprecated"`
 	// Maximum number of certificates that can be assigned for the Load Balancer of this type.
 	MaxAssignedCertificates int `pulumi:"maxAssignedCertificates"`
 	// Maximum number of simultaneous open connections for the Load Balancer of this type.
@@ -4472,6 +4476,8 @@ type GetLoadBalancerTypesLoadBalancerType struct {
 	MaxTargets int `pulumi:"maxTargets"`
 	// Name of the Load Balancer Type.
 	Name string `pulumi:"name"`
+	// Date of the Load Balancer Type removal. After this date, the Load Balancer Type cannot be used anymore.
+	UnavailableAfter string `pulumi:"unavailableAfter"`
 }
 
 // GetLoadBalancerTypesLoadBalancerTypeInput is an input type that accepts GetLoadBalancerTypesLoadBalancerTypeArgs and GetLoadBalancerTypesLoadBalancerTypeOutput values.
@@ -4486,10 +4492,14 @@ type GetLoadBalancerTypesLoadBalancerTypeInput interface {
 }
 
 type GetLoadBalancerTypesLoadBalancerTypeArgs struct {
+	// Date of the Load Balancer Type deprecation announcement.
+	DeprecationAnnounced pulumi.StringInput `pulumi:"deprecationAnnounced"`
 	// Description of the Load Balancer Type.
 	Description pulumi.StringInput `pulumi:"description"`
 	// ID of the Load Balancer Type.
 	Id pulumi.IntInput `pulumi:"id"`
+	// Whether the Load Balancer Type is deprecated.
+	IsDeprecated pulumi.BoolInput `pulumi:"isDeprecated"`
 	// Maximum number of certificates that can be assigned for the Load Balancer of this type.
 	MaxAssignedCertificates pulumi.IntInput `pulumi:"maxAssignedCertificates"`
 	// Maximum number of simultaneous open connections for the Load Balancer of this type.
@@ -4500,6 +4510,8 @@ type GetLoadBalancerTypesLoadBalancerTypeArgs struct {
 	MaxTargets pulumi.IntInput `pulumi:"maxTargets"`
 	// Name of the Load Balancer Type.
 	Name pulumi.StringInput `pulumi:"name"`
+	// Date of the Load Balancer Type removal. After this date, the Load Balancer Type cannot be used anymore.
+	UnavailableAfter pulumi.StringInput `pulumi:"unavailableAfter"`
 }
 
 func (GetLoadBalancerTypesLoadBalancerTypeArgs) ElementType() reflect.Type {
@@ -4553,6 +4565,11 @@ func (o GetLoadBalancerTypesLoadBalancerTypeOutput) ToGetLoadBalancerTypesLoadBa
 	return o
 }
 
+// Date of the Load Balancer Type deprecation announcement.
+func (o GetLoadBalancerTypesLoadBalancerTypeOutput) DeprecationAnnounced() pulumi.StringOutput {
+	return o.ApplyT(func(v GetLoadBalancerTypesLoadBalancerType) string { return v.DeprecationAnnounced }).(pulumi.StringOutput)
+}
+
 // Description of the Load Balancer Type.
 func (o GetLoadBalancerTypesLoadBalancerTypeOutput) Description() pulumi.StringOutput {
 	return o.ApplyT(func(v GetLoadBalancerTypesLoadBalancerType) string { return v.Description }).(pulumi.StringOutput)
@@ -4561,6 +4578,11 @@ func (o GetLoadBalancerTypesLoadBalancerTypeOutput) Description() pulumi.StringO
 // ID of the Load Balancer Type.
 func (o GetLoadBalancerTypesLoadBalancerTypeOutput) Id() pulumi.IntOutput {
 	return o.ApplyT(func(v GetLoadBalancerTypesLoadBalancerType) int { return v.Id }).(pulumi.IntOutput)
+}
+
+// Whether the Load Balancer Type is deprecated.
+func (o GetLoadBalancerTypesLoadBalancerTypeOutput) IsDeprecated() pulumi.BoolOutput {
+	return o.ApplyT(func(v GetLoadBalancerTypesLoadBalancerType) bool { return v.IsDeprecated }).(pulumi.BoolOutput)
 }
 
 // Maximum number of certificates that can be assigned for the Load Balancer of this type.
@@ -4586,6 +4608,11 @@ func (o GetLoadBalancerTypesLoadBalancerTypeOutput) MaxTargets() pulumi.IntOutpu
 // Name of the Load Balancer Type.
 func (o GetLoadBalancerTypesLoadBalancerTypeOutput) Name() pulumi.StringOutput {
 	return o.ApplyT(func(v GetLoadBalancerTypesLoadBalancerType) string { return v.Name }).(pulumi.StringOutput)
+}
+
+// Date of the Load Balancer Type removal. After this date, the Load Balancer Type cannot be used anymore.
+func (o GetLoadBalancerTypesLoadBalancerTypeOutput) UnavailableAfter() pulumi.StringOutput {
+	return o.ApplyT(func(v GetLoadBalancerTypesLoadBalancerType) string { return v.UnavailableAfter }).(pulumi.StringOutput)
 }
 
 type GetLoadBalancerTypesLoadBalancerTypeArrayOutput struct{ *pulumi.OutputState }
@@ -5888,7 +5915,7 @@ type GetPrimaryIpsPrimaryIp struct {
 	AutoDelete bool `pulumi:"autoDelete"`
 	// Name of the Datacenter of the Primary IP.
 	//
-	// Deprecated: The datacenter attribute is deprecated and will be removed after 1 July 2026. Please use the location attribute instead. See https://docs.hetzner.cloud/changelog#2025-12-16-phasing-out-datacenters.
+	// Deprecated: The datacenter attribute is marked for removal, you must use the location attribute instead. See https://docs.hetzner.cloud/changelog#2026-07-01-removing-datacenters.
 	Datacenter string `pulumi:"datacenter"`
 	// Whether delete protection is enabled.
 	DeleteProtection bool `pulumi:"deleteProtection"`
@@ -5928,7 +5955,7 @@ type GetPrimaryIpsPrimaryIpArgs struct {
 	AutoDelete pulumi.BoolInput `pulumi:"autoDelete"`
 	// Name of the Datacenter of the Primary IP.
 	//
-	// Deprecated: The datacenter attribute is deprecated and will be removed after 1 July 2026. Please use the location attribute instead. See https://docs.hetzner.cloud/changelog#2025-12-16-phasing-out-datacenters.
+	// Deprecated: The datacenter attribute is marked for removal, you must use the location attribute instead. See https://docs.hetzner.cloud/changelog#2026-07-01-removing-datacenters.
 	Datacenter pulumi.StringInput `pulumi:"datacenter"`
 	// Whether delete protection is enabled.
 	DeleteProtection pulumi.BoolInput `pulumi:"deleteProtection"`
@@ -6016,7 +6043,7 @@ func (o GetPrimaryIpsPrimaryIpOutput) AutoDelete() pulumi.BoolOutput {
 
 // Name of the Datacenter of the Primary IP.
 //
-// Deprecated: The datacenter attribute is deprecated and will be removed after 1 July 2026. Please use the location attribute instead. See https://docs.hetzner.cloud/changelog#2025-12-16-phasing-out-datacenters.
+// Deprecated: The datacenter attribute is marked for removal, you must use the location attribute instead. See https://docs.hetzner.cloud/changelog#2026-07-01-removing-datacenters.
 func (o GetPrimaryIpsPrimaryIpOutput) Datacenter() pulumi.StringOutput {
 	return o.ApplyT(func(v GetPrimaryIpsPrimaryIp) string { return v.Datacenter }).(pulumi.StringOutput)
 }
@@ -6751,7 +6778,7 @@ func (o GetServerTypesServerTypeLocationArrayOutput) Index(i pulumi.IntInput) Ge
 type GetServersServer struct {
 	BackupWindow string `pulumi:"backupWindow"`
 	Backups      bool   `pulumi:"backups"`
-	// Deprecated: The datacenter attribute is deprecated and will be removed after 1 July 2026. Please use the location attribute instead. See https://docs.hetzner.cloud/changelog#2025-12-16-phasing-out-datacenters.
+	// Deprecated: The datacenter attribute is marked for removal, you must use the location attribute instead. See https://docs.hetzner.cloud/changelog#2026-07-01-removing-datacenters.
 	Datacenter        string                    `pulumi:"datacenter"`
 	DeleteProtection  bool                      `pulumi:"deleteProtection"`
 	FirewallIds       []int                     `pulumi:"firewallIds"`
@@ -6787,7 +6814,7 @@ type GetServersServerInput interface {
 type GetServersServerArgs struct {
 	BackupWindow pulumi.StringInput `pulumi:"backupWindow"`
 	Backups      pulumi.BoolInput   `pulumi:"backups"`
-	// Deprecated: The datacenter attribute is deprecated and will be removed after 1 July 2026. Please use the location attribute instead. See https://docs.hetzner.cloud/changelog#2025-12-16-phasing-out-datacenters.
+	// Deprecated: The datacenter attribute is marked for removal, you must use the location attribute instead. See https://docs.hetzner.cloud/changelog#2026-07-01-removing-datacenters.
 	Datacenter        pulumi.StringInput                `pulumi:"datacenter"`
 	DeleteProtection  pulumi.BoolInput                  `pulumi:"deleteProtection"`
 	FirewallIds       pulumi.IntArrayInput              `pulumi:"firewallIds"`
@@ -6868,7 +6895,7 @@ func (o GetServersServerOutput) Backups() pulumi.BoolOutput {
 	return o.ApplyT(func(v GetServersServer) bool { return v.Backups }).(pulumi.BoolOutput)
 }
 
-// Deprecated: The datacenter attribute is deprecated and will be removed after 1 July 2026. Please use the location attribute instead. See https://docs.hetzner.cloud/changelog#2025-12-16-phasing-out-datacenters.
+// Deprecated: The datacenter attribute is marked for removal, you must use the location attribute instead. See https://docs.hetzner.cloud/changelog#2026-07-01-removing-datacenters.
 func (o GetServersServerOutput) Datacenter() pulumi.StringOutput {
 	return o.ApplyT(func(v GetServersServer) string { return v.Datacenter }).(pulumi.StringOutput)
 }
