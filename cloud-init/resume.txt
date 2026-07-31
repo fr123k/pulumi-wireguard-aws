@@ -1,0 +1,234 @@
+#!/bin/bash -v
+
+# Cloud-init for resume (GDPR API) VM
+# This server hosts the GDPR notification endpoint at api.resume.fr123k.uk
+# - SSH is behind wireguard (iptables only allows SSH from the wireguard peer IP)
+# - HTTP/HTTPS is public (nginx serves the GDPR endpoint)
+# - nginx + certbot for TLS
+# - Logs GDPR notifications to file (no database)
+
+export DEBIAN_FRONTEND=noninteractive
+
+# Domain configuration (override via template variables)
+export GDPR_DOMAIN="{{ GDPR_DOMAIN }}"
+export GDPR_AUTH_TOKEN="{{ GDPR_AUTH_TOKEN }}"
+
+# ============================================
+# SSH User Setup
+# ============================================
+echo "=== Setting up SSH user ==="
+useradd -m -s /bin/bash -G sudo frank.ittermann 2>/dev/null || true
+mkdir -p /home/frank.ittermann/.ssh/
+echo "frank.ittermann ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/frank_ittermann
+chmod 0440 /etc/sudoers.d/frank_ittermann
+
+if [ ! -s /home/frank.ittermann/.ssh/authorized_keys ] && [ -f /root/.ssh/authorized_keys ]; then
+    cp /root/.ssh/authorized_keys /home/frank.ittermann/.ssh/authorized_keys
+fi
+chmod 600 /home/frank.ittermann/.ssh/authorized_keys
+chown -R frank.ittermann:frank.ittermann /home/frank.ittermann
+
+# Finalize SSH hardening
+sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+if ! grep -q "AllowUsers frank.ittermann" /etc/ssh/sshd_config; then
+    echo "AllowUsers frank.ittermann" >> /etc/ssh/sshd_config
+fi
+systemctl reload ssh.service
+
+# ============================================
+# Firewall Rules (iptables)
+# ============================================
+echo "=== Setting up iptables rules ==="
+
+# Flush existing rules
+iptables -F INPUT
+iptables -P INPUT DROP
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# SSH only from wireguard peer IP (behind wireguard)
+iptables -A INPUT -p tcp -s 78.47.97.138 --dport 22 -j ACCEPT
+
+# HTTP/HTTPS public (for the GDPR API endpoint)
+iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+# DNS (if needed for certbot challenges)
+iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+iptables -A INPUT -p udp --dport 53 -j ACCEPT
+
+# Internal handler (localhost only)
+iptables -A INPUT -p tcp -s 127.0.0.1 --dport 8081 -j ACCEPT
+
+# Save iptables rules
+iptables-save > /etc/iptables/rules.v4
+
+# ============================================
+# Install Packages
+# ============================================
+echo "=== Installing packages ==="
+apt-get update -y
+apt-get install -y nginx certbot python3-certbot-nginx logrotate
+
+# ============================================
+# Provision SSL Certificate (certbot --standalone)
+# ============================================
+echo "=== Provisioning SSL certificate for ${GDPR_DOMAIN} ==="
+
+# Stop nginx temporarily so certbot can use port 80 for the ACME challenge
+systemctl stop nginx 2>/dev/null || true
+
+# Provision the certificate
+certbot certonly --standalone \
+    -d ${GDPR_DOMAIN} \
+    --non-interactive \
+    --agree-tos \
+    -m frank.ittermann@yahoo.com \
+    --keep-until-expiring
+
+# Start nginx again
+systemctl start nginx
+
+# ============================================
+# GDPR Notification Endpoint (nginx)
+# ============================================
+echo "=== Configuring GDPR notification endpoint ==="
+
+# Custom log format: timestamp \t ip \t status \t method \t path \t request_id \t user_agent \t body
+cat > /etc/nginx/conf.d/gdpr-log-format.conf <<'EOF'
+log_format gdpr_fmt '$time_iso8601\t$remote_addr\t$status\t$request_method\t$request_uri\t'
+                    '$request_id\t$http_user_agent\t$request_body';
+EOF
+
+# GDPR nginx config (serves api.resume.fr123k.uk with dedicated SSL cert)
+cat > /etc/nginx/sites-available/gdpr-notify <<EOF
+# Auth token check — soft filter to block scanners that don't read llm.txt
+# Token is delivered via invisible text in the CV PDF, not in the public llm.txt
+map \$http_authorization \$gdpr_authorized {
+    default 0;
+    "Bearer ${GDPR_AUTH_TOKEN}" 1;
+}
+
+# Rate limit: 5 requests/min per IP
+limit_req_zone \$binary_remote_addr zone=gdpr:10m rate=5r/m;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${GDPR_DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ${GDPR_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${GDPR_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${GDPR_DOMAIN}/privkey.pem;
+
+    # Health check (for monitoring)
+    location = /health {
+        return 200 '{"status":"ok"}';
+        add_header Content-Type application/json;
+    }
+
+    # Static info page (exact match for root only)
+    location = / {
+        root /var/www/gdpr-notify;
+        try_files /index.html =404;
+    }
+
+    # The GDPR notification endpoint
+    location = /gdpr-notify {
+        limit_req zone=gdpr burst=3 nodelay;
+
+        # Method check
+        if (\$request_method != POST) {
+            return 405 '{"error":"method not allowed"}';
+        }
+
+        # Auth check — token is in the CV PDF, not in llm.txt
+        if (\$gdpr_authorized = 0) {
+            return 401 '{"error":"unauthorized"}';
+        }
+
+        # Size limit
+        client_max_body_size 10k;
+
+        # Log the notification (body captured via proxy to internal handler)
+        access_log /var/log/nginx/gdpr-notify.log gdpr_fmt;
+
+        # Proxy to internal handler so \$request_body is populated
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Content-Type \$http_content_type;
+    }
+
+    # Deny everything else — no file access, no directory listing, no errors logged
+    # Prevents scanner noise (.env, .git/config, robots.txt, favicon.ico, etc.)
+    location / {
+        access_log off;
+        return 444;
+    }
+}
+
+# Internal handler (only listens on localhost — captures request body for logging)
+server {
+    listen 127.0.0.1:8081;
+    location / {
+        return 200 '{"status":"received"}';
+        add_header Content-Type application/json;
+    }
+}
+EOF
+
+# Create GDPR log file
+touch /var/log/nginx/gdpr-notify.log
+chown www-data:adm /var/log/nginx/gdpr-notify.log
+
+# Create static info page
+mkdir -p /var/www/gdpr-notify
+cat > /var/www/gdpr-notify/index.html <<EOF
+<!DOCTYPE html>
+<html>
+<head><title>GDPR Notify API</title></head>
+<body>
+<h1>GDPR Processing Notification Endpoint</h1>
+<p>This endpoint receives GDPR Article 14 processing notifications
+   for resume data at <a href="https://resume.fr123k.uk/">resume.fr123k.uk</a>.</p>
+<p>See <a href="https://resume.fr123k.uk/llm.txt">llm.txt</a> for the API contract.</p>
+<p>POST /gdpr-notify with Authorization header.</p>
+</body>
+</html>
+EOF
+
+# Logrotate config for GDPR log file
+cat > /etc/logrotate.d/gdpr-notify <<'EOF'
+/var/log/nginx/gdpr-notify.log {
+    daily
+    rotate 30
+    compress
+    missingok
+    notifempty
+    create 0640 www-data adm
+}
+EOF
+
+# Enable nginx site
+ln -sf /etc/nginx/sites-available/gdpr-notify /etc/nginx/conf.d/gdpr-notify.conf
+
+# ============================================
+# Start Services
+# ============================================
+echo "=== Starting services ==="
+
+# Start fail2ban
+systemctl start fail2ban
+systemctl enable fail2ban
+
+# Test nginx config and start
+nginx -t
+systemctl restart nginx
+systemctl enable nginx
+
+echo "=== resume (GDPR API) setup complete ==="
