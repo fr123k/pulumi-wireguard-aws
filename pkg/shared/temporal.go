@@ -31,6 +31,8 @@ func TemporalPrebakedUserData() (*model.UserData, error) {
 		"SECRET_OPERATOR_AUTHENTICATION_TOKEN": "SECRET_OPERATOR_AUTHENTICATION_TOKEN",
 		"TEMPORAL_DOMAIN":                      "TEMPORAL_DOMAIN",
 		"DUNEBOT_DOMAIN":                       "DUNEBOT_DOMAIN",
+		"GDPR_DOMAIN":                           "GDPR_DOMAIN",
+		"GDPR_AUTH_TOKEN":                       "GDPR_AUTH_TOKEN",
 	}
 
 	userData, err := model.NewUserData("cloud-init/temporal-prebaked.txt", model.TemplateVariablesEnvironment(userDataVariables))

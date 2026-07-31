@@ -13,6 +13,8 @@ export DEBIAN_FRONTEND=noninteractive
 # Domain configuration (defaults to production, override via template variables)
 export TEMPORAL_DOMAIN="{{ TEMPORAL_DOMAIN }}"
 export DUNEBOT_DOMAIN="{{ DUNEBOT_DOMAIN }}"
+export GDPR_DOMAIN="{{ GDPR_DOMAIN }}"
+export GDPR_AUTH_TOKEN="{{ GDPR_AUTH_TOKEN }}"
 
 # ============================================
 # SSH User Setup
@@ -160,10 +162,136 @@ server {
 }
 EOF
 
+# ============================================
+# GDPR Notification Endpoint (nginx)
+# ============================================
+echo "=== Configuring GDPR notification endpoint ==="
+
+# Custom log format: timestamp \t ip \t request_id \t user_agent \t body
+# Allows easy grep/parse of GDPR processing notifications
+# Body is captured via mirror subrequest to an internal location
+cat > /etc/nginx/conf.d/gdpr-log-format.conf <<'EOF'
+log_format gdpr_fmt '$time_iso8601\t$remote_addr\t$request_id\t'
+                    '$http_user_agent\t$request_body';
+EOF
+
+# Write the auth token to a file nginx can read (avoid embedding in config directly)
+echo "${GDPR_AUTH_TOKEN}" > /etc/nginx/gdpr_token
+chmod 640 /etc/nginx/gdpr_token
+chown root:www-data /etc/nginx/gdpr_token
+
+# GDPR nginx config (serves api.resume.fr123k.uk)
+cat > /etc/nginx/sites-available/gdpr-notify <<EOF
+# Auth token check — soft filter to block scanners that don't read llm.txt
+# Token is delivered via invisible text in the CV PDF, not in the public llm.txt
+map \$http_authorization \$gdpr_authorized {
+    default 0;
+    "Bearer \${GDPR_AUTH_TOKEN}" 1;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.resume.fr123k.uk \${GDPR_DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name api.resume.fr123k.uk \${GDPR_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/\${TEMPORAL_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/\${TEMPORAL_DOMAIN}/privkey.pem;
+
+    # Rate limit: 5 requests/min per IP (prevent abuse)
+    limit_req_zone \$binary_remote_addr zone=gdpr:10m rate=5r/m;
+
+    # Health check (for monitoring)
+    location = /health {
+        return 200 '{"status":"ok"}';
+        add_header Content-Type application/json;
+    }
+
+    # Static info page
+    location = / {
+        root /var/www/gdpr-notify;
+        try_files /index.html =404;
+    }
+
+    # The GDPR notification endpoint
+    location = /gdpr-notify {
+        limit_req zone=gdpr burst=3 nodelay;
+
+        # Method check
+        if (\$request_method != POST) {
+            return 405 '{"error":"method not allowed"}';
+        }
+
+        # Auth check — token is in the CV PDF, not in llm.txt
+        if (\$gdpr_authorized = 0) {
+            return 401 '{"error":"unauthorized"}';
+        }
+
+        # Size limit
+        client_max_body_size 10k;
+
+        # Log the notification (body captured via mirror to internal handler)
+        access_log /var/log/nginx/gdpr-notify.log gdpr_fmt;
+
+        # Proxy to internal handler so \$request_body is populated
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Content-Type \$http_content_type;
+    }
+}
+
+# Internal handler (only listens on localhost — captures request body for logging)
+server {
+    listen 127.0.0.1:8081;
+    location / {
+        return 200 '{"status":"received"}';
+        add_header Content-Type application/json;
+    }
+}
+EOF
+
+# Create GDPR log file
+touch /var/log/nginx/gdpr-notify.log
+chown www-data:adm /var/log/nginx/gdpr-notify.log
+
+# Create static info page
+mkdir -p /var/www/gdpr-notify
+cat > /var/www/gdpr-notify/index.html <<EOF
+<!DOCTYPE html>
+<html>
+<head><title>GDPR Notify API</title></head>
+<body>
+<h1>GDPR Processing Notification Endpoint</h1>
+<p>This endpoint receives GDPR Article 14 processing notifications
+   for resume data at <a href="https://resume.fr123k.uk/">resume.fr123k.uk</a>.</p>
+<p>See <a href="https://resume.fr123k.uk/llm.txt">llm.txt</a> for the API contract.</p>
+<p>POST /gdpr-notify with Authorization header.</p>
+</body>
+</html>
+EOF
+
+# Logrotate config for GDPR log file
+cat > /etc/logrotate.d/gdpr-notify <<'EOF'
+/var/log/nginx/gdpr-notify.log {
+    daily
+    rotate 30
+    compress
+    missingok
+    notifempty
+    create 0640 www-data adm
+}
+EOF
+
 # Enable nginx sites
 ln -sf /etc/nginx/sites-available/temporal /etc/nginx/conf.d/temporal.conf
 ln -sf /etc/nginx/sites-available/temporal-ui /etc/nginx/conf.d/temporal-ui.conf
 ln -sf /etc/nginx/sites-available/dunebot /etc/nginx/conf.d/dunebot.conf
+ln -sf /etc/nginx/sites-available/gdpr-notify /etc/nginx/conf.d/gdpr-notify.conf
 
 # ============================================
 # Start Services
