@@ -378,28 +378,17 @@ github.com/pmezard/go-difflib/difflib
 github.com/pulumi/appdash
 github.com/pulumi/appdash/internal/wire
 github.com/pulumi/appdash/opentracing
-# github.com/pulumi/esc v0.25.0
-## explicit; go 1.25.8
-github.com/pulumi/esc
-github.com/pulumi/esc/ast
-github.com/pulumi/esc/diags
-github.com/pulumi/esc/eval
-github.com/pulumi/esc/internal/spell
-github.com/pulumi/esc/internal/util
-github.com/pulumi/esc/schema
-github.com/pulumi/esc/syntax
-github.com/pulumi/esc/syntax/encoding
-# github.com/pulumi/pulumi-aws/sdk/v7 v7.35.0
-## explicit; go 1.25.8
+# github.com/pulumi/pulumi-aws/sdk/v7 v7.39.0
+## explicit; go 1.25.11
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/internal
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/route53
-# github.com/pulumi/pulumi-hcloud/sdk v1.39.0
-## explicit; go 1.25.8
+# github.com/pulumi/pulumi-hcloud/sdk v1.41.0
+## explicit; go 1.25.11
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud/internal
-# github.com/pulumi/pulumi/sdk/v3 v3.250.0
+# github.com/pulumi/pulumi/sdk/v3 v3.253.0
 ## explicit; go 1.25.11
 github.com/pulumi/pulumi/sdk/v3/go/common/apitype
 github.com/pulumi/pulumi/sdk/v3/go/common/constant
@@ -407,6 +396,15 @@ github.com/pulumi/pulumi/sdk/v3/go/common/diag
 github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors
 github.com/pulumi/pulumi/sdk/v3/go/common/encoding
 github.com/pulumi/pulumi/sdk/v3/go/common/env
+github.com/pulumi/pulumi/sdk/v3/go/common/esc
+github.com/pulumi/pulumi/sdk/v3/go/common/esc/ast
+github.com/pulumi/pulumi/sdk/v3/go/common/esc/diags
+github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval
+github.com/pulumi/pulumi/sdk/v3/go/common/esc/internal/spell
+github.com/pulumi/pulumi/sdk/v3/go/common/esc/internal/util
+github.com/pulumi/pulumi/sdk/v3/go/common/esc/schema
+github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax
+github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding
 github.com/pulumi/pulumi/sdk/v3/go/common/promise
 github.com/pulumi/pulumi/sdk/v3/go/common/providers
 github.com/pulumi/pulumi/sdk/v3/go/common/resource
@@ -614,7 +612,7 @@ go.uber.org/atomic
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
 go.uber.org/multierr
-# golang.org/x/crypto v0.53.0
+# golang.org/x/crypto v0.54.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
@@ -652,20 +650,20 @@ golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
-# golang.org/x/sync v0.21.0
+# golang.org/x/sync v0.22.0
 ## explicit; go 1.25.0
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.46.0
+# golang.org/x/sys v0.47.0
 ## explicit; go 1.25.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.44.0
+# golang.org/x/term v0.45.0
 ## explicit; go 1.25.0
 golang.org/x/term
-# golang.org/x/text v0.38.0
+# golang.org/x/text v0.40.0
 ## explicit; go 1.25.0
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
