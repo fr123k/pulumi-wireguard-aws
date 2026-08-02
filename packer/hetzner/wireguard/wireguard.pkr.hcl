@@ -74,7 +74,7 @@ build {
       "chmod +x /tmp/*.sh /usr/local/bin/wireguard-verify",
       ". /tmp/versions.env && /tmp/01-base-packages.sh",
       ". /tmp/versions.env && /tmp/02-wireguard-binaries.sh",
-      "WIREGUARD_DOMAIN=${var.wireguard_domain} SECRET_OPERATOR_TOKEN=${var.secret_operator_token} /tmp/03-fetch-secrets.sh",
+      "/tmp/03-fetch-secrets.sh",
       "/tmp/nginx-setup.sh",
       "/tmp/04-systemd-services.sh",
       "/tmp/security-hardening.sh",
@@ -82,7 +82,9 @@ build {
       "/tmp/cleanup.sh"
     ]
     environment_vars = [
-      "DEBIAN_FRONTEND=noninteractive"
+      "DEBIAN_FRONTEND=noninteractive",
+      "WIREGUARD_DOMAIN=${var.wireguard_domain}",
+      "SECRET_OPERATOR_TOKEN=${var.secret_operator_token}"
     ]
   }
 

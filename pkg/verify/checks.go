@@ -302,7 +302,7 @@ func WireguardDeployedChecks() []Check {
 		{
 			Name:     "Port 51820 listening (WireGuard UDP)",
 			Command:  "ss -ulnp | grep :51820",
-			Expected: "LISTEN",
+			Expected: "51820",
 		},
 
 		// WireGuard configuration

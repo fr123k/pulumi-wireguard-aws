@@ -133,8 +133,12 @@ endif
 # Export as PKR_VAR_ so Packer picks it up automatically.
 # Usage: make packer-build PROJECT=wireguard SECRET_OPERATOR_TOKEN=xxx
 SECRET_OPERATOR_TOKEN ?=
-export PKR_VAR_secret_operator_token = $(SECRET_OPERATOR_TOKEN)
-export PKR_VAR_wireguard_domain = $(WIREGUARD_DOMAIN)
+# Only export wireguard-specific PKR_VAR_ vars when PROJECT is wireguard
+# to avoid leaking them into temporal/franky builds
+ifeq ($(PROJECT),wireguard)
+  export PKR_VAR_secret_operator_token = $(SECRET_OPERATOR_TOKEN)
+  export PKR_VAR_wireguard_domain = $(WIREGUARD_DOMAIN)
+endif
 
 packer-init:
 	cd $(PACKER_DIR) && packer init .
@@ -260,7 +264,7 @@ wireguard-set-snapshot:
 
 wireguard-deploy-prebaked: wireguard-init wireguard-set-snapshot
 	# pulumi destroy
-	pulumi refresh
+	pulumi refresh --yes
 	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi up --yes
 
 wireguard-deploy-base:

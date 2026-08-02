@@ -29,7 +29,7 @@ chmod 600 /home/frank.ittermann/.ssh/authorized_keys
 chown -R frank.ittermann:frank.ittermann /home/frank.ittermann
 
 # Finalize SSH hardening
-sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i -e '/^#*PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
 if ! grep -q "AllowUsers frank.ittermann" /etc/ssh/sshd_config; then
     echo "AllowUsers frank.ittermann" >> /etc/ssh/sshd_config
 fi
@@ -215,6 +215,10 @@ cat > /usr/local/bin/db/server/keypair.json <<EOF
     "updated_at":"$(date --utc +%FT%T.%3NZ)"
 }
 EOF
+
+# Restrict permissions on sensitive WireGuard UI files
+chmod 700 /usr/local/bin/db /usr/local/bin/db/server
+chmod 600 /usr/local/bin/db/server/users.json /usr/local/bin/db/server/keypair.json /usr/local/bin/db/server/interfaces.json
 
 # WireGuard UI interfaces
 cat > /usr/local/bin/db/server/interfaces.json <<EOF
