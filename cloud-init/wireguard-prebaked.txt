@@ -1,0 +1,295 @@
+#!/bin/bash -v
+
+# Minimal cloud-init for pre-baked WireGuard image
+# This script handles runtime-specific configuration only:
+# - SSH user setup
+# - Secret fetching
+# - SSL certificate installation (from Secret Manager)
+# - WireGuard key generation and wg0.conf
+# - WireGuard UI database and password
+# - Nginx site configuration
+# - Service startup
+
+export DEBIAN_FRONTEND=noninteractive
+
+# Domain configuration (defaults to production, override via template variables)
+export WIREGUARD_DOMAIN="{{ WIREGUARD_DOMAIN }}"
+
+# ============================================
+# SSH User Setup
+# ============================================
+echo "=== Setting up SSH user ==="
+useradd -m -s /bin/bash -G sudo frank.ittermann
+mkdir -p /home/frank.ittermann/.ssh/
+echo "frank.ittermann ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/frank_ittermann
+chmod 0440 /etc/sudoers.d/frank_ittermann
+
+cp /root/.ssh/authorized_keys /home/frank.ittermann/.ssh/authorized_keys
+chmod 600 /home/frank.ittermann/.ssh/authorized_keys
+chown -R frank.ittermann:frank.ittermann /home/frank.ittermann
+
+# Finalize SSH hardening
+sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+if ! grep -q "AllowUsers frank.ittermann" /etc/ssh/sshd_config; then
+    echo "AllowUsers frank.ittermann" >> /etc/ssh/sshd_config
+fi
+systemctl reload ssh.service
+
+# ============================================
+# Secret Fetching
+# ============================================
+echo "=== Fetching secrets ==="
+export SECRET_OPERATOR_AUTHENTICATION_TOKEN="{{ SECRET_OPERATOR_AUTHENTICATION_TOKEN }}"
+
+secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} --output=/tmp/secrets
+
+# Install wildcard SSL certificate from Secret Manager
+mkdir -p /etc/letsencrypt/live/${WIREGUARD_DOMAIN}
+mv /tmp/secrets/certs/fullchain.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
+mv /tmp/secrets/certs/privkey.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
+chmod 600 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
+chmod 644 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
+
+# Populate secret-operator-server.env from fetched secrets (if present)
+if [ -f /tmp/secrets/secret-operator-server.env ]; then
+    cp /tmp/secrets/secret-operator-server.env /etc/systemd/system/secret-operator-server.env
+    chmod 600 /etc/systemd/system/secret-operator-server.env
+fi
+
+# ============================================
+# Nginx Site Configuration
+# ============================================
+echo "=== Configuring Nginx sites ==="
+
+cat > /etc/nginx/sites-available/router <<EOF
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    listen 443 ssl;
+
+    server_name ${WIREGUARD_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem;
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    location = /custom_444 {
+        return 444;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Real-PORT \$remote_port;
+        #allow 78.47.97.138;
+        #deny all;
+        # Return 444 for denied requests
+        error_page 502 404 403 = /custom_444;
+    }
+
+    # Redirect non-https traffic to https
+    if (\$scheme != "https") {
+        return 301 https://\$host\$request_uri;
+    }
+}
+EOF
+
+cat > /etc/nginx/sites-available/router.secret <<EOF
+server {
+    listen 8443 ssl;
+    # Wildcard certificate
+    ssl_certificate /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem;
+    server_name ${WIREGUARD_DOMAIN};
+
+    access_log /var/log/nginx/secret_access.log;
+    error_log /var/log/nginx/secret_error.log;
+
+    error_page 404 = /custom_444;
+
+    # Everything is a 404
+    location / {
+        return 404;
+    }
+
+    location /secrets/ {
+        proxy_pass http://127.0.0.1:8088/;
+        proxy_redirect off;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Real-PORT \$remote_port;
+        #allow 78.47.97.138;
+        #deny all;
+        # Return 444 for denied requests
+        error_page 502 404 403 = /custom_444;
+    }
+
+    location = /custom_444 {
+        return 444;
+    }
+}
+EOF
+
+ln -sf /etc/nginx/sites-available/router /etc/nginx/sites-enabled/router
+ln -sf /etc/nginx/sites-available/router.secret /etc/nginx/sites-enabled/router.secret
+rm -f /etc/nginx/sites-enabled/default
+
+# ============================================
+# WireGuard Key Generation and Configuration
+# ============================================
+echo "=== Generating WireGuard keys and config ==="
+
+umask 077
+# Generate server keypair
+wg genkey | tee /tmp/server_privatekey | wg pubkey > /tmp/server_publickey
+
+MYV4IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || curl -s https://api.ipify.org || echo "")
+
+# Detect the default network interface (ens10 on Hetzner CPX, eth0 on others)
+DEFAULT_IFACE=$(ip -o -4 route show to default | awk '{print $5}' | head -1)
+echo "Detected default network interface: ${DEFAULT_IFACE}"
+
+cat > /etc/wireguard/wg0.conf <<EOF
+[Interface]
+Address = 172.16.16.1/24
+PrivateKey = $(cat /tmp/server_privatekey)
+ListenPort = 51820
+PostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${DEFAULT_IFACE} -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${DEFAULT_IFACE} -j MASQUERADE
+
+[Peer]
+PublicKey = {{ CLIENT_PUBLICKEY }}
+AllowedIPs = {{ CLIENT_IP_ADDRESS }}/32
+PersistentKeepalive = 25
+EOF
+
+chown -R root:root /etc/wireguard/
+chmod -R og-rwx /etc/wireguard/*
+
+# Apply IP forwarding live
+sysctl -w net.ipv4.ip_forward=1
+
+# Enable debug logging of wireguard
+echo module wireguard +p > /sys/kernel/debug/dynamic_debug/control
+
+# ============================================
+# WireGuard UI Database and Password
+# ============================================
+echo "=== Configuring WireGuard UI ==="
+
+pwgen 16 1 > /tmp/user_password
+
+# Populate wgui.env with runtime password and session secret
+cat > /etc/systemd/system/wgui.env <<EOF
+WGUI_PASSWORD=$(cat /tmp/user_password)
+SESSION_SECRET=$(pwgen 32 1)
+EOF
+chmod 600 /etc/systemd/system/wgui.env
+
+# WireGuard UI user database
+cat > /usr/local/bin/db/server/users.json <<EOF
+{
+    "username":"admin",
+    "password":"$(cat /tmp/user_password)"
+}
+EOF
+
+# WireGuard UI keypair
+cat > /usr/local/bin/db/server/keypair.json <<EOF
+{
+    "private_key": "$(cat /tmp/server_privatekey)",
+    "public_key": "$(cat /tmp/server_publickey)",
+    "updated_at":"$(date --utc +%FT%T.%3NZ)"
+}
+EOF
+
+# WireGuard UI interfaces
+cat > /usr/local/bin/db/server/interfaces.json <<EOF
+{
+    "addresses": [
+        "172.16.16.1/24"
+    ],
+    "listen_port": "51820",
+    "updated_at": "$(date --utc +%FT%T.%3NZ)",
+    "post_up": "iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${DEFAULT_IFACE} -j MASQUERADE",
+    "post_down": "iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${DEFAULT_IFACE} -j MASQUERADE"
+}
+EOF
+
+# ============================================
+# Mailjet Notification (optional)
+# ============================================
+MAILJET_AUTH="{{ MAILJET_API_CREDENTIALS }}"
+
+if [ "$MAILJET_AUTH" != "" ]; then
+    cat > /tmp/wireguard.email <<EOF
+    {
+    "Messages":[
+        {
+        "From": {
+            "Email": "wireguard@fr123k.uk",
+            "Name": "Wireguard $MYV4IP"
+        },
+        "To": [
+            {
+            "Email": "fr12_k@yahoo.com",
+            "Name": "Frank"
+            }
+        ],
+        "Subject": "Wireguard publickey",
+        "TextPart": "The wireguard public key is $(cat /tmp/server_publickey) and the ip address $MYV4IP",
+        "CustomID": "Wireguard Publickey"
+        }
+    ]
+    }
+EOF
+
+    curl -s -X POST \
+    --user "${MAILJET_AUTH}" \
+    https://api.mailjet.com/v3.1/send \
+    -H 'Content-Type: application/json' \
+    --data "@/tmp/wireguard.email"
+fi
+
+# ============================================
+# Start Services
+# ============================================
+echo "=== Starting services ==="
+
+# Enable UFW (rules were pre-configured during bake)
+ufw --force enable
+
+# Start fail2ban
+systemctl start fail2ban
+
+# Start WireGuard
+systemctl enable wg-quick@wg0.service
+systemctl start wg-quick@wg0.service
+
+# Start WireGuard UI
+systemctl enable wgui-restart-wg.service
+systemctl start wgui-restart-wg.service
+systemctl enable wgui-restart-wg.path
+systemctl start wgui-restart-wg.path
+systemctl enable wgui.service
+systemctl start wgui.service
+
+# Start Secret Operator Server
+systemctl enable secret-operator-server
+systemctl start secret-operator-server
+
+# Start Nginx
+systemctl restart nginx
+
+# ============================================
+# Verify Deployment
+# ============================================
+echo "=== Verifying deployment ==="
+/usr/local/bin/wireguard-verify --local --deployed --target wireguard
+
+echo "=== Cloud-init complete ==="

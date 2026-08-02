@@ -229,6 +229,31 @@ wireguard-deploy: wireguard-create wireguard-output
 wireguard-deploy-test:
 	$(MAKE) wireguard-deploy ENV=test
 
+## Wireguard deployment with pre-baked image
+
+wireguard-set-snapshot:
+	@if [ -z "$(SNAPSHOT_ID)" ]; then \
+		SNAPSHOT_ID=$$(jq -r '.builds[-1].artifact_id' $(PACKER_MANIFEST)); \
+	fi; \
+	echo "Setting wireguard_snapshot_id to $$SNAPSHOT_ID"; \
+	pulumi config set wireguard_snapshot_id $$SNAPSHOT_ID
+
+wireguard-deploy-prebaked: wireguard-set-snapshot wireguard-init
+	# pulumi destroy
+	pulumi refresh
+	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi up --yes
+
+wireguard-deploy-base:
+	pulumi config rm wireguard_snapshot_id || true
+	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi up --yes
+
+## Full pipeline: build image and deploy
+
+wireguard-full-deploy: packer-build wireguard-deploy-prebaked
+	@echo "Full deployment complete!"
+
+wireguard-recreate-prebaked: clean packer-build wireguard-deploy-prebaked
+
 ## Certificate Management
 
 cert-generate-wildcard:
@@ -249,6 +274,9 @@ cert-check-expiry:
 
 sync-versions:
 	bash packer/hetzner/temporal/scripts/sync-versions.sh
+
+sync-versions-wireguard:
+	bash packer/hetzner/wireguard/scripts/sync-versions.sh
 
 ## Mini PC (physical server) targets
 

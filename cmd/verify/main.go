@@ -18,6 +18,7 @@ func main() {
 	deployed := flag.Bool("deployed", false, "Run deployed server checks")
 	local := flag.Bool("local", false, "Run checks locally instead of via SSH")
 	timeout := flag.Duration("timeout", 30*time.Second, "SSH connection timeout")
+	target := flag.String("target", "temporal", "Target image to verify: temporal, wireguard, or minipc")
 
 	flag.Parse()
 
@@ -53,12 +54,26 @@ func main() {
 	var mode string
 	var checks []verify.Check
 
-	if *prebaked {
-		mode = "prebaked"
-		checks = verify.PrebakedChecks()
-	} else {
+	switch *target {
+	case "wireguard":
+		if *prebaked {
+			mode = "prebaked"
+			checks = verify.WireguardPrebakedChecks()
+		} else {
+			mode = "deployed"
+			checks = verify.WireguardDeployedChecks()
+		}
+	case "minipc":
 		mode = "deployed"
-		checks = verify.DeployedChecks()
+		checks = verify.MiniPCChecks()
+	default: // temporal
+		if *prebaked {
+			mode = "prebaked"
+			checks = verify.PrebakedChecks()
+		} else {
+			mode = "deployed"
+			checks = verify.DeployedChecks()
+		}
 	}
 
 	var results []verify.Result
