@@ -130,11 +130,11 @@ else
 endif
 
 # Secret Operator token for build-time SSL cert fetching (wireguard)
-# Export as PKR_VAR_ so Packer picks it up automatically
-ifdef SECRET_OPERATOR_TOKEN
-  export PKR_VAR_secret_operator_token = $(SECRET_OPERATOR_TOKEN)
-  export PKR_VAR_wireguard_domain = $(WIREGUARD_DOMAIN)
-endif
+# Export as PKR_VAR_ so Packer picks it up automatically.
+# Usage: make packer-build PROJECT=wireguard SECRET_OPERATOR_TOKEN=xxx
+SECRET_OPERATOR_TOKEN ?=
+export PKR_VAR_secret_operator_token = $(SECRET_OPERATOR_TOKEN)
+export PKR_VAR_wireguard_domain = $(WIREGUARD_DOMAIN)
 
 packer-init:
 	cd $(PACKER_DIR) && packer init .
