@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
 
-# 07-cleanup.sh
+# cleanup.sh
 # Cleans up apt cache, temporary files, and logs for a smaller image
 
 echo "=== Cleaning up for snapshot ==="

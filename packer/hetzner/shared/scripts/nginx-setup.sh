@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euxo pipefail
 
-# 04-nginx-setup.sh
-# Installs Nginx from official repo and Certbot (no SSL certs - those are runtime)
+# nginx-setup.sh
+# Installs Nginx from official repo and Certbot (no SSL certs — those are runtime)
 
 export DEBIAN_FRONTEND=noninteractive
 

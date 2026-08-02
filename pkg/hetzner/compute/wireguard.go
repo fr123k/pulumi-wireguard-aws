@@ -2,7 +2,6 @@ package compute
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -115,20 +114,6 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, ip string
 	return &infra, nil
 }
 
-// isWireguardPrebakedImage detects if the image is a pre-baked Hetzner snapshot.
-// Returns true if the image name is numeric (snapshot ID) or starts with a prebaked prefix.
-func isWireguardPrebakedImage(imageName string) bool {
-	// Check if it's a numeric snapshot ID
-	numericPattern := regexp.MustCompile(`^\d+$`)
-	if numericPattern.MatchString(imageName) {
-		return true
-	}
-
-	// Check if it starts with "prebaked" or "wireguard-prebaked" prefix
-	lowerName := strings.ToLower(imageName)
-	return strings.HasPrefix(lowerName, "prebaked") || strings.HasPrefix(lowerName, "wireguard-prebaked")
-}
-
 // CreateWireguardVM creates a wireguard ec2 aws instance
 func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP string) (*model.ComputeResult, error) {
 
@@ -168,7 +153,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP
 		imageName = computeArgs.Images[0].Name
 	}
 
-	if isWireguardPrebakedImage(imageName) {
+	if isPrebakedImage(imageName, "prebaked", "wireguard-prebaked") {
 		_ = ctx.Log.Info("Using pre-baked image, loading minimal cloud-init", nil)
 		userData, err = shared.WireguardPrebakedUserData()
 	} else {
