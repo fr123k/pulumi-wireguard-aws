@@ -105,30 +105,50 @@ PACKER_DIR ?= packer/hetzner/${PROJECT}
 PACKER_MANIFEST ?= $(PACKER_DIR)/manifest.json
 SNAPSHOT_KEEP_COUNT ?= 3
 
+# Packer variables: pass via env vars (PKR_VAR_ prefix) or a .pkrvars.hcl file
+# Usage:
+#   make packer-build PROJECT=wireguard SECRET_OPERATOR_TOKEN=xxx
+#   make packer-build PROJECT=wireguard PACKER_VARS_FILE=wireguard.pkrvars.hcl
+PACKER_VARS_FILE ?= 
+ifneq ($(PACKER_VARS_FILE),)
+  PACKER_VARS_FLAG = -var-file=$(PACKER_VARS_FILE)
+else
+  PACKER_VARS_FLAG = 
+endif
+
 # Domain configuration (ENV=test for test domains)
 ifeq ($(ENV),test)
   TEMPORAL_DOMAIN ?= temporal-test.dunebot.io
   DUNEBOT_DOMAIN ?= githubapp-test.dunebot.io
   FRANKY_DOMAIN ?= franky-test.dunebot.io
+  WIREGUARD_DOMAIN ?= wg-test.fr123k.uk
 else
   TEMPORAL_DOMAIN ?= temporal.dunebot.io
   DUNEBOT_DOMAIN ?= githubapp.dunebot.io
   FRANKY_DOMAIN ?= franky.dunebot.io
+  WIREGUARD_DOMAIN ?= wg.fr123k.uk
+endif
+
+# Secret Operator token for build-time SSL cert fetching (wireguard)
+# Export as PKR_VAR_ so Packer picks it up automatically
+ifdef SECRET_OPERATOR_TOKEN
+  export PKR_VAR_secret_operator_token = $(SECRET_OPERATOR_TOKEN)
+  export PKR_VAR_wireguard_domain = $(WIREGUARD_DOMAIN)
 endif
 
 packer-init:
 	cd $(PACKER_DIR) && packer init .
 
 packer-validate: packer-init
-	cd $(PACKER_DIR) && packer validate .
+	cd $(PACKER_DIR) && packer validate $(PACKER_VARS_FLAG) .
 
 packer-build: packer-validate
-	cd $(PACKER_DIR) && packer build .
+	cd $(PACKER_DIR) && packer build $(PACKER_VARS_FLAG) .
 	@echo "Build complete. Snapshot ID:"
 	@jq -r '.builds[-1].artifact_id' $(PACKER_MANIFEST)
 
-packer-build-debug: packer-validate
-	cd $(PACKER_DIR) && PACKER_LOG=1 packer build -debug .
+packer-build-debug: packer-init
+	cd $(PACKER_DIR) && PACKER_LOG=1 packer build -debug $(PACKER_VARS_FLAG) .
 
 packer-cleanup:
 	@echo "Cleaning up old snapshots (keeping last $(SNAPSHOT_KEEP_COUNT))..."
