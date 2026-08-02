@@ -10,3 +10,8 @@ hcloud_token = "YOUR_HCLOUD_TOKEN_HERE"
 # Optional: Override component versions
 # wireguard_ui_version     = "0.3.8"
 # secret_operator_version  = "0.6.1"
+
+# Bake SSL certs into the image at build time (requires secret-operator-client)
+# If left empty, certs will be fetched at runtime via cloud-init instead.
+# wireguard_domain         = "wg.fr123k.uk"
+# secret_operator_token    = "your-secret-operator-token-here"

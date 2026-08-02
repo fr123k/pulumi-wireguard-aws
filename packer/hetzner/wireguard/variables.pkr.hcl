@@ -48,3 +48,17 @@ variable "secret_operator_version" {
   default     = "0.6.1"
   description = "Secret Operator version (client and server)"
 }
+
+// Secret / domain configuration for baking SSL certs into the image
+variable "wireguard_domain" {
+  type        = string
+  default     = "wg.fr123k.uk"
+  description = "WireGuard domain for SSL certificate installation"
+}
+
+variable "secret_operator_token" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Secret Operator authentication token for fetching SSL certs at build time. Leave empty to fetch at runtime instead."
+}

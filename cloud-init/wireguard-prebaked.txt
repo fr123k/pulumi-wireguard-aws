@@ -36,19 +36,27 @@ fi
 systemctl reload ssh.service
 
 # ============================================
-# Secret Fetching
+# Secret Fetching (runtime-only secrets)
 # ============================================
-echo "=== Fetching secrets ==="
+# SSL certificates are baked into the image at build time.
+# Only fetch the secret-operator-server.env here (if needed).
+echo "=== Fetching runtime secrets ==="
 export SECRET_OPERATOR_AUTHENTICATION_TOKEN="{{ SECRET_OPERATOR_AUTHENTICATION_TOKEN }}"
 
-secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} --output=/tmp/secrets
-
-# Install wildcard SSL certificate from Secret Manager
-mkdir -p /etc/letsencrypt/live/${WIREGUARD_DOMAIN}
-mv /tmp/secrets/certs/fullchain.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
-mv /tmp/secrets/certs/privkey.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
-chmod 600 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
-chmod 644 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
+# If certs are not already present (e.g. base image without build-time fetch),
+# fetch them now. Otherwise skip to avoid overwriting baked-in certs.
+if [ ! -f /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem ]; then
+    secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} --output=/tmp/secrets
+    mkdir -p /etc/letsencrypt/live/${WIREGUARD_DOMAIN}
+    mv /tmp/secrets/certs/fullchain.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
+    mv /tmp/secrets/certs/privkey.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
+    chmod 600 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
+    chmod 644 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
+else
+    echo "SSL certificates already present (baked into image)"
+    # Still fetch secrets for secret-operator-server.env
+    secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} --output=/tmp/secrets || true
+fi
 
 # Populate secret-operator-server.env from fetched secrets (if present)
 if [ -f /tmp/secrets/secret-operator-server.env ]; then
