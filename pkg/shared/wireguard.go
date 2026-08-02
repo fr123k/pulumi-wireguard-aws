@@ -11,10 +11,12 @@ import (
 
 func WireguardUserData() (*model.UserData, error) {
     userDataVariables := map[string]string{
-        "CLIENT_PUBLICKEY":        "CLIENT_PUBLICKEY",
-        "CLIENT_IP_ADDRESS":       "CLIENT_IP_ADDRESS",
-        "MAILJET_API_CREDENTIALS": "MAILJET_API_CREDENTIALS",
-        "METADATA_URL":            "METADATA_URL",
+        "CLIENT_PUBLICKEY":                "CLIENT_PUBLICKEY",
+        "CLIENT_IP_ADDRESS":              "CLIENT_IP_ADDRESS",
+        "MAILJET_API_CREDENTIALS":        "MAILJET_API_CREDENTIALS",
+        "METADATA_URL":                   "METADATA_URL",
+        "WIREGUARD_DOMAIN":               "WIREGUARD_DOMAIN",
+        "SECRET_OPERATOR_AUTHENTICATION_TOKEN": "SECRET_OPERATOR_AUTHENTICATION_TOKEN",
     }
 
     userData, err := model.NewUserData("cloud-init/wireguard.txt", model.TemplateVariablesEnvironment(userDataVariables))
