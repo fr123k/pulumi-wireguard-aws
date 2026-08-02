@@ -29,8 +29,8 @@ pulumi-init: build
 	pulumi plugin install resource aws 7.35.0
 	pulumi plugin install resource hcloud 1.39.0
 	pulumi plugin ls
-	pulumi login --local
-	# pulumi login --cloud-url s3://s3-pulumi-state-d12f2f1
+	pulumi login gs://containifyci-pulumi-state-backend
+# 	pulumi login --local
 	# pulumi stack rm -f ${STACK_NAME}
 	pulumi stack init ${STACK_NAME} || echo ignore if stack ${STACK_NAME} already exists
 	pulumi stack select -c ${STACK_NAME} 
@@ -182,14 +182,66 @@ temporal-full-deploy: packer-build temporal-deploy-prebaked
 
 temporal-recreate-prebaked: clean packer-build temporal-deploy-prebaked
 
+## Wireguard deployment with custom domain
+
+# Domain defaults based on ENV
+ifeq ($(ENV),test)
+  WIREGUARD_DOMAIN ?= wg-test.fr123k.uk
+  WIREGUARD_STACK_NAME ?= wireguard-test-hetzner
+  PRIVATE_KEY_FILE = ./keys/wireguard-test
+else
+  WIREGUARD_DOMAIN ?= wg.fr123k.uk
+  WIREGUARD_STACK_NAME ?= wireguard-hetzner
+  PRIVATE_KEY_FILE = ./keys/wireguard
+endif
+
+wireguard-init: build
+	pulumi login gs://containifyci-pulumi-state-backend
+# 	pulumi login --local
+	pulumi stack init $(WIREGUARD_STACK_NAME) || echo ignore if stack $(WIREGUARD_STACK_NAME) already exists
+	pulumi stack select -c $(WIREGUARD_STACK_NAME)
+	pulumi config set aws:region eu-west-1
+	pulumi config set vpn_enabled_ssh ${VPN_ENABLED_SSH}
+	pulumi config set ssh_key_file ${PRIVATE_KEY_FILE}
+	pulumi config set wireguard_domain $(WIREGUARD_DOMAIN)
+
+wireguard-set-domain:
+	@echo "Setting wireguard_domain to $(WIREGUARD_DOMAIN) for stack $(WIREGUARD_STACK_NAME)"
+	pulumi config set wireguard_domain $(WIREGUARD_DOMAIN)
+
+wireguard-create: wireguard-init
+	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi up --yes
+
+wireguard-preview: wireguard-init
+	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi preview --diff
+
+wireguard-clean:
+	pulumi destroy --yes -s $(WIREGUARD_STACK_NAME)
+	pulumi stack rm -f --yes $(WIREGUARD_STACK_NAME) || true
+
+wireguard-output:
+	mkdir -p ./output
+	pulumi stack output --json > ./output/wireguard-$(WIREGUARD_STACK_NAME).json
+
+wireguard-deploy: wireguard-create wireguard-output
+	@echo "Wireguard deployment complete! Stack: $(WIREGUARD_STACK_NAME) Domain: $(WIREGUARD_DOMAIN)"
+
+wireguard-deploy-test:
+	$(MAKE) wireguard-deploy ENV=test
+
 ## Certificate Management
 
 cert-generate-wildcard:
 	@echo "Run certbot manually with DNS-01 challenge:"
-	@echo "  sudo certbot certonly --manual --preferred-challenges dns -d '*.dunebot.io' -d 'dunebot.io'"
+	@echo "  For dunebot.io:"
+	@echo "    sudo certbot certonly --manual --preferred-challenges dns -d '*.dunebot.io' -d 'dunebot.io'"
+	@echo "  For fr123k.uk:"
+	@echo "    sudo certbot certonly --manual --preferred-challenges dns -d '*.fr123k.uk' -d 'fr123k.uk'"
 	@echo "Then store in GCP Secret Manager:"
 	@echo "  gcloud secrets versions add dunebot-wildcard-cert --data-file=/etc/letsencrypt/live/dunebot.io/fullchain.pem"
 	@echo "  gcloud secrets versions add dunebot-wildcard-key --data-file=/etc/letsencrypt/live/dunebot.io/privkey.pem"
+	@echo "  gcloud secrets versions add fr123k-wildcard-cert --data-file=/etc/letsencrypt/live/fr123k.uk/fullchain.pem"
+	@echo "  gcloud secrets versions add fr123k-wildcard-key --data-file=/etc/letsencrypt/live/fr123k.uk/privkey.pem"
 
 cert-check-expiry:
 	openssl s_client -connect temporal.dunebot.io:443 2>/dev/null | \
@@ -206,7 +258,8 @@ MINIPC_SERVER_IP ?=
 MINIPC_SSH_PORT ?= 22
 
 minipc-init: build
-	pulumi login --local
+	pulumi login gs://containifyci-pulumi-state-backend
+# 	pulumi login --local
 	pulumi stack init ${MINIPC_STACK_NAME} || echo ignore if stack ${MINIPC_STACK_NAME} already exists
 	pulumi stack select -c ${MINIPC_STACK_NAME}
 	pulumi config set server_ip "${MINIPC_SERVER_IP}"
