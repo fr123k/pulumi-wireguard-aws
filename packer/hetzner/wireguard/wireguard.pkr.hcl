@@ -36,7 +36,7 @@ build {
   provisioner "shell-local" {
     inline = [
       "echo 'Building wireguard-verify binary for ${var.target_goos}/${var.target_goarch}...'",
-      "GOOS=${var.target_goos} GOARCH=${var.target_goarch} go build -o ${path.root}/wireguard-verify ../../../cmd/verify/"
+      "cd ${path.root}/../../../ && GOOS=${var.target_goos} GOARCH=${var.target_goarch} go build -o ${path.root}/wireguard-verify ./cmd/verify/"
     ]
   }
 
