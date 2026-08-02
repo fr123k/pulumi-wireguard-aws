@@ -258,7 +258,7 @@ wireguard-set-snapshot:
 	echo "Setting wireguard_snapshot_id to $$SNAPSHOT_ID"; \
 	pulumi config set wireguard_snapshot_id $$SNAPSHOT_ID
 
-wireguard-deploy-prebaked: wireguard-set-snapshot wireguard-init
+wireguard-deploy-prebaked: wireguard-init wireguard-set-snapshot
 	# pulumi destroy
 	pulumi refresh
 	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi up --yes

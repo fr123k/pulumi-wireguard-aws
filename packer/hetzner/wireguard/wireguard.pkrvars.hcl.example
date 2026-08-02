@@ -3,8 +3,8 @@
 hcloud_token = "YOUR_HCLOUD_TOKEN_HERE"
 
 # Optional: Override default values
-# base_image   = "ubuntu-24.04"
-# server_type  = "cpx11"
+# base_image   = "ubuntu-26.04"
+# server_type  = "cpx12"
 # location     = "nbg1"
 
 # Optional: Override component versions

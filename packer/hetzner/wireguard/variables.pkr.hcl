@@ -1,7 +1,7 @@
 // Hetzner Cloud Configuration
 variable "base_image" {
   type        = string
-  default     = "ubuntu-24.04"
+  default     = "ubuntu-26.04"
   description = "Base image for the snapshot"
 }
 
@@ -20,7 +20,7 @@ variable "target_goarch" {
 
 variable "server_type" {
   type        = string
-  default     = "cx23"
+  default     = "cpx12"
   description = "Hetzner server type for building the image"
 }
 
