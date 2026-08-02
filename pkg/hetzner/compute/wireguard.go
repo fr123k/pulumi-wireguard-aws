@@ -15,7 +15,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-const size = "cpx22"
+const size = "cpx12"
 
 type Infrastructure struct {
 	Server    *hcloud.Server
@@ -115,7 +115,7 @@ func CreateServer(ctx *pulumi.Context, computeArgs *model.ComputeArgs, ip string
 }
 
 // CreateWireguardVM creates a wireguard ec2 aws instance
-func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*model.ComputeResult, error) {
+func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP string) (*model.ComputeResult, error) {
 
 	/*
 			// Enable or disable backups.
@@ -151,7 +151,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs) (*mo
 
 	computeArgs.UserData = userData
 
-	infra, err := CreateServer(ctx, computeArgs, "10.8.1.145", exports)
+	infra, err := CreateServer(ctx, computeArgs, vmIP, exports)
 
 	if err != nil {
 		return nil, err
