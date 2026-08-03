@@ -1,6 +1,6 @@
 # Makefile Redundancy Reduction Plan
 
-**File:** `Makefile` (364 lines after franky removal, ~66 named targets)
+**File:** `Makefile` (300 lines after refactor, 66 named targets)
 **Repo:** `fr123k/pulumi-wireguard-aws` (local fork at `./pulumi-wireguard-aws`)
 **Analysis by:** 4 models from the `ollama-cloud` provider, run in parallel:
 - `deepseek-v4-flash`
@@ -8,19 +8,23 @@
 - `gemma4:31b`
 - `minimax-m3`
 
+> **STATUS: IMPLEMENTED.** This plan has been applied to the Makefile,
+> reducing it from 382 lines (pre-franky-removal) to 300 lines — a ~21%
+> reduction overall, ~18% from the post-franky-removal baseline of 364 lines.
+> The per-model analysis files in `analysis/` have been removed from the PR.
+
 > NOTE: The `franky` service (Makefile targets `franky-set-snapshot`,
 > `franky-deploy-prebaked`, `franky-deploy-base`, and the project at
 > `cmd/franky/hetzner/`) was removed after the four-model analysis was
-> conducted. The original model outputs in `analysis/` still reference franky
-> as one of the four services; the consolidated strategies below should be
+> conducted. The strategies below were applied to the three remaining
+> services: `temporal`, `wireguard`, `minipc`.
 > applied to the **three remaining services**: `temporal`, `wireguard`,
 > `minipc`. `FRANKY_DOMAIN` in the shared ENV domain block and franky
 > references in `cloud-init/` and `packer/hetzner/franky/` were intentionally
 > kept.
 >
 > This document consolidates the four independent analyses into a single
-> actionable plan. Per-model outputs are kept verbatim in
-> `analysis/<model>.md`.
+> actionable plan. The per-model outputs have been removed from the PR.
 
 ## Executive Summary
 
@@ -522,11 +526,9 @@ table + one `$(eval)` line, instead of another 15-line copy-paste block.
 
 ## Appendix — Per-Model Outputs
 
-Full unedited analyses from each model are in:
-- `analysis/deepseek-v4-flash.md`
-- `analysis/kimi-k2.6.md`
-- `analysis/gemma4-31b.md`
-- `analysis/minimax-m3.md`
+The per-model analysis files (`analysis/deepseek-v4-flash.md`,
+`analysis/kimi-k2.6.md`, `analysis/gemma4-31b.md`, `analysis/minimax-m3.md`)
+were used during planning and have been removed from the PR.
 
 ### Where the models agreed
 - All four identified the same 13–15 duplicated target families.
