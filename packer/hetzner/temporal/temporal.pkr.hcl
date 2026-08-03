@@ -41,7 +41,7 @@ build {
   provisioner "shell-local" {
     inline = [
       "echo 'Building temporal-verify binary for ${var.target_goos}/${var.target_goarch}...'",
-      "GOOS=${var.target_goos} GOARCH=${var.target_goarch} go build -o ${path.root}/temporal-verify ../../../cmd/verify/"
+      "OUTDIR=\"$(cd ${path.root} && pwd)\" && cd \"$OUTDIR/../../../\" && GOOS=${var.target_goos} GOARCH=${var.target_goarch} go build -o \"$OUTDIR/temporal-verify\" ./cmd/verify/"
     ]
   }
 
@@ -59,9 +59,15 @@ build {
     destination = "/tmp/versions.env"
   }
 
-  # Upload all provisioner scripts
+  # Upload all provisioner scripts (product-specific + shared)
   provisioner "file" {
     source      = "${path.root}/scripts/"
+    destination = "/tmp/"
+  }
+
+  # Upload shared scripts (nginx, security, cleanup) from the common directory
+  provisioner "file" {
+    source      = "${path.root}/../shared/scripts/"
     destination = "/tmp/"
   }
 
@@ -79,11 +85,11 @@ build {
       ". /tmp/versions.env && /tmp/01-base-packages.sh",
       ". /tmp/versions.env && /tmp/02-temporal-binaries.sh",
       ". /tmp/versions.env && /tmp/03-dunebot-binaries.sh",
-      "/tmp/04-nginx-setup.sh",
+      "/tmp/nginx-setup.sh",
       "/tmp/05-systemd-services.sh",
-      "/tmp/06-security-hardening.sh",
+      "/tmp/security-hardening.sh",
       "/usr/local/bin/temporal-verify --local --prebaked",
-      "/tmp/07-cleanup.sh"
+      "/tmp/cleanup.sh"
     ]
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive"

@@ -1,0 +1,17 @@
+# Hetzner Cloud API Token (required)
+# Get from: https://console.hetzner.cloud/projects/YOUR_PROJECT/security/tokens
+hcloud_token = "YOUR_HCLOUD_TOKEN_HERE"
+
+# Optional: Override default values
+# base_image   = "ubuntu-26.04"
+# server_type  = "cpx12"
+# location     = "nbg1"
+
+# Optional: Override component versions
+# wireguard_ui_version     = "0.3.8"
+# secret_operator_version  = "0.6.1"
+
+# Bake SSL certs into the image at build time (requires secret-operator-client)
+# If left empty, certs will be fetched at runtime via cloud-init instead.
+# wireguard_domain         = "wg.fr123k.uk"
+# secret_operator_token    = "your-secret-operator-token-here"

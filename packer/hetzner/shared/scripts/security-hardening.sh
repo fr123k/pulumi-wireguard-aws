@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euxo pipefail
 
-# 06-security-hardening.sh
+# security-hardening.sh
 # Configures SSH hardening and fail2ban
 
 echo "=== Configuring SSH hardening ==="

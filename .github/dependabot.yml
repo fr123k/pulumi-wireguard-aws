@@ -47,3 +47,14 @@ updates:
       all:
         patterns:
           - "*"
+  - package-ecosystem: "gomod"
+    directory: "/packer/hetzner/wireguard"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    labels:
+      - "dependencies"
+    groups:
+      all:
+        patterns:
+          - "*"
