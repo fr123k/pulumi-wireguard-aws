@@ -181,24 +181,6 @@ temporal-deploy-base:
 	pulumi config rm temporal_snapshot_id || true
 	pulumi up --yes
 
-## franky deployment with pre-baked image
-
-franky-set-snapshot:
-	@if [ -z "$(SNAPSHOT_ID)" ]; then \
-		SNAPSHOT_ID=$$(jq -r '.builds[-1].artifact_id' $(PACKER_MANIFEST)); \
-	fi; \
-	echo "Setting franky_snapshot_id to $$SNAPSHOT_ID"; \
-	pulumi config set franky_snapshot_id $$SNAPSHOT_ID
-
-franky-deploy-prebaked: franky-set-snapshot init
-	# pulumi destroy
-	pulumi refresh
-	pulumi up --yes
-
-franky-deploy-base:
-	pulumi config rm franky_snapshot_id || true
-	pulumi up --yes
-
 ## Full pipeline: build image and deploy
 
 temporal-full-deploy: packer-build temporal-deploy-prebaked
