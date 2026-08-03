@@ -45,7 +45,7 @@ mv /tmp/secrets/certs/privkey.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/priv
 chmod 600 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
 chmod 644 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
 
-cat > /etc/nginx/sites-available/router <<- EOF
+cat > /etc/nginx/sites-available/router.conf <<- EOF
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -81,7 +81,7 @@ server {
 }
 EOF
 
-cat > /etc/nginx/sites-available/router.secret <<- EOF
+cat > /etc/nginx/sites-available/router-secret.conf <<- EOF
 server {
     listen 8443 ssl;
     # Wildcard certificate
@@ -119,8 +119,8 @@ server {
 }
 EOF
 
-sudo ln -s /etc/nginx/sites-available/router /etc/nginx/sites-enabled/router
-sudo ln -s /etc/nginx/sites-available/router.secret /etc/nginx/sites-enabled/router.secret
+sudo ln -s /etc/nginx/sites-available/router.conf /etc/nginx/sites-enabled/router.conf
+sudo ln -s /etc/nginx/sites-available/router-secret.conf /etc/nginx/sites-enabled/router-secret.conf
 sudo rm /etc/nginx/sites-enabled/default 
 
 # Setup wireguard

@@ -26,6 +26,19 @@ func WireguardUserData() (*model.UserData, error) {
     return userData, nil
 }
 
+// WireguardPrebakedUserData returns the minimal cloud-init script for pre-baked WireGuard images.
+// This script only handles runtime-specific configuration (SSH, secrets, SSL, WireGuard keys,
+// service startup). All binaries, packages, and systemd units are already installed in the image.
+func WireguardPrebakedUserData() (*model.UserData, error) {
+    return prebakedUserData("cloud-init/wireguard-prebaked.txt", map[string]string{
+        "CLIENT_PUBLICKEY":                    "CLIENT_PUBLICKEY",
+        "CLIENT_IP_ADDRESS":                   "CLIENT_IP_ADDRESS",
+        "MAILJET_API_CREDENTIALS":              "MAILJET_API_CREDENTIALS",
+        "WIREGUARD_DOMAIN":                     "WIREGUARD_DOMAIN",
+        "SECRET_OPERATOR_AUTHENTICATION_TOKEN": "SECRET_OPERATOR_AUTHENTICATION_TOKEN",
+    })
+}
+
 func WireguardProvisioner(ctx *pulumi.Context, keyPair *model.KeyPairArgs) actors.SSHConnector {
     return actors.NewSSHConnector(
         actors.SSHConnectorArgs{

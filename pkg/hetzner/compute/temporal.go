@@ -1,28 +1,11 @@
 package compute
 
 import (
-	"regexp"
-	"strings"
-
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/model"
 	"github.com/fr123k/pulumi-wireguard-aws/pkg/shared"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
-
-// isPrebakedImage detects if the image is a pre-baked Hetzner snapshot.
-// Returns true if the image name is numeric (snapshot ID) or starts with "prebaked" prefix.
-func isPrebakedImage(imageName string) bool {
-	// Check if it's a numeric snapshot ID
-	numericPattern := regexp.MustCompile(`^\d+$`)
-	if numericPattern.MatchString(imageName) {
-		return true
-	}
-
-	// Check if it starts with "prebaked" or "temporal-prebaked" prefix
-	lowerName := strings.ToLower(imageName)
-	return strings.HasPrefix(lowerName, "prebaked") || strings.HasPrefix(lowerName, "temporal-prebaked")
-}
 
 // const size = "cx11"
 
@@ -136,7 +119,7 @@ func CreateTemporalVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP 
 		imageName = computeArgs.Images[0].Name
 	}
 
-	if isPrebakedImage(imageName) {
+	if isPrebakedImage(imageName, "prebaked", "temporal-prebaked") {
 		_ = ctx.Log.Info("Using pre-baked image, loading minimal cloud-init", nil)
 		userData, err = shared.TemporalPrebakedUserData()
 	} else {

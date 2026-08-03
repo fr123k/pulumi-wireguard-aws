@@ -14,6 +14,9 @@ coverage.txt
 # Packer
 packer/hetzner/temporal/manifest.json
 packer/hetzner/temporal/temporal-verify
+packer/hetzner/wireguard/manifest.json
+packer/hetzner/wireguard/wireguard-verify
+packer/hetzner/wireguard/packer
 *.pkrvars.hcl
 !*.pkrvars.hcl.example
 

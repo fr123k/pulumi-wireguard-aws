@@ -75,12 +75,18 @@ func main() {
 		keyPair.Name = &keyPairName
 		keyPair.Username = "frank.ittermann"
 
-		// keyPair.Username = "frank.ittermann"
+		// Get snapshot ID from config, defaults to ubuntu-26.04 if not specified
+		snapshotID := cfg.Get("wireguard_snapshot_id")
+		imageName := "ubuntu-26.04"
+		if snapshotID != "" {
+			imageName = snapshotID
+		}
+
 		computeArgs := model.NewComputeArgsWithKeyPair(vpc, security, keyPair)
 		computeArgs.Name = vmName
 		computeArgs.Images = []*model.ImageArgs{
 			{
-				Name: "ubuntu-26.04",
+				Name: imageName,
 			},
 		}
 
