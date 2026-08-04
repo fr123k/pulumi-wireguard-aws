@@ -370,3 +370,17 @@ To open a SSH shell just run the following command.
 * generate the Pulumi.yaml based on the arch (to support multiple binaries depending on the arch)
 * finding the ~/.pulumi folder to mount the stacks folder properly into the pulumi container (only the stacks dir)
 * implement pulumi cache to skip always downloading of plugins
+
+# Server's
+
+## Wireguard
+
+### Server
+```shell
+PKR_VAR_secret_operator_token="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName wireguard | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=wg.fr123k.uk DOMAIN=wg.fr123k.uk PROJECT=wireguard  PRIVATE_KEY_FILE=./keys/wireguard make deploy-prebaked
+```
+
+### Test Server
+```shell
+PKR_VAR_secret_operator_token="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName wireguard | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=wg-test.fr123k.uk DOMAIN=wg-test.fr123k.uk STACK_SUFFIX=-test PROJECT=wireguard  PRIVATE_KEY_FILE=./keys/wireguard-test make deploy-prebaked
+```

@@ -1,7 +1,7 @@
 #!/bin/bash -v
 
 export DEBIAN_FRONTEND=noninteractive
-export WIREGUARD_DOMAIN="{{ WIREGUARD_DOMAIN }}"
+export DOMAIN="{{ DOMAIN }}"
 
 # Setup ssh user
 useradd -m -s /bin/bash -G sudo frank.ittermann
@@ -38,12 +38,12 @@ sudo mv secret-operator-client_linux_amd64 /usr/bin/secret-operator-client
 sudo chmod +x /usr/bin/secret-operator-client
 
 # Fetch wildcard SSL certificate from secret-operator
-mkdir -p /etc/letsencrypt/live/${WIREGUARD_DOMAIN}
-secret-operator-client fetch -token="{{ SECRET_OPERATOR_AUTHENTICATION_TOKEN }}" --output=/tmp/secrets
-mv /tmp/secrets/certs/fullchain.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
-mv /tmp/secrets/certs/privkey.pem /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
-chmod 600 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem
-chmod 644 /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem
+mkdir -p /etc/letsencrypt/live/${DOMAIN}
+secret-operator-client fetch -token="{{ SECRET_OPERATOR_TOKEN }}" --output=/tmp/secrets
+mv /tmp/secrets/certs/fullchain.pem /etc/letsencrypt/live/${DOMAIN}/fullchain.pem
+mv /tmp/secrets/certs/privkey.pem /etc/letsencrypt/live/${DOMAIN}/privkey.pem
+chmod 600 /etc/letsencrypt/live/${DOMAIN}/privkey.pem
+chmod 644 /etc/letsencrypt/live/${DOMAIN}/fullchain.pem
 
 cat > /etc/nginx/sites-available/router.conf <<- EOF
 server {
@@ -51,10 +51,10 @@ server {
     listen [::]:80 default_server;
     listen 443 ssl;
 
-    server_name ${WIREGUARD_DOMAIN};
+    server_name ${DOMAIN};
 
-    ssl_certificate /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
 
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
@@ -85,9 +85,9 @@ cat > /etc/nginx/sites-available/router-secret.conf <<- EOF
 server {
     listen 8443 ssl;
     # Wildcard certificate
-    ssl_certificate /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${WIREGUARD_DOMAIN}/privkey.pem;
-    server_name ${WIREGUARD_DOMAIN};
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    server_name ${DOMAIN};
 
     access_log /var/log/nginx/secret_access.log;
     error_log /var/log/nginx/secret_error.log;

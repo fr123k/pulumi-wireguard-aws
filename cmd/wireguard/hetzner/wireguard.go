@@ -34,18 +34,18 @@ func main() {
 			vmIP = "10.15.1.145"
 		}
 
-		// Set WIREGUARD_DOMAIN env var from pulumi config (or env var)
-		wireguardDomain := cfg.Get("wireguard_domain")
+		// Set DOMAIN env var from pulumi config (or env var)
+		wireguardDomain := cfg.Get("domain")
 		if wireguardDomain != "" {
-			if err := os.Setenv("WIREGUARD_DOMAIN", wireguardDomain); err != nil {
+			if err := os.Setenv("DOMAIN", wireguardDomain); err != nil {
 				return err
 			}
 		}
 
-		// Set SECRET_OPERATOR_AUTHENTICATION_TOKEN from pulumi config if provided
-		secretToken := cfg.Get("secret_operator_authentication_token")
+		// Set SECRET_OPERATOR_TOKEN from pulumi config if provided
+		secretToken := cfg.Get("SECRET_OPERATOR_TOKEN")
 		if secretToken != "" {
-			if err := os.Setenv("SECRET_OPERATOR_AUTHENTICATION_TOKEN", secretToken); err != nil {
+			if err := os.Setenv("SECRET_OPERATOR_TOKEN", secretToken); err != nil {
 				return err
 			}
 		}
@@ -76,7 +76,7 @@ func main() {
 		keyPair.Username = "frank.ittermann"
 
 		// Get snapshot ID from config, defaults to ubuntu-26.04 if not specified
-		snapshotID := cfg.Get("wireguard_snapshot_id")
+		snapshotID := cfg.Get("snapshot_id")
 		imageName := "ubuntu-26.04"
 		if snapshotID != "" {
 			imageName = snapshotID

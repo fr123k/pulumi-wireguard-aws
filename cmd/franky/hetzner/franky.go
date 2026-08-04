@@ -59,7 +59,7 @@ func main() {
 		keyPair.Username = "frank.ittermann"
 
 		// Use pre-baked snapshot ID if configured, otherwise default to ubuntu-24.04
-		imageName := cfg.Get("franky_snapshot_id")
+		imageName := cfg.Get("snapshot_id")
 		if imageName == "" {
 			imageName = "ubuntu-24.04"
 		}

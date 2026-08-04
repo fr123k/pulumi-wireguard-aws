@@ -38,9 +38,9 @@ systemctl reload ssh.service
 # Secret Fetching
 # ============================================
 echo "=== Fetching secrets ==="
-export SECRET_OPERATOR_AUTHENTICATION_TOKEN="{{ SECRET_OPERATOR_AUTHENTICATION_TOKEN }}"
+export SECRET_OPERATOR_TOKEN="{{ SECRET_OPERATOR_TOKEN }}"
 
-secret-operator-client fetch -token=${SECRET_OPERATOR_AUTHENTICATION_TOKEN} --output=/tmp/secrets -envFile=temporal-worker.env
+secret-operator-client fetch -token=${SECRET_OPERATOR_TOKEN} --output=/tmp/secrets -envFile=temporal-worker.env
 mv /tmp/secrets/temporal-worker.env /etc/systemd/system/temporal-worker.env
 chmod 600 /etc/systemd/system/temporal-worker.env
 
