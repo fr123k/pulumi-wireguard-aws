@@ -11,7 +11,7 @@ import (
 
 func TemporalUserData() (*model.UserData, error) {
 	userDataVariables := map[string]string{
-		"SECRET_OPERATOR_AUTHENTICATION_TOKEN": "SECRET_OPERATOR_AUTHENTICATION_TOKEN",
+		"SECRET_OPERATOR_TOKEN": "SECRET_OPERATOR_TOKEN",
 		// "CLIENT_IP_ADDRESS":       "CLIENT_IP_ADDRESS",
 		// "MAILJET_API_CREDENTIALS": "MAILJET_API_CREDENTIALS",
 		// "METADATA_URL":            "METADATA_URL",
@@ -28,9 +28,9 @@ func TemporalUserData() (*model.UserData, error) {
 // This script only handles runtime-specific configuration (SSH, secrets, SSL, service startup).
 func TemporalPrebakedUserData() (*model.UserData, error) {
 	return prebakedUserData("cloud-init/temporal-prebaked.txt", map[string]string{
-		"SECRET_OPERATOR_AUTHENTICATION_TOKEN": "SECRET_OPERATOR_AUTHENTICATION_TOKEN",
-		"TEMPORAL_DOMAIN":                      "TEMPORAL_DOMAIN",
-		"DUNEBOT_DOMAIN":                       "DUNEBOT_DOMAIN",
+		"SECRET_OPERATOR_TOKEN": "SECRET_OPERATOR_TOKEN",
+		"TEMPORAL_DOMAIN":       "TEMPORAL_DOMAIN",
+		"DUNEBOT_DOMAIN":        "DUNEBOT_DOMAIN",
 	})
 }
 

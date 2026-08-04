@@ -50,7 +50,7 @@ variable "secret_operator_version" {
 }
 
 // Secret / domain configuration for baking SSL certs into the image
-variable "wireguard_domain" {
+variable "domain" {
   type        = string
   default     = "wg.fr123k.uk"
   description = "WireGuard domain for SSL certificate installation"
