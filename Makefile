@@ -220,32 +220,7 @@ sync-versions-wireguard:
 
 ## Mini PC (physical server) targets
 
-MINIPC ?= minipc
-MINIPC_STACK_NAME ?= ${MINIPC}-local
 MINIPC_SERVER_IP ?=
-
-minipc-init: build
-	pulumi login gs://containifyci-pulumi-state-backend
-# 	pulumi login --local
-	pulumi stack init ${MINIPC_STACK_NAME} || echo ignore if stack ${MINIPC_STACK_NAME} already exists
-	pulumi stack select -c ${MINIPC_STACK_NAME}
-	pulumi config set server_ip "${MINIPC_SERVER_IP}"
-	pulumi config set ssh_key_file "${PRIVATE_KEY_FILE}"
-	pulumi config set username "${SSH_USER}"
-
-minipc-create: minipc-init
-	pulumi up --yes
-
-minipc-preview: minipc-init
-	pulumi preview --diff
-
-minipc-destroy:
-	pulumi destroy --yes -s ${MINIPC_STACK_NAME}
-	pulumi stack rm -f --yes ${MINIPC_STACK_NAME} || true
-
-minipc-output:
-	mkdir -p ./output
-	pulumi stack output --json > ./output/minipc.json
 
 minipc-verify: verify
 	./build/verify --host "${MINIPC_SERVER_IP}" --key "${MINIPC_SSH_KEY_FILE}" --user "${MINIPC_SSH_USER}" --port ${MINIPC_SSH_PORT} --deployed
@@ -253,12 +228,5 @@ minipc-verify: verify
 minipc-shell:
 	ssh -i "${MINIPC_SSH_KEY_FILE}" -p ${MINIPC_SSH_PORT} ${MINIPC_SSH_USER}@${MINIPC_SERVER_IP}
 
-## Full pipeline: build image and deploy mini PC
-
-minipc-deploy-prebaked: minipc-set-snapshot minipc-init
-	pulumi refresh
-	pulumi up --yes
-
 minipc-deploy-base:
-	pulumi config rm minipc_image_id || true
 	pulumi up --yes
