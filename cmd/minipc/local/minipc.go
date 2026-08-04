@@ -44,12 +44,6 @@ func createInfraStructure(ctx *pulumi.Context) error {
 		return fmt.Errorf("configuration key 'server_ip' is required (set with: pulumi config set server_ip <ip>)")
 	}
 
-	// Optional: SSH port (default: 22)
-	sshPort := 22
-	if port := cfg.GetInt("ssh_port"); port != 0 {
-		sshPort = port
-	}
-
 	// Optional: SSH username (default: root)
 	username := cfg.Get("username")
 	if username == "" {
@@ -89,7 +83,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
 	// Set environment variables for template rendering
 	if err := setEnvVars(
 		"MINIPC_USER", minipcUser,
-		"MINIPC_SSH_PORT", fmt.Sprintf("%d", sshPort),
+		"MINIPC_SSH_PORT", "22",
 		"MINIPC_DOCKER", installDocker,
 		"MINIPC_NIC", nic,
 		"FRANKY_VERSION", frankyVersion,
@@ -121,7 +115,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
 	// Create local compute args
 	computeArgs := &compute.LocalComputeArgs{
 		Host:       serverIP,
-		Port:       sshPort,
+		Port:       22,
 		Username:   username,
 		KeyPair:    keyPair,
 		UserData:   userData,
@@ -140,7 +134,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
 	// The script will restart SSH and configure the firewall, so we expect the connection to drop.
 	err = compute.RunProvisioner(ctx, &compute.LocalComputeArgs{
 		Host:     infra.ServerIP,
-		Port:     sshPort,
+		Port:     22,
 		Username: username,
 		KeyPair:  keyPair,
 		ProvisionCommands: []actors.SSHCommand{
@@ -156,7 +150,7 @@ func createInfraStructure(ctx *pulumi.Context) error {
 	// and verify that the services are running.
 	err = compute.RunProvisioner(ctx, &compute.LocalComputeArgs{
 		Host:     infra.ServerIP,
-		Port:     sshPort,
+		Port:     22,
 		Username: username,
 		KeyPair:  keyPair,
 		ProvisionCommands: []actors.SSHCommand{

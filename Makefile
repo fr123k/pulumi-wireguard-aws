@@ -218,7 +218,6 @@ sync-versions-wireguard:
 MINIPC ?= minipc
 MINIPC_STACK_NAME ?= ${MINIPC}-local
 MINIPC_SERVER_IP ?=
-MINIPC_SSH_PORT ?= 22
 
 minipc-init: build
 	pulumi login gs://containifyci-pulumi-state-backend
@@ -228,7 +227,6 @@ minipc-init: build
 	pulumi config set server_ip "${MINIPC_SERVER_IP}"
 	pulumi config set ssh_key_file "${PRIVATE_KEY_FILE}"
 	pulumi config set username "${SSH_USER}"
-	pulumi config set ssh_port ${MINIPC_SSH_PORT}
 
 minipc-create: minipc-init
 	pulumi up --yes
@@ -250,39 +248,7 @@ minipc-verify: verify
 minipc-shell:
 	ssh -i "${MINIPC_SSH_KEY_FILE}" -p ${MINIPC_SSH_PORT} ${MINIPC_SSH_USER}@${MINIPC_SERVER_IP}
 
-minipc-keys: prepare
-	wg genkey | tee ${TMP_FOLDER}/minipc_client_privatekey | wg pubkey > ${TMP_FOLDER}/minipc_client_publickey
-
-## Packer targets for pre-baked mini PC image
-
-MINIPC_PACKER_DIR ?= packer/local/${MINIPC}
-MINIPC_PACKER_MANIFEST ?= $(MINIPC_PACKER_DIR)/manifest.json
-
-minipc-packer-init:
-	cd $(MINIPC_PACKER_DIR) && packer init .
-
-minipc-packer-validate: minipc-packer-init
-	cd $(MINIPC_PACKER_DIR) && packer validate .
-
-minipc-packer-build: minipc-packer-validate
-	cd $(MINIPC_PACKER_DIR) && packer build .
-	@echo "Build complete. Image info:"
-	@jq -r '.builds[-1].artifact_id' $(MINIPC_PACKER_MANIFEST) 2>/dev/null || echo "No manifest found"
-
-minipc-packer-build-debug: minipc-packer-validate
-	cd $(MINIPC_PACKER_DIR) && PACKER_LOG=1 packer build -debug .
-
 ## Full pipeline: build image and deploy mini PC
-
-minipc-full-deploy: minipc-packer-build minipc-deploy-prebaked
-	@echo "Full mini PC deployment complete!"
-
-minipc-set-snapshot:
-	@if [ -z "$(SNAPSHOT_ID)" ]; then \
-		SNAPSHOT_ID=$$(jq -r '.builds[-1].artifact_id' $(MINIPC_PACKER_MANIFEST)); \
-	fi; \
-	echo "Setting minipc_image_id to $$SNAPSHOT_ID"; \
-	pulumi config set minipc_image_id $$SNAPSHOT_ID
 
 minipc-deploy-prebaked: minipc-set-snapshot minipc-init
 	pulumi refresh
