@@ -25,7 +25,7 @@ go-init:
 	go mod init github.com/fr123k/pulumi-wireguard-aws
 	go mod vendor
 
-pulumi-init: build
+pulumi-init2: build
 	pulumi plugin install resource aws 7.35.0
 	pulumi plugin install resource hcloud 1.39.0
 	pulumi plugin ls
@@ -38,6 +38,16 @@ pulumi-init: build
 	pulumi config set vpn_enabled_ssh ${VPN_ENABLED_SSH}
 	pulumi config set ssh_key_file ${PRIVATE_KEY_FILE}
 	pulumi config set domain $(DOMAIN)
+
+wireguard-config:
+
+temporal-config:
+
+minipc-config:
+	pulumi config set server_ip "${MINIPC_SERVER_IP}"
+	pulumi config set username "${SSH_USER}"
+
+pulumi-init: pulumi-init2 ${PROJECT}-config
 
 init: pulumi-init
 
@@ -124,11 +134,9 @@ endif
 ifeq ($(ENV),test)
   TEMPORAL_DOMAIN ?= temporal-test.dunebot.io
   DUNEBOT_DOMAIN ?= githubapp-test.dunebot.io
-  FRANKY_DOMAIN ?= franky-test.dunebot.io
 else
   TEMPORAL_DOMAIN ?= temporal.dunebot.io
   DUNEBOT_DOMAIN ?= githubapp.dunebot.io
-  FRANKY_DOMAIN ?= franky.dunebot.io
 endif
 
 packer-init:
@@ -173,9 +181,6 @@ temporal-deploy-base:
 	pulumi up --yes
 
 ## Full pipeline: build image and deploy
-
-temporal-full-deploy: packer-build temporal-deploy-prebaked
-	@echo "Full deployment complete!"
 
 temporal-recreate-prebaked: clean packer-build temporal-deploy-prebaked
 
