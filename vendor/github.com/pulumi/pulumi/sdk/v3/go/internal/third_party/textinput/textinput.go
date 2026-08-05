@@ -1,5 +1,15 @@
 // Package textinput provides a text input component for Bubble Tea
 // applications.
+//
+// Vendored from github.com/charmbracelet/bubbles@v1.0.0/textinput (MIT, see
+// LICENSE in this directory) with a single modification: the
+// github.com/atotto/clipboard import is replaced with the vendored
+// [github.com/pulumi/pulumi/sdk/v3/go/internal/third_party/clipboard], which
+// does not load user32.dll at process init. atotto/clipboard's init-time DLL
+// load crashes any binary that links it (including all provider plugins built
+// against this SDK) on Windows systems where user32.dll cannot be loaded,
+// e.g. under desktop heap exhaustion. See
+// https://github.com/pulumi/pulumi/issues/19342.
 package textinput
 
 import (
@@ -8,7 +18,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/atotto/clipboard"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal/third_party/clipboard"
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/runeutil"
