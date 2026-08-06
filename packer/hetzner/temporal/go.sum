@@ -389,8 +389,8 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/temporalio/cli v1.8.1 h1:vKoepvDddi7qR03euA1WtBn0QInBiJkijJfZ+jTKuoY=
-github.com/temporalio/cli v1.8.1/go.mod h1:IJPR2OzbZ56kaMpj3hrL7hqq0remXp/HW1FtUrSwuLw=
+github.com/temporalio/cli v1.8.2 h1:z05ZjNYenVs5Gm28+8mijqpg2u08dMCJbAJL9JabwWA=
+github.com/temporalio/cli v1.8.2/go.mod h1:IJPR2OzbZ56kaMpj3hrL7hqq0remXp/HW1FtUrSwuLw=
 github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7 h1:+QDWuw3C/PMxuWPBl7H5qt5Ov5OJWD7c7l0lQMad8ZQ=
 github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7/go.mod h1:407OzviUHSjy16uZdWXinyL7/XjK1pddCv3ggt43/Vc=
 github.com/temporalio/ringpop-go v0.0.0-20250130211428-b97329e994f7 h1:lEebX/hZss+TSH3EBwhztnBavJVj7pWGJOH8UgKHS0w=
@@ -400,8 +400,8 @@ github.com/temporalio/sqlparser v0.0.0-20231115171017-f4060bcfa6cb/go.mod h1:143
 github.com/temporalio/tchannel-go v1.22.1-0.20220818200552-1be8d8cffa5b/go.mod h1:c+V9Z/ZgkzAdyGvHrvC5AsXgN+M9Qwey04cBdKYzV7U=
 github.com/temporalio/tchannel-go v1.22.1-0.20240528171429-1db37fdea938 h1:sEJGhmDo+0FaPWM6f0v8Tjia0H5pR6/Baj6+kS78B+M=
 github.com/temporalio/tchannel-go v1.22.1-0.20240528171429-1db37fdea938/go.mod h1:ezRQRwu9KQXy8Wuuv1aaFFxoCNz5CeNbVOOkh3xctbY=
-github.com/temporalio/ui-server/v2 v2.52.1 h1:NkWLu1fAC9GBxOqANASXYbf7In+w8fccXBzrCAMYnxk=
-github.com/temporalio/ui-server/v2 v2.52.1/go.mod h1:HKjuLT3J/hM1nRN6Vge2Z63tPWPNUVR/2+5CMbkBQns=
+github.com/temporalio/ui-server/v2 v2.53.0 h1:VhdafvXljkPFGjr0f10MKazv8OunorJT378Zihq3YuE=
+github.com/temporalio/ui-server/v2 v2.53.0/go.mod h1:VQ+gPJiSMoOtKZo6JPAbGYT7MbuepdnzAJSfV6mHSbM=
 github.com/tidwall/btree v1.8.1 h1:27ehoXvm5AG/g+1VxLS1SD3vRhp/H7LuEfwNvddEdmA=
 github.com/tidwall/btree v1.8.1/go.mod h1:jBbTdUWhSZClZWoDg54VnvV7/54modSOzDN7VXftj1A=
 github.com/twmb/murmur3 v1.1.8 h1:8Yt9taO/WN3l08xErzjeschgZU2QSrwm1kclYq+0aRg=
@@ -458,8 +458,8 @@ go.opentelemetry.io/otel/trace v1.43.0 h1:BkNrHpup+4k4w+ZZ86CZoHHEkohws8AY+WTX09
 go.opentelemetry.io/otel/trace v1.43.0/go.mod h1:/QJhyVBUUswCphDVxq+8mld+AvhXZLhe+8WVFxiFff0=
 go.opentelemetry.io/proto/otlp v1.9.0 h1:l706jCMITVouPOqEnii2fIAuO3IVGBRPV5ICjceRb/A=
 go.opentelemetry.io/proto/otlp v1.9.0/go.mod h1:xE+Cx5E/eEHw+ISFkwPLwCZefwVjY+pqKg1qcK03+/4=
-go.temporal.io/api v1.63.3 h1:09yoemfjnk1YHV6g402lMW1vZccUd9Au/NfQBEZC0Eo=
-go.temporal.io/api v1.63.3/go.mod h1:0k75tRljEuELWGeXjEZZO7zYqBln4+1FrG6+IMOMy7Q=
+go.temporal.io/api v1.63.4 h1:p4dVIAP3dJop0MfcyH9QSzjU7+V/ttLDhxFhSRUar58=
+go.temporal.io/api v1.63.4/go.mod h1:SrlW2JMwVlDP4nRWSNznUFqnSHd+YeMDS1BkYo63HCQ=
 go.temporal.io/auto-scaled-workers v0.0.0-20260407181057-edd947d743d2 h1:1hKeH3GyR6YD6LKMHGCZ76t6h1Sgha0hXVQBxWi3dlQ=
 go.temporal.io/auto-scaled-workers v0.0.0-20260407181057-edd947d743d2/go.mod h1:T8dnzVPeO+gaUTj9eDgm/lT2lZH4+JXNvrGaQGyVi50=
 go.temporal.io/sdk v1.46.0 h1:zD2l907+4iVkLsnJZwFj/oIIjYsoqyjsHlKO/3tDKoU=
