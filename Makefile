@@ -25,7 +25,7 @@ go-init:
 	go mod init github.com/fr123k/pulumi-wireguard-aws
 	go mod vendor
 
-pulumi-init: build
+pulumi-init2: build
 	pulumi plugin install resource aws 7.35.0
 	pulumi plugin install resource hcloud 1.39.0
 	pulumi plugin ls
@@ -37,6 +37,17 @@ pulumi-init: build
 	pulumi config set aws:region eu-west-1
 	pulumi config set vpn_enabled_ssh ${VPN_ENABLED_SSH}
 	pulumi config set ssh_key_file ${PRIVATE_KEY_FILE}
+	pulumi config set domain $(DOMAIN)
+
+wireguard-config:
+
+temporal-config:
+
+minipc-config:
+	pulumi config set server_ip "${MINIPC_SERVER_IP}"
+	pulumi config set username "${SSH_USER}"
+
+pulumi-init: pulumi-init2 ${PROJECT}-config
 
 init: pulumi-init
 
@@ -61,12 +72,15 @@ preview: pulumi-init
 	pulumi preview --diff
 
 clean:
+# 	echo "pulumi destroy ${STACK_NAME}"
 	pulumi destroy --yes -s ${STACK_NAME}
 	pulumi stack rm -f --yes ${STACK_NAME} || true
 
 recreate: clean create output
 
 deploy: init create output
+
+deploy-prebaked: init packer-set-snapshot create output
 
 local: local-cleanup deploy
 
@@ -120,24 +134,9 @@ endif
 ifeq ($(ENV),test)
   TEMPORAL_DOMAIN ?= temporal-test.dunebot.io
   DUNEBOT_DOMAIN ?= githubapp-test.dunebot.io
-  FRANKY_DOMAIN ?= franky-test.dunebot.io
-  WIREGUARD_DOMAIN ?= wg-test.fr123k.uk
 else
   TEMPORAL_DOMAIN ?= temporal.dunebot.io
   DUNEBOT_DOMAIN ?= githubapp.dunebot.io
-  FRANKY_DOMAIN ?= franky.dunebot.io
-  WIREGUARD_DOMAIN ?= wg.fr123k.uk
-endif
-
-# Secret Operator token for build-time SSL cert fetching (wireguard)
-# Export as PKR_VAR_ so Packer picks it up automatically.
-# Usage: make packer-build PROJECT=wireguard SECRET_OPERATOR_TOKEN=xxx
-SECRET_OPERATOR_TOKEN ?=
-# Only export wireguard-specific PKR_VAR_ vars when PROJECT is wireguard
-# to avoid leaking them into temporal/franky builds
-ifeq ($(PROJECT),wireguard)
-  export PKR_VAR_secret_operator_token = $(SECRET_OPERATOR_TOKEN)
-  export PKR_VAR_wireguard_domain = $(WIREGUARD_DOMAIN)
 endif
 
 packer-init:
@@ -163,16 +162,16 @@ packer-cleanup:
 packer-list:
 	@hcloud image list --selector packer_build=true --output columns=id,description,created
 
-## Temporal deployment with pre-baked image
-
-temporal-set-snapshot:
+packer-set-snapshot:
 	@if [ -z "$(SNAPSHOT_ID)" ]; then \
 		SNAPSHOT_ID=$$(jq -r '.builds[-1].artifact_id' $(PACKER_MANIFEST)); \
 	fi; \
-	echo "Setting temporal_snapshot_id to $$SNAPSHOT_ID"; \
-	pulumi config set temporal_snapshot_id $$SNAPSHOT_ID
+	echo "Setting snapshot_id to $$SNAPSHOT_ID"; \
+	pulumi config set snapshot_id $$SNAPSHOT_ID
 
-temporal-deploy-prebaked: temporal-set-snapshot init
+## Temporal deployment with pre-baked image
+
+temporal-deploy-prebaked: packer-set-snapshot init
 	# TEMPORAL_DOMAIN=$(TEMPORAL_DOMAIN) DUNEBOT_DOMAIN=$(DUNEBOT_DOMAIN) pulumi destroy
 	TEMPORAL_DOMAIN=$(TEMPORAL_DOMAIN) DUNEBOT_DOMAIN=$(DUNEBOT_DOMAIN) pulumi refresh
 	TEMPORAL_DOMAIN=$(TEMPORAL_DOMAIN) DUNEBOT_DOMAIN=$(DUNEBOT_DOMAIN) pulumi up --yes
@@ -181,102 +180,19 @@ temporal-deploy-base:
 	pulumi config rm temporal_snapshot_id || true
 	pulumi up --yes
 
-## franky deployment with pre-baked image
-
-franky-set-snapshot:
-	@if [ -z "$(SNAPSHOT_ID)" ]; then \
-		SNAPSHOT_ID=$$(jq -r '.builds[-1].artifact_id' $(PACKER_MANIFEST)); \
-	fi; \
-	echo "Setting franky_snapshot_id to $$SNAPSHOT_ID"; \
-	pulumi config set franky_snapshot_id $$SNAPSHOT_ID
-
-franky-deploy-prebaked: franky-set-snapshot init
-	# pulumi destroy
-	pulumi refresh
-	pulumi up --yes
-
-franky-deploy-base:
-	pulumi config rm franky_snapshot_id || true
-	pulumi up --yes
-
 ## Full pipeline: build image and deploy
-
-temporal-full-deploy: packer-build temporal-deploy-prebaked
-	@echo "Full deployment complete!"
 
 temporal-recreate-prebaked: clean packer-build temporal-deploy-prebaked
 
-## Wireguard deployment with custom domain
-
-# Domain defaults based on ENV
-ifeq ($(ENV),test)
-  WIREGUARD_DOMAIN ?= wg-test.fr123k.uk
-  WIREGUARD_STACK_NAME ?= wireguard-test-hetzner
-  PRIVATE_KEY_FILE = ./keys/wireguard-test
-else
-  WIREGUARD_DOMAIN ?= wg.fr123k.uk
-  WIREGUARD_STACK_NAME ?= wireguard-hetzner
-  PRIVATE_KEY_FILE = ./keys/wireguard
-endif
-
-wireguard-init: build
-	pulumi login gs://containifyci-pulumi-state-backend
-# 	pulumi login --local
-	pulumi stack init $(WIREGUARD_STACK_NAME) || echo ignore if stack $(WIREGUARD_STACK_NAME) already exists
-	pulumi stack select -c $(WIREGUARD_STACK_NAME)
-	pulumi config set aws:region eu-west-1
-	pulumi config set vpn_enabled_ssh ${VPN_ENABLED_SSH}
-	pulumi config set ssh_key_file ${PRIVATE_KEY_FILE}
-	pulumi config set wireguard_domain $(WIREGUARD_DOMAIN)
-
-wireguard-set-domain:
-	@echo "Setting wireguard_domain to $(WIREGUARD_DOMAIN) for stack $(WIREGUARD_STACK_NAME)"
-	pulumi config set wireguard_domain $(WIREGUARD_DOMAIN)
-
-wireguard-create: wireguard-init
-	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi up --yes
-
-wireguard-preview: wireguard-init
-	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi preview --diff
-
-wireguard-clean:
-	pulumi destroy --yes -s $(WIREGUARD_STACK_NAME)
-	pulumi stack rm -f --yes $(WIREGUARD_STACK_NAME) || true
-
-wireguard-output:
-	mkdir -p ./output
-	pulumi stack output --json > ./output/wireguard-$(WIREGUARD_STACK_NAME).json
-
-wireguard-deploy: wireguard-create wireguard-output
-	@echo "Wireguard deployment complete! Stack: $(WIREGUARD_STACK_NAME) Domain: $(WIREGUARD_DOMAIN)"
-
-wireguard-deploy-test:
-	$(MAKE) wireguard-deploy ENV=test
-
-## Wireguard deployment with pre-baked image
-
-wireguard-set-snapshot:
-	@if [ -z "$(SNAPSHOT_ID)" ]; then \
-		SNAPSHOT_ID=$$(jq -r '.builds[-1].artifact_id' $(PACKER_MANIFEST)); \
-	fi; \
-	echo "Setting wireguard_snapshot_id to $$SNAPSHOT_ID"; \
-	pulumi config set wireguard_snapshot_id $$SNAPSHOT_ID
-
-wireguard-deploy-prebaked: wireguard-init wireguard-set-snapshot
+wireguard-deploy-prebaked: wireguard-init packer-set-snapshot
 	# pulumi destroy
 	pulumi refresh --yes
-	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi up --yes
+	DOMAIN=$(DOMAIN) pulumi up --yes
 
 wireguard-deploy-base:
 	pulumi config rm wireguard_snapshot_id || true
-	WIREGUARD_DOMAIN=$(WIREGUARD_DOMAIN) pulumi up --yes
+	DOMAIN=$(DOMAIN) pulumi up --yes
 
-## Full pipeline: build image and deploy
-
-wireguard-full-deploy: packer-build wireguard-deploy-prebaked
-	@echo "Full deployment complete!"
-
-wireguard-recreate-prebaked: clean packer-build wireguard-deploy-prebaked
 
 ## Certificate Management
 
@@ -304,34 +220,7 @@ sync-versions-wireguard:
 
 ## Mini PC (physical server) targets
 
-MINIPC ?= minipc
-MINIPC_STACK_NAME ?= ${MINIPC}-local
 MINIPC_SERVER_IP ?=
-MINIPC_SSH_PORT ?= 22
-
-minipc-init: build
-	pulumi login gs://containifyci-pulumi-state-backend
-# 	pulumi login --local
-	pulumi stack init ${MINIPC_STACK_NAME} || echo ignore if stack ${MINIPC_STACK_NAME} already exists
-	pulumi stack select -c ${MINIPC_STACK_NAME}
-	pulumi config set server_ip "${MINIPC_SERVER_IP}"
-	pulumi config set ssh_key_file "${PRIVATE_KEY_FILE}"
-	pulumi config set username "${SSH_USER}"
-	pulumi config set ssh_port ${MINIPC_SSH_PORT}
-
-minipc-create: minipc-init
-	pulumi up --yes
-
-minipc-preview: minipc-init
-	pulumi preview --diff
-
-minipc-destroy:
-	pulumi destroy --yes -s ${MINIPC_STACK_NAME}
-	pulumi stack rm -f --yes ${MINIPC_STACK_NAME} || true
-
-minipc-output:
-	mkdir -p ./output
-	pulumi stack output --json > ./output/minipc.json
 
 minipc-verify: verify
 	./build/verify --host "${MINIPC_SERVER_IP}" --key "${MINIPC_SSH_KEY_FILE}" --user "${MINIPC_SSH_USER}" --port ${MINIPC_SSH_PORT} --deployed
@@ -339,44 +228,5 @@ minipc-verify: verify
 minipc-shell:
 	ssh -i "${MINIPC_SSH_KEY_FILE}" -p ${MINIPC_SSH_PORT} ${MINIPC_SSH_USER}@${MINIPC_SERVER_IP}
 
-minipc-keys: prepare
-	wg genkey | tee ${TMP_FOLDER}/minipc_client_privatekey | wg pubkey > ${TMP_FOLDER}/minipc_client_publickey
-
-## Packer targets for pre-baked mini PC image
-
-MINIPC_PACKER_DIR ?= packer/local/${MINIPC}
-MINIPC_PACKER_MANIFEST ?= $(MINIPC_PACKER_DIR)/manifest.json
-
-minipc-packer-init:
-	cd $(MINIPC_PACKER_DIR) && packer init .
-
-minipc-packer-validate: minipc-packer-init
-	cd $(MINIPC_PACKER_DIR) && packer validate .
-
-minipc-packer-build: minipc-packer-validate
-	cd $(MINIPC_PACKER_DIR) && packer build .
-	@echo "Build complete. Image info:"
-	@jq -r '.builds[-1].artifact_id' $(MINIPC_PACKER_MANIFEST) 2>/dev/null || echo "No manifest found"
-
-minipc-packer-build-debug: minipc-packer-validate
-	cd $(MINIPC_PACKER_DIR) && PACKER_LOG=1 packer build -debug .
-
-## Full pipeline: build image and deploy mini PC
-
-minipc-full-deploy: minipc-packer-build minipc-deploy-prebaked
-	@echo "Full mini PC deployment complete!"
-
-minipc-set-snapshot:
-	@if [ -z "$(SNAPSHOT_ID)" ]; then \
-		SNAPSHOT_ID=$$(jq -r '.builds[-1].artifact_id' $(MINIPC_PACKER_MANIFEST)); \
-	fi; \
-	echo "Setting minipc_image_id to $$SNAPSHOT_ID"; \
-	pulumi config set minipc_image_id $$SNAPSHOT_ID
-
-minipc-deploy-prebaked: minipc-set-snapshot minipc-init
-	pulumi refresh
-	pulumi up --yes
-
 minipc-deploy-base:
-	pulumi config rm minipc_image_id || true
 	pulumi up --yes

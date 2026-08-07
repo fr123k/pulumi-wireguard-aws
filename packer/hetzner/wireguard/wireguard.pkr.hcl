@@ -83,7 +83,7 @@ build {
     ]
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive",
-      "WIREGUARD_DOMAIN=${var.wireguard_domain}",
+      "DOMAIN=${var.domain}",
       "SECRET_OPERATOR_TOKEN=${var.secret_operator_token}"
     ]
   }
