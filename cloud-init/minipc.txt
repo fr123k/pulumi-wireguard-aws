@@ -140,6 +140,8 @@ cat > /etc/nftables.conf <<- 'NFTABLES'
 #!/usr/sbin/nft -f
 # Mini PC firewall rules
 
+flush ruleset
+
 table inet filter {
     chain input {
         type filter hook input priority 0; policy drop;
