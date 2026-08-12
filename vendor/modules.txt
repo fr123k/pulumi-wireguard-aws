@@ -384,7 +384,7 @@ github.com/pulumi/pulumi-aws/sdk/v7/go/aws/route53
 ## explicit; go 1.25.11
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud/internal
-# github.com/pulumi/pulumi/sdk/v3 v3.255.0
+# github.com/pulumi/pulumi/sdk/v3 v3.256.0
 ## explicit; go 1.25.11
 github.com/pulumi/pulumi/sdk/v3/go/common/apitype
 github.com/pulumi/pulumi/sdk/v3/go/common/constant

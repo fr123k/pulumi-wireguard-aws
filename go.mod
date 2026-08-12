@@ -7,7 +7,7 @@ require (
 	github.com/creasty/defaults v1.8.0
 	github.com/pulumi/pulumi-aws/sdk/v7 v7.40.0
 	github.com/pulumi/pulumi-hcloud/sdk v1.41.0
-	github.com/pulumi/pulumi/sdk/v3 v3.255.0
+	github.com/pulumi/pulumi/sdk/v3 v3.256.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.54.0
 )
