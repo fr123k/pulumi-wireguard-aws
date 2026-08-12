@@ -140,6 +140,8 @@ cat > /etc/nftables.conf <<- 'NFTABLES'
 #!/usr/sbin/nft -f
 # Mini PC firewall rules
 
+flush ruleset
+
 table inet filter {
     chain input {
         type filter hook input priority 0; policy drop;
@@ -173,6 +175,9 @@ table inet filter {
 
         # Allow franky web UI
         tcp dport { 8787 } accept
+
+        # Allow franky-box inbox/outbox API
+        tcp dport { 8080 } accept
 
         # Log dropped packets
         log prefix "nftables-drop: " drop
