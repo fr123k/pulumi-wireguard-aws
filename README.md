@@ -375,12 +375,27 @@ To open a SSH shell just run the following command.
 
 ## Wireguard
 
-### Server
+### Server A
+
 ```shell
-PKR_VAR_secret_operator_token="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName wireguard | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=wg.fr123k.uk DOMAIN=wg.fr123k.uk PROJECT=wireguard  PRIVATE_KEY_FILE=./keys/wireguard make deploy-prebaked
+PKR_VAR_secret_operator_token="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName wireguard | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=wg-1.fr123k.uk DOMAIN=wg-1.fr123k.uk PROJECT=wireguard  PRIVATE_KEY_FILE=./keys/wireguard make create
 ```
 
-### Test Server
+### Server B
 ```shell
-PKR_VAR_secret_operator_token="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName wireguard | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=wg-test.fr123k.uk DOMAIN=wg-test.fr123k.uk STACK_SUFFIX=-test PROJECT=wireguard  PRIVATE_KEY_FILE=./keys/wireguard-test make deploy-prebaked
+PKR_VAR_secret_operator_token="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName wireguard | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=wg-test.fr123k.uk DOMAIN=wg-test.fr123k.uk STACK_SUFFIX=-test PROJECT=wireguard  PRIVATE_KEY_FILE=./keys/wireguard-test make create
+```
+
+## Temporal + DuneBot
+
+### Server A
+
+```shell
+SECRET_OPERATOR_TOKEN="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName dunebot | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=temporal.dunebot.io DOMAIN=temporal.dunebot.io TEMPORAL_DOMAIN=temporal-1.dunebot.io DUNEBOT_DOMAIN=githubapp-1.dunebot.io PROJECT=temporal-test PRIVATE_KEY_FILE=./keys/temporal make create
+```
+
+### Server B
+
+```shell
+SECRET_OPERATOR_TOKEN="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName dunebot | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=temporal.dunebot.io DOMAIN=temporal.dunebot.io TEMPORAL_DOMAIN=temporal-1.dunebot.io DUNEBOT_DOMAIN=githubapp-1.dunebot.io PROJECT=temporal PRIVATE_KEY_FILE=./keys/temporal make create
 ```
