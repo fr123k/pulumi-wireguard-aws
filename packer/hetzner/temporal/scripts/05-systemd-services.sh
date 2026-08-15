@@ -113,7 +113,7 @@ After=network.target
 [Service]
 User=temporal
 Group=temporal
-ExecStart=temporal-server -r / -c etc/temporal/ -e temporal-server start
+ExecStart=temporal-server --allow-no-auth -r / -c etc/temporal/ -e temporal-server start
 
 [Install]
 WantedBy=multi-user.target

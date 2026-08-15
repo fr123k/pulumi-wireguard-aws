@@ -25,7 +25,7 @@ go-init:
 	go mod init github.com/fr123k/pulumi-wireguard-aws
 	go mod vendor
 
-pulumi-init2: build
+pulumi-init-generic: build
 	pulumi plugin install resource aws 7.35.0
 	pulumi plugin install resource hcloud 1.39.0
 	pulumi plugin ls
@@ -39,17 +39,15 @@ pulumi-init2: build
 	pulumi config set ssh_key_file ${PRIVATE_KEY_FILE}
 	pulumi config set domain $(DOMAIN)
 
-wireguard-config:
+wireguard-config: packer-set-snapshot
 
-temporal-config:
+temporal-config: packer-set-snapshot
 
 minipc-config:
 	pulumi config set server_ip "${MINIPC_SERVER_IP}"
 	pulumi config set username "${SSH_USER}"
 
-pulumi-init: pulumi-init2 ${PROJECT}-config
-
-init: pulumi-init
+pulumi-init: pulumi-init-generic ${PROJECT}-config
 
 build:
 	go build -o ${BUILD_FOLDER}/build/${PROJECT}-${CLOUD} cmd/${PROJECT}/${CLOUD}/${PROJECT}.go
@@ -64,7 +62,7 @@ verify-linux:
 	GOOS=linux GOARCH=amd64 go build -o ./build/verify-linux ./cmd/verify/
 
 create: pulumi-init
-	pulumi up --yes
+	pulumi up
 	# verbose logging
 	# pulumi up --yes --logtostderr -v=9 2> out.txt
 
@@ -73,14 +71,15 @@ preview: pulumi-init
 
 clean:
 # 	echo "pulumi destroy ${STACK_NAME}"
+	pulumi refresh --yes -s ${STACK_NAME}
 	pulumi destroy --yes -s ${STACK_NAME}
 	pulumi stack rm -f --yes ${STACK_NAME} || true
 
 recreate: clean create output
 
-deploy: init create output
+deploy: pulumi-init create output
 
-deploy-prebaked: init packer-set-snapshot create output
+deploy-prebaked: pulumi-init packer-set-snapshot create output
 
 local: local-cleanup deploy
 
@@ -96,24 +95,7 @@ output:
 	mkdir -p ./output
 	pulumi stack output --json > ./output/wireguard-ec2.json
 
-## wireguard
-
-prepare:
-	mkdir -p ${TMP_FOLDER}
-
-wireguard-client-keys: prepare
-	wg genkey | tee ${TMP_FOLDER}/client_privatekey | wg pubkey > ${TMP_FOLDER}/client_publickey
-
-wireguard-public-key: prepare
-	echo "${WIREGUARD_SERVER_PUBLIC_KEY}" > ${TMP_FOLDER}/server_publickey
-
-validate-wireguard: wireguard-public-key
-	$(MAKE) -C test -e WIREGUARD_SERVER_IP=${WIREGUARD_SERVER_IP} -e TMP_FOLDER=${TMP_FOLDER} wireguard-client
-
-validate-jenkins:
-	echo "valid"
-
-## Packer targets for pre-baked Temporal images
+## Packer targets for pre-baked images
 
 PACKER_DIR ?= packer/hetzner/${PROJECT}
 PACKER_MANIFEST ?= $(PACKER_DIR)/manifest.json
@@ -168,31 +150,6 @@ packer-set-snapshot:
 	fi; \
 	echo "Setting snapshot_id to $$SNAPSHOT_ID"; \
 	pulumi config set snapshot_id $$SNAPSHOT_ID
-
-## Temporal deployment with pre-baked image
-
-temporal-deploy-prebaked: packer-set-snapshot init
-	# TEMPORAL_DOMAIN=$(TEMPORAL_DOMAIN) DUNEBOT_DOMAIN=$(DUNEBOT_DOMAIN) pulumi destroy
-	TEMPORAL_DOMAIN=$(TEMPORAL_DOMAIN) DUNEBOT_DOMAIN=$(DUNEBOT_DOMAIN) pulumi refresh
-	TEMPORAL_DOMAIN=$(TEMPORAL_DOMAIN) DUNEBOT_DOMAIN=$(DUNEBOT_DOMAIN) pulumi up --yes
-
-temporal-deploy-base:
-	pulumi config rm temporal_snapshot_id || true
-	pulumi up --yes
-
-## Full pipeline: build image and deploy
-
-temporal-recreate-prebaked: clean packer-build temporal-deploy-prebaked
-
-wireguard-deploy-prebaked: wireguard-init packer-set-snapshot
-	# pulumi destroy
-	pulumi refresh --yes
-	DOMAIN=$(DOMAIN) pulumi up --yes
-
-wireguard-deploy-base:
-	pulumi config rm wireguard_snapshot_id || true
-	DOMAIN=$(DOMAIN) pulumi up --yes
-
 
 ## Certificate Management
 
