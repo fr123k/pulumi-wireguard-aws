@@ -51,25 +51,25 @@ variable "temporal_server_version" {
 
 variable "temporal_ui_version" {
   type        = string
-  default     = "2.53.1"
+  default     = "2.53.3"
   description = "Temporal UI Server version"
 }
 
 variable "temporal_worker_version" {
   type        = string
-  default     = "0.10.5"
+  default     = "0.10.6"
   description = "Temporal Worker version"
 }
 
 variable "secret_operator_version" {
   type        = string
-  default     = "0.6.1"
+  default     = "0.6.2"
   description = "Secret Operator version"
 }
 
 variable "oauth2_storage_version" {
   type        = string
-  default     = "0.2.2"
+  default     = "0.2.3"
   description = "OAuth2 Storage version"
 }
 
