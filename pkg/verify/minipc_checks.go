@@ -65,6 +65,18 @@ func MiniPCChecks() []Check {
 			Expected: "active",
 		},
 
+		// Franky-box
+		{
+			Name:     "franky-box binary installed",
+			Command:  "head -c 4 /usr/bin/franky-box | od -An -tx1 | grep -q '7f 45 4c 46' && echo 'valid ELF'",
+			Expected: "valid ELF",
+		},
+		{
+			Name:     "franky-box service running",
+			Command:  "systemctl is-active franky-box",
+			Expected: "active",
+		},
+
 		// Nginx
 		{
 			Name:     "Nginx installed",
