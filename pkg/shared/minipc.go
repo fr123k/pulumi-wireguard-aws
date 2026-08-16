@@ -18,6 +18,7 @@ func MiniPCUserData() (*model.UserData, error) {
 		"MINIPC_DOCKER":    "MINIPC_DOCKER",
 		"MINIPC_NIC":       "MINIPC_NIC",
 		"FRANKY_VERSION":   "FRANKY_VERSION",
+		"FRANKY_BOX_VERSION": "FRANKY_BOX_VERSION",
 		"SSH_USER":         "SSH_USER",
 	}
 
