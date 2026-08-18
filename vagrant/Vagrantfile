@@ -117,28 +117,14 @@ Vagrant.configure("2") do |config|
     echo "Template size: $(wc -l < "$TARGET") lines"
   SHELL
 
-  # Step 2: Run the rendered cloud-init script
-  # NOTE: Some steps may fail in Vagrant/Docker (e.g., SSH hardening
-  # may lock out the default SSH key). Workarounds are applied below.
-  # The script is run with bash (not bash -v) to avoid verbose output noise.
-  config.vm.provision "shell", name: "run-minipc-setup", inline: <<-SHELL
-    echo "=== Running mini PC setup script ==="
-    bash /tmp/minipc-rendered.sh || {
-      echo "WARNING: Some setup steps failed (this can be expected in Vagrant/Docker)"
-      echo "Key services will be verified in the next step"
-    }
-  SHELL
-
-  # Step 2b: Write secrets into a systemd environment file for franky.
-  # Secrets are fetched from the host via `teller` (using .teller.yml in the
-  # project root) or from plain host env vars as a fallback. Neither path
-  # stores secrets in the repo.
+  # Step 1b: Write API key secrets from teller into /etc/franky.env.
+  # This runs BEFORE the cloud-init script so API keys are available when
+  # franky starts. The cloud-init registration step will APPEND agent
+  # credentials (agent_id, agent_secret, team_id, inbox_server) to the
+  # same file after registering with franky-box.
   #
   # Usage with teller (requires GCP credentials on the host):
   #   vagrant up --provider=docker
-  #
-  # Usage with plain env vars (fallback):
-  #   OLLAMA_KEY=sk-xxx vagrant up --provider=docker
   #
   # The env file is mode 0600 and only readable by root.
   teller_env = {}
@@ -187,7 +173,21 @@ Vagrant.configure("2") do |config|
     fi
   SHELL
 
-  # Step 2c: Restart franky to pick up the environment file written in step 2b
+  # Step 2: Run the rendered cloud-init script (registers agent with franky-box,
+  # appends agent credentials to /etc/franky.env, starts franky in worker mode)
+  # NOTE: Some steps may fail in Vagrant/Docker (e.g., SSH hardening
+  # may lock out the default SSH key). Workarounds are applied below.
+  # The script is run with bash (not bash -v) to avoid verbose output noise.
+  config.vm.provision "shell", name: "run-minipc-setup", inline: <<-SHELL
+    echo "=== Running mini PC setup script ==="
+    bash /tmp/minipc-rendered.sh || {
+      echo "WARNING: Some setup steps failed (this can be expected in Vagrant/Docker)"
+      echo "Key services will be verified in the next step"
+    }
+  SHELL
+
+  # Step 2c: Restart franky to pick up the full environment file
+  # (API keys from teller + agent credentials from registration)
   config.vm.provision "shell", name: "restart-franky", privileged: true, inline: <<-SHELL
     if [ -d /run/systemd/system ]; then
       systemctl restart franky 2>/dev/null || echo "WARNING: could not restart franky service"
