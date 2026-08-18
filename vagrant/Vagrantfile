@@ -155,29 +155,19 @@ Vagrant.configure("2") do |config|
         end
         puts "[vagrant] teller fetched #{teller_env.size} secret(s) from Google Secret Manager"
       else
-        puts "[vagrant] teller available but returned no secrets — falling back to host env vars"
+        puts "[vagrant] teller available but returned no secrets"
       end
     end
+  else
+    puts "[vagrant] teller not found — install it and authenticate to GCP to fetch secrets"
   end
 
-  # Merge: teller secrets take priority, then host env vars for any missing keys
-  secrets_env = {}
-  %w[FRANKY_OLLAMA_KEY FRANKY_GEMINI_API_KEY FRANKY_CLOUDFLARE_API_KEY
-     FRANKY_CF_ACCOUNT_ID FRANKY_OPENROUTER_API_KEY FRANKY_MISTRAL_API_KEY
-     FRANKY_OPENAI_API_KEY FRANKY_CEREBRAS_API_KEY].each do |key|
-    val = teller_env.fetch(key, ENV.fetch(key, ""))
-    secrets_env[key] = val unless val.empty?
+  if teller_env.empty?
+    puts "[vagrant] WARNING: no secrets fetched from teller."
+    puts "[vagrant] Install teller + GCP auth to fetch API keys."
   end
 
-  # Also support the short OLLAMA_KEY alias from the previous approach
-  secrets_env["OLLAMA_KEY"] = ENV.fetch("OLLAMA_KEY", "") unless secrets_env.key?("FRANKY_OLLAMA_KEY")
-
-  if secrets_env.empty?
-    puts "[vagrant] WARNING: no secrets found via teller or host env vars."
-    puts "[vagrant] Install teller + GCP auth, or set OLLAMA_KEY=sk-xxx before vagrant up."
-  end
-
-  config.vm.provision "shell", name: "write-secrets", privileged: true, env: secrets_env, inline: <<-SHELL
+  config.vm.provision "shell", name: "write-secrets", privileged: true, env: teller_env, inline: <<-SHELL
     echo "=== Writing franky environment file ==="
     touch /etc/franky.env
     chmod 0600 /etc/franky.env
@@ -203,7 +193,7 @@ Vagrant.configure("2") do |config|
 
     if [ ! -s /etc/franky.env ]; then
       echo "WARNING: no secrets written — franky will start without API keys."
-      echo "Install teller + GCP auth, or set OLLAMA_KEY=sk-xxx before vagrant up."
+      echo "Install teller + GCP auth to fetch API keys."
     fi
   SHELL
 
