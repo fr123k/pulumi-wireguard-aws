@@ -103,9 +103,11 @@ Vagrant.configure("2") do |config|
     # The template uses {{ VAR }} placeholders. For Vagrant testing,
     # we leave them empty so defaults kick in (the script has fallback logic).
     sed -e 's/{{ MINIPC_USER }}//g' \
+        -e 's/{{ MINIPC_SSH_PORT }}//g' \
         -e 's/{{ MINIPC_DOCKER }}/true/g' \
         -e 's/{{ MINIPC_NIC }}//g' \
         -e 's/{{ FRANKY_VERSION }}//g' \
+        -e 's/{{ FRANKY_BOX_VERSION }}//g' \
         "$SOURCE" > "$TARGET"
 
     chmod +x "$TARGET"

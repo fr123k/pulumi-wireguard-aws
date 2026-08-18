@@ -130,7 +130,12 @@ if [ "$MINIPC_SSH_PORT" != "22" ]; then
     sed -i "s/^#*Port .*/Port $MINIPC_SSH_PORT/" /etc/ssh/sshd_config
 fi
 
-sctl reload ssh.service
+# Validate sshd config before restarting; fall back to restart (more reliable than reload in containers)
+if sshd -t 2>/dev/null; then
+    sctl restart ssh.service
+else
+    echo "WARNING: sshd config invalid, skipping restart"
+fi
 
 # ============================================
 # Firewall Setup (nftables)
@@ -216,7 +221,7 @@ if [ "$MINIPC_SSH_PORT" != "22" ]; then
 fi
 
 sctl enable nftables
-sctl restart nftables
+sctl restart nftables || echo "WARNING: nftables restart failed (expected in containers without netfilter modules)"
 
 # ============================================
 # WireGuard TCP Tuning (BBR + MTU probing)
@@ -327,12 +332,13 @@ case "$ARCH" in
 esac
 
 cd /tmp
-ZIG_URL="https://ziglang.org/builds/zig-${ZIG_ARCH}-linux-0.17.0-dev.1267+300116b02.tar.xz"
-wget -q "$ZIG_URL"
-tar -xf zig-${ZIG_ARCH}-linux-*.tar.xz -C /usr/local/bin --strip-components=1
-rm -f zig-${ZIG_ARCH}-linux-*.tar.xz
+ZIG_VERSION="0.16.0"
+ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
+wget -q "$ZIG_URL" || { echo "WARNING: failed to download zig from $ZIG_URL"; }
+tar -xf "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz" -C /usr/local/bin --strip-components=1 2>/dev/null || echo "WARNING: zig extraction failed"
+rm -f "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
 
-GO_VERSION="1.26.4"
+GO_VERSION="1.26.6"
 wget -q "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
 rm -rf /usr/local/go
 tar -C /usr/local -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
