@@ -231,7 +231,7 @@ sctl enable nftables
 # fails to load, but 'policy drop' still takes effect — blocking DNS responses
 # and all subsequent network access. The config file is still written for real
 # server use, but not applied in containers.
-if [ -f /.dockerenv ] || grep -qE 'docker|containerd|kubepods' /proc/1/cgroup 2>/dev/null; then
+if [ -f /.dockerenv ] || grep -qE 'docker|containerd|kubepods' /proc/1/cgroup 2>/dev/null || [ -n "${container+x}" ]; then
     echo "WARNING: running in a container, skipping nftables rule application"
 else
     sctl restart nftables || echo "WARNING: nftables restart failed"
@@ -349,17 +349,24 @@ cd /tmp
 ZIG_VERSION="0.17.0-dev.1786+75044cb04"
 ZIG_URL="https://ziglang.org/builds/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
 echo "Downloading zig ${ZIG_VERSION}..."
-wget -q "$ZIG_URL" || { echo "WARNING: failed to download zig from $ZIG_URL"; }
-tar -xf "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz" -C /usr/local/bin --strip-components=1 2>/dev/null || echo "WARNING: zig extraction failed"
-rm -f "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
+if wget -q "$ZIG_URL"; then
+    tar -xf "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz" -C /usr/local/bin --strip-components=1 || echo "WARNING: zig extraction failed"
+    rm -f "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
+else
+    echo "WARNING: failed to download zig from $ZIG_URL"
+fi
 
 GO_VERSION="1.26.6"
-wget -q "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
-rm -rf /usr/local/go
-tar -C /usr/local -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
-ln -sf /usr/local/go/bin/go /usr/local/bin/go
-ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
-rm -f "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+GO_TARBALL="go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+if wget -q "https://go.dev/dl/${GO_TARBALL}"; then
+    rm -rf /usr/local/go
+    tar -C /usr/local -xzf "$GO_TARBALL"
+    ln -sf /usr/local/go/bin/go /usr/local/bin/go
+    ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+    rm -f "$GO_TARBALL"
+else
+    echo "WARNING: failed to download go from https://go.dev/dl/${GO_TARBALL}"
+fi
 
 echo "=== tools installation complete ==="
 
@@ -460,6 +467,9 @@ if [ "$BOX_READY" = "true" ]; then
             # Ensure env file is secure before writing credentials
             touch /etc/franky.env
             chmod 0600 /etc/franky.env
+
+            # Remove stale agent credentials from previous runs to avoid duplicates
+            sed -i '/^FRANKY_AGENT_ID=/d; /^FRANKY_AGENT_SECRET=/d; /^FRANKY_TEAM_ID=/d; /^FRANKY_INBOX_SERVER=/d' /etc/franky.env
 
             # Store agent credentials using printf to avoid shell expansion
             printf 'FRANKY_AGENT_ID=%s\n' "$FRANKY_AGENT_ID" >> /etc/franky.env

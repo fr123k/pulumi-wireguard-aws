@@ -154,8 +154,9 @@ Vagrant.configure("2") do |config|
   end
 
   # Build the dotenv content in Ruby so the shell script just writes it.
-  # This avoids hardcoding each key name in the provisioning script.
-  franky_env_content = teller_env.map { |k, v| "#{k}=#{v}" }.join("\n")
+  # Values are quoted to handle spaces/special chars in systemd EnvironmentFile parsing.
+  # Using KEY="VALUE" format which systemd EnvironmentFile supports.
+  franky_env_content = teller_env.map { |k, v| "#{k}=\"#{v}\"" }.join("\n")
   secret_count = teller_env.size
 
   config.vm.provision "shell", name: "write-secrets", privileged: true, env: { FRANKY_ENV_CONTENTS: franky_env_content, SECRET_COUNT: secret_count.to_s }, inline: <<-SHELL
