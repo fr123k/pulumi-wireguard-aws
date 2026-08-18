@@ -376,7 +376,7 @@ StartLimitBurst=10
 [Service]
 EnvironmentFile=-/etc/franky.env
 WorkingDirectory=/home/$MINIPC_USER/github/
-ExecStart=/usr/bin/franky --profile ollama-deepseek-flash --role full --yes --mode proxy
+ExecStart=/usr/bin/franky --profile ollama-deepseek-flash --role full --yes --mode worker --inbox-server ${FRANKY_INBOX_SERVER} --agent-id ${FRANKY_AGENT_ID} --agent-secret ${FRANKY_AGENT_SECRET} --team-id ${FRANKY_TEAM_ID} --web-port 8787
 Restart=on-failure
 RestartSec=10s
 
@@ -419,13 +419,62 @@ echo "=== Starting services ==="
 # Start fail2ban
 sctl start fail2ban
 
-# Start franky
-sctl start franky
-sctl enable franky
-
-# Start franky-box
+# Start franky-box first (franky registers against it)
 sctl start franky-box
 sctl enable franky-box
+
+# ============================================
+# Register franky agent with franky-box
+# ============================================
+echo "=== Registering franky agent with franky-box ==="
+
+# Wait for franky-box to be ready (up to 30s)
+BOX_READY=false
+for i in $(seq 1 30); do
+    if curl -sf http://127.0.0.1:8080/ >/dev/null 2>&1; then
+        BOX_READY=true
+        break
+    fi
+    sleep 1
+done
+
+if [ "$BOX_READY" = "true" ]; then
+    # Register a new agent via POST /v1/agents
+    REG_RESPONSE=$(curl -sf -X POST http://127.0.0.1:8080/v1/agents \
+        -H "Authorization: Bearer ${FRANKY_BOX_ADMIN_TOKEN:-admin-token-change-me}" \
+        -H "Content-Type: application/json" \
+        -d '{}') || REG_RESPONSE=""
+
+    if [ -n "$REG_RESPONSE" ]; then
+        # Parse agent_id and agent_secret from the JSON response
+        FRANKY_AGENT_ID=$(echo "$REG_RESPONSE" | jq -r '.agent_id // empty')
+        FRANKY_AGENT_SECRET=$(echo "$REG_RESPONSE" | jq -r '.agent_secret // empty')
+        FRANKY_TEAM_ID=$(echo "$REG_RESPONSE" | jq -r '.team_id // "default"')
+
+        if [ -n "$FRANKY_AGENT_ID" ] && [ -n "$FRANKY_AGENT_SECRET" ]; then
+            echo "Registered agent: $FRANKY_AGENT_ID (team: $FRANKY_TEAM_ID)"
+
+            # Store agent credentials in the franky environment file
+            echo "FRANKY_AGENT_ID=$FRANKY_AGENT_ID" >> /etc/franky.env
+            echo "FRANKY_AGENT_SECRET=$FRANKY_AGENT_SECRET" >> /etc/franky.env
+            echo "FRANKY_TEAM_ID=$FRANKY_TEAM_ID" >> /etc/franky.env
+            echo "FRANKY_INBOX_SERVER=http://127.0.0.1:8080" >> /etc/franky.env
+            chmod 0600 /etc/franky.env
+
+            echo "Agent credentials written to /etc/franky.env"
+        else
+            echo "WARNING: failed to parse agent credentials from response: $REG_RESPONSE"
+        fi
+    else
+        echo "WARNING: failed to register agent with franky-box"
+    fi
+else
+    echo "WARNING: franky-box not ready, skipping agent registration"
+fi
+
+# Start franky (after franky-box is up and agent credentials are written)
+sctl start franky
+sctl enable franky
 
 # ============================================
 # Cleanup
