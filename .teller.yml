@@ -1,0 +1,9 @@
+providers:
+  gsm:
+    kind: google_secretmanager
+    maps:
+      - id: gke
+        path: projects/gke-1-368016
+        keys:
+          FRANKY_OLLAMA_KEY: OLLAMA_API_KEY
+          FRANKY_OPENROUTER_API_KEY: OPENROUTER_KEY

@@ -24,3 +24,6 @@ packer/hetzner/wireguard/packer
 artifacts.txt
 pulumi-wireguard-darwin-arm64
 pulumi-wireguard-linux-arm64
+# Secrets
+franky.env
+.env

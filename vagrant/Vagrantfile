@@ -37,8 +37,6 @@ Vagrant.configure("2") do |config|
 
     # Docker provider needs a separate SSH port forward
     override.vm.network "forwarded_port", guest: 22, host: 2222, host_ip: "127.0.0.1", id: "ssh", auto_correct: true
-    override.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
-    override.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
 
     # Docker provider doesn't need a Vagrant box when building from Dockerfile
     override.vm.box = nil
@@ -77,9 +75,10 @@ Vagrant.configure("2") do |config|
   # Skip for Docker provider - it uses port forwarding instead
   config.vm.network "private_network", ip: "192.168.56.10"
 
-  # Port forwarding for franky web UI and nginx
+  # Port forwarding for franky web UI, nginx, and franky-box
   config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
   config.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
+  config.vm.network "forwarded_port", guest: 8080, host: 8081, host_ip: "127.0.0.1", auto_correct: true
 
   # Sync the project root so provisioning scripts can access cloud-init/ etc.
   # ("." is relative to this Vagrantfile, which is in vagrant/ -- so ".." is the project root)
@@ -103,9 +102,11 @@ Vagrant.configure("2") do |config|
     # The template uses {{ VAR }} placeholders. For Vagrant testing,
     # we leave them empty so defaults kick in (the script has fallback logic).
     sed -e 's/{{ MINIPC_USER }}//g' \
+        -e 's/{{ MINIPC_SSH_PORT }}//g' \
         -e 's/{{ MINIPC_DOCKER }}/true/g' \
         -e 's/{{ MINIPC_NIC }}//g' \
         -e 's/{{ FRANKY_VERSION }}//g' \
+        -e 's/{{ FRANKY_BOX_VERSION }}//g' \
         "$SOURCE" > "$TARGET"
 
     chmod +x "$TARGET"
@@ -113,7 +114,61 @@ Vagrant.configure("2") do |config|
     echo "Template size: $(wc -l < "$TARGET") lines"
   SHELL
 
-  # Step 2: Run the rendered cloud-init script
+  # Step 1b: Write API key secrets from teller into /etc/franky.env.
+  # This runs BEFORE the cloud-init script so API keys are available when
+  # franky starts. The cloud-init registration step will APPEND agent
+  # credentials (agent_id, agent_secret, team_id, inbox_server) to the
+  # same file after registering with franky-box.
+  #
+  # Usage with teller (requires GCP credentials on the host):
+  #   vagrant up --provider=docker
+  #
+  # The env file is mode 0600 and only readable by root.
+  teller_env = {}
+  if system("which teller >/dev/null 2>&1")
+    Dir.chdir(File.expand_path("..", __dir__)) do
+      teller_env_str = `teller env 2>/dev/null`
+      if $?.success? && !teller_env_str.empty?
+        teller_env_str.each_line do |line|
+          line.strip!
+          next if line.empty? || line.start_with?("#")
+          key, val = line.split("=", 2)
+          teller_env[key] = val if key && val
+        end
+        puts "[vagrant] teller fetched #{teller_env.size} secret(s) from Google Secret Manager"
+      else
+        puts "[vagrant] teller available but returned no secrets"
+      end
+    end
+  else
+    puts "[vagrant] teller not found — install it and authenticate to GCP to fetch secrets"
+  end
+
+  puts "[vagrant] WARNING: no secrets fetched — install teller + GCP auth" if teller_env.empty?
+
+  # Build the dotenv content in Ruby so the shell script just writes it.
+  # Values are quoted to handle spaces/special chars in systemd EnvironmentFile parsing.
+  # Using KEY="VALUE" format which systemd EnvironmentFile supports.
+  franky_env_content = teller_env.map { |k, v| "#{k}=\"#{v}\"" }.join("\n")
+  secret_count = teller_env.size
+
+  config.vm.provision "shell", name: "write-secrets", privileged: true, env: { FRANKY_ENV_CONTENTS: franky_env_content, SECRET_COUNT: secret_count.to_s }, inline: <<-SHELL
+    echo "=== Writing franky environment file ==="
+    touch /etc/franky.env
+    chmod 0600 /etc/franky.env
+
+    if [ -n "$FRANKY_ENV_CONTENTS" ]; then
+      printf '%s\n' "$FRANKY_ENV_CONTENTS" > /etc/franky.env
+      echo "$SECRET_COUNT secret(s) written to /etc/franky.env"
+    else
+      : > /etc/franky.env
+      echo "WARNING: no secrets written — franky will start without API keys."
+      echo "Install teller + GCP auth to fetch API keys."
+    fi
+  SHELL
+
+  # Step 2: Run the rendered cloud-init script (registers agent with franky-box,
+  # appends agent credentials to /etc/franky.env, starts franky in worker mode)
   # NOTE: Some steps may fail in Vagrant/Docker (e.g., SSH hardening
   # may lock out the default SSH key). Workarounds are applied below.
   # The script is run with bash (not bash -v) to avoid verbose output noise.
@@ -123,6 +178,14 @@ Vagrant.configure("2") do |config|
       echo "WARNING: Some setup steps failed (this can be expected in Vagrant/Docker)"
       echo "Key services will be verified in the next step"
     }
+  SHELL
+
+  # Step 2c: Restart franky to pick up the full environment file
+  # (API keys from teller + agent credentials from registration)
+  config.vm.provision "shell", name: "restart-franky", privileged: true, inline: <<-SHELL
+    if [ -d /run/systemd/system ]; then
+      systemctl restart franky 2>/dev/null || echo "WARNING: could not restart franky service"
+    fi
   SHELL
 
   # Step 3: Provider-specific workarounds
@@ -227,7 +290,8 @@ Vagrant.configure("2") do |config|
     +--------------------------------------------------------------+
     |                                                               |
     |  SSH:       vagrant ssh                                       |
-    |  Franky UI: http://localhost:8788  (guest:8787)                        |
+    |  Franky UI: http://localhost:8788  (guest:8787)                |
+    |  Franky-box: http://localhost:8081  (guest:8080)               |
     |  Nginx:     http://localhost:8080                              |
     |                                                               |
     |  Test with Pulumi (if using VirtualBox/VMware):               |

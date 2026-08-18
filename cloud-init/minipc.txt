@@ -21,26 +21,43 @@ sctl() {
     if [ -d /run/systemd/system ]; then
         systemctl "$@"
     else
-        # Fallback: map common systemctl commands to direct service actions
         action="$1"; shift
         case "$action" in
-            enable)
-                # no-op without systemd
-                ;;
+            enable) ;;
             start|restart|reload)
-                service="$1"
-                if [ "$service" = "ssh" ]; then service="ssh"; fi
-                service "$service" "$action" 2>/dev/null || true
-                ;;
+                service "$1" "$action" 2>/dev/null || true ;;
             is-active)
-                service="$1"
-                service "$service" status 2>/dev/null && echo active || echo inactive
-                ;;
+                service "$1" status 2>/dev/null && echo active || echo inactive ;;
             *)
-                systemctl "$action" "$@" 2>/dev/null || true
-                ;;
+                systemctl "$action" "$@" 2>/dev/null || true ;;
         esac
     fi
+}
+
+# Detect architecture once for all binary downloads
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)  FRANKY_ARCH="amd64";  BOX_ARCH="amd64";  ZIG_ARCH="x86_64"; GO_ARCH="amd64" ;;
+    aarch64) FRANKY_ARCH="arm64";  BOX_ARCH="arm64";  ZIG_ARCH="aarch64"; GO_ARCH="arm64" ;;
+    armv7l)  FRANKY_ARCH="arm";    BOX_ARCH="arm";    ZIG_ARCH="armv7a";  GO_ARCH="arm" ;;
+    *)       FRANKY_ARCH="amd64";  BOX_ARCH="amd64";  ZIG_ARCH="x86_64"; GO_ARCH="amd64" ;;
+esac
+
+# Detect container environment (cgroup v1, v2, or env var)
+IS_CONTAINER=false
+[ -f /.dockerenv ] && IS_CONTAINER=true
+[ -n "${container+x}" ] && IS_CONTAINER=true
+grep -qE 'docker|containerd|kubepods' /proc/1/cgroup 2>/dev/null && IS_CONTAINER=true
+
+# Install a binary from a GitHub release URL and verify it's a valid ELF
+install_gh_binary() {
+    local name="$1" url="$2" dest="$3"
+    echo "=== Installing $name ==="
+    cd /tmp
+    curl -OL "$url" || { echo "WARNING: failed to download $name"; return 1; }
+    mv "$(basename "$url")" "$dest"
+    chmod +x "$dest"
+    head -c 4 "$dest" | od -An -tx1 | grep -q '7f 45 4c 46' && echo "$name: valid ELF binary" || echo "WARNING: $name not an ELF binary"
 }
 
 # ============================================
@@ -57,7 +74,7 @@ FRANKY_BOX_VERSION="{{ FRANKY_BOX_VERSION }}"
 [ -z "$MINIPC_USER" ] && MINIPC_USER="frank.ittermann"
 [ -z "$MINIPC_SSH_PORT" ] && MINIPC_SSH_PORT="22"
 [ -z "$MINIPC_DOCKER" ] && MINIPC_DOCKER="true"
-[ -z "$FRANKY_VERSION" ] && FRANKY_VERSION="0.32.1"
+[ -z "$FRANKY_VERSION" ] && FRANKY_VERSION="0.47.0"
 [ -z "$FRANKY_BOX_VERSION" ] && FRANKY_BOX_VERSION="0.5.1"
 if [ -z "$MINIPC_NIC" ]; then
     # Try iproute2 first, fall back to /sys or 'eth0' for minimal containers
@@ -69,7 +86,7 @@ if [ -z "$MINIPC_NIC" ]; then
     fi
     [ -z "$MINIPC_NIC" ] && MINIPC_NIC="eth0"
 fi
-1
+
 # ============================================
 # System Update
 # ============================================
@@ -125,12 +142,19 @@ if ! grep -q "AllowUsers" /etc/ssh/sshd_config; then
     echo "AllowUsers $MINIPC_USER" >> /etc/ssh/sshd_config
 fi
 
-# Change SSH port if non-default
-if [ "$MINIPC_SSH_PORT" != "22" ]; then
+# Ensure a valid Port directive (also fixes corruption from previous runs).
+if grep -qE '^#*Port ' /etc/ssh/sshd_config; then
     sed -i "s/^#*Port .*/Port $MINIPC_SSH_PORT/" /etc/ssh/sshd_config
+elif [ "$MINIPC_SSH_PORT" != "22" ]; then
+    echo "Port $MINIPC_SSH_PORT" >> /etc/ssh/sshd_config
 fi
 
-sctl reload ssh.service
+# Validate sshd config before restarting; fall back to restart (more reliable than reload in containers)
+if command -v sshd >/dev/null 2>&1 && sshd -t 2>/dev/null; then
+    sctl restart ssh.service
+else
+    echo "WARNING: sshd config invalid or sshd not found, skipping restart"
+fi
 
 # ============================================
 # Firewall Setup (nftables)
@@ -216,7 +240,13 @@ if [ "$MINIPC_SSH_PORT" != "22" ]; then
 fi
 
 sctl enable nftables
-sctl restart nftables
+# Apply firewall rules only on real servers — containers lack conntrack,
+# so 'policy drop' blocks DNS and network without 'ct state established'.
+if [ "$IS_CONTAINER" = "true" ]; then
+    echo "WARNING: running in a container, skipping nftables rule application"
+else
+    sctl restart nftables || echo "WARNING: nftables restart failed"
+fi
 
 # ============================================
 # WireGuard TCP Tuning (BBR + MTU probing)
@@ -247,37 +277,12 @@ sctl restart fail2ban
 # ============================================
 # Install Franky
 # ============================================
-echo "=== Installing franky v${FRANKY_VERSION} ==="
-cd /tmp
-curl -OL "https://github.com/fr12k/franky/releases/download/v${FRANKY_VERSION}/franky_linux_amd64"
-mv franky_linux_amd64 /usr/bin/franky
-chmod +x /usr/bin/franky
-
-# Verify it's a valid ELF binary
-head -c 4 /usr/bin/franky | od -An -tx1 | grep -q '7f 45 4c 46' && echo "valid ELF binary" || echo "WARNING: not an ELF binary"
-
-echo "=== franky installation complete ==="
+install_gh_binary "franky v${FRANKY_VERSION}" "https://github.com/fr12k/franky/releases/download/v${FRANKY_VERSION}/franky_linux_${FRANKY_ARCH}" /usr/bin/franky
 
 # ============================================
 # Install franky-box
 # ============================================
-echo "=== Installing franky-box v${FRANKY_BOX_VERSION} ==="
-cd /tmp
-ARCH=$(uname -m)
-case "$ARCH" in
-    x86_64)  BOX_ARCH="amd64" ;;
-    aarch64)  BOX_ARCH="arm64" ;;
-    armv7l)   BOX_ARCH="386" ;;
-    *)        BOX_ARCH="amd64" ;;
-esac
-curl -OL "https://github.com/fr12k/franky-box/releases/download/v${FRANKY_BOX_VERSION}/franky-box_linux_${BOX_ARCH}"
-mv "franky-box_linux_${BOX_ARCH}" /usr/bin/franky-box
-chmod +x /usr/bin/franky-box
-
-# Verify it's a valid ELF binary
-head -c 4 /usr/bin/franky-box | od -An -tx1 | grep -q '7f 45 4c 46' && echo "valid ELF binary" || echo "WARNING: not an ELF binary"
-
-echo "=== franky-box installation complete ==="
+install_gh_binary "franky-box v${FRANKY_BOX_VERSION}" "https://github.com/fr12k/franky-box/releases/download/v${FRANKY_BOX_VERSION}/franky-box_linux_${BOX_ARCH}" /usr/bin/franky-box
 
 # ============================================
 # franky-box Systemd Service
@@ -310,28 +315,28 @@ mkdir -p /home/$MINIPC_USER/.franky-box
 # ============================================
 echo "=== Installing tools (zig, golang) ==="
 
-# Detect architecture for binary downloads
-ARCH=$(uname -m)
-case "$ARCH" in
-    x86_64)  ZIG_ARCH="x86_64"; GO_ARCH="amd64" ;;
-    aarch64)  ZIG_ARCH="aarch64"; GO_ARCH="arm64" ;;
-    armv7l)   ZIG_ARCH="armv7a"; GO_ARCH="arm" ;;
-    *)        ZIG_ARCH="x86_64"; GO_ARCH="amd64" ;;
-esac
-
 cd /tmp
-ZIG_URL="https://ziglang.org/builds/zig-${ZIG_ARCH}-linux-0.17.0-dev.1267+300116b02.tar.xz"
-wget -q "$ZIG_URL"
-tar -xf zig-${ZIG_ARCH}-linux-*.tar.xz -C /usr/local/bin --strip-components=1
-rm -f zig-${ZIG_ARCH}-linux-*.tar.xz
+ZIG_VERSION="0.17.0-dev.1786+75044cb04"
+ZIG_URL="https://ziglang.org/builds/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
+echo "Downloading zig ${ZIG_VERSION}..."
+if wget -q "$ZIG_URL"; then
+    tar -xf "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz" -C /usr/local/bin --strip-components=1 || echo "WARNING: zig extraction failed"
+    rm -f "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
+else
+    echo "WARNING: failed to download zig from $ZIG_URL"
+fi
 
-GO_VERSION="1.26.4"
-wget -q "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
-rm -rf /usr/local/go
-tar -C /usr/local -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
-ln -sf /usr/local/go/bin/go /usr/local/bin/go
-ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
-rm -f "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+GO_VERSION="1.26.6"
+GO_TARBALL="go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+if wget -q "https://go.dev/dl/${GO_TARBALL}"; then
+    rm -rf /usr/local/go
+    tar -C /usr/local -xzf "$GO_TARBALL"
+    ln -sf /usr/local/go/bin/go /usr/local/bin/go
+    ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+    rm -f "$GO_TARBALL"
+else
+    echo "WARNING: failed to download go from https://go.dev/dl/${GO_TARBALL}"
+fi
 
 echo "=== tools installation complete ==="
 
@@ -348,9 +353,9 @@ StartLimitIntervalSec=120s
 StartLimitBurst=10
 
 [Service]
-Environment=""
+EnvironmentFile=-/etc/franky.env
 WorkingDirectory=/home/$MINIPC_USER/github/
-ExecStart=/usr/bin/franky --profile ollama-deepseek-flash --role full --yes --mode proxy
+ExecStart=/usr/bin/franky --profile ollama-cloud/glm-5.2:cloud --role full --yes --mode worker --inbox-server \${FRANKY_INBOX_SERVER} --agent-id \${FRANKY_AGENT_ID} --agent-secret \${FRANKY_AGENT_SECRET} --team-id \${FRANKY_TEAM_ID} --web-port 8787
 Restart=on-failure
 RestartSec=10s
 
@@ -393,13 +398,68 @@ echo "=== Starting services ==="
 # Start fail2ban
 sctl start fail2ban
 
-# Start franky
-sctl start franky
-sctl enable franky
-
-# Start franky-box
+# Start franky-box first (franky registers against it)
 sctl start franky-box
 sctl enable franky-box
+
+# ============================================
+# Register franky agent with franky-box
+# ============================================
+echo "=== Registering franky agent with franky-box ==="
+
+# Wait for franky-box to be ready (up to 30s)
+BOX_READY=false
+for i in $(seq 1 30); do
+    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/ 2>/dev/null | grep -qE '^2[0-9][0-9]$'; then
+        BOX_READY=true
+        break
+    fi
+    sleep 1
+done
+
+REG_OK=false
+if [ "$BOX_READY" = "true" ]; then
+    # Register a new agent via POST /v1/agents
+    REG_RESPONSE=$(curl -sf -X POST http://127.0.0.1:8080/v1/agents \
+        -H "Authorization: Bearer ${FRANKY_BOX_ADMIN_TOKEN:-admin-token-change-me}" \
+        -H "Content-Type: application/json" \
+        -d '{}') || REG_RESPONSE=""
+
+    if [ -n "$REG_RESPONSE" ]; then
+        # Parse agent_id and agent_secret from the JSON response
+        FRANKY_AGENT_ID=$(echo "$REG_RESPONSE" | jq -r '.agent_id // empty')
+        FRANKY_AGENT_SECRET=$(echo "$REG_RESPONSE" | jq -r '.agent_secret // empty')
+        FRANKY_TEAM_ID=$(echo "$REG_RESPONSE" | jq -r '.team_id // "default"')
+
+        if [ -n "$FRANKY_AGENT_ID" ] && [ -n "$FRANKY_AGENT_SECRET" ]; then
+            echo "Registered agent: $FRANKY_AGENT_ID (team: $FRANKY_TEAM_ID)"
+
+            touch /etc/franky.env && chmod 0600 /etc/franky.env
+            # Remove stale agent credentials from previous runs to avoid duplicates
+            sed -i '/^FRANKY_AGENT_ID=/d; /^FRANKY_AGENT_SECRET=/d; /^FRANKY_TEAM_ID=/d; /^FRANKY_INBOX_SERVER=/d' /etc/franky.env
+            # Store agent credentials using printf to avoid shell expansion
+            printf 'FRANKY_AGENT_ID=%s\nFRANKY_AGENT_SECRET=%s\nFRANKY_TEAM_ID=%s\nFRANKY_INBOX_SERVER=%s\n' \
+                "$FRANKY_AGENT_ID" "$FRANKY_AGENT_SECRET" "$FRANKY_TEAM_ID" "http://127.0.0.1:8080" >> /etc/franky.env
+
+            echo "Agent credentials written to /etc/franky.env"
+            REG_OK=true
+        else
+            echo "WARNING: failed to parse agent credentials from response: $REG_RESPONSE"
+        fi
+    else
+        echo "WARNING: failed to register agent with franky-box"
+    fi
+else
+    echo "WARNING: franky-box not ready, skipping agent registration"
+fi
+
+# Start franky only if registration succeeded (needs agent credentials)
+if [ "$REG_OK" = "true" ]; then
+    sctl start franky
+    sctl enable franky
+else
+    echo "WARNING: skipping franky start — agent registration failed, no credentials"
+fi
 
 # ============================================
 # Cleanup
