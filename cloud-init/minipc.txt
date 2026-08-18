@@ -332,8 +332,19 @@ case "$ARCH" in
 esac
 
 cd /tmp
-ZIG_VERSION="0.16.0"
-ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
+# Resolve the latest 0.17.0-dev (master) build dynamically from ziglang.org.
+# Dev builds rotate, so a pinned URL like 0.17.0-dev.1267+300116b02 will 404;
+# fetching index.json keeps us on the current master build at install time.
+ZIG_INDEX=$(curl -sL https://ziglang.org/download/index.json 2>/dev/null)
+ZIG_VERSION=$(echo "$ZIG_INDEX" | grep -o '"version": "[^"]*"' | head -1 | sed 's/"version": "//;s/"//')
+if [ -z "$ZIG_VERSION" ]; then
+    echo "WARNING: could not resolve latest zig dev version, falling back to 0.16.0"
+    ZIG_VERSION="0.16.0"
+    ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
+else
+    ZIG_URL="https://ziglang.org/builds/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
+fi
+echo "Downloading zig ${ZIG_VERSION}..."
 wget -q "$ZIG_URL" || { echo "WARNING: failed to download zig from $ZIG_URL"; }
 tar -xf "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz" -C /usr/local/bin --strip-components=1 2>/dev/null || echo "WARNING: zig extraction failed"
 rm -f "zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
