@@ -129,15 +129,17 @@ fi
 # that may have written a literal placeholder like {{ MINIPC_SSH_PORT }}).
 if grep -q '^Port ' /etc/ssh/sshd_config; then
     sed -i "s/^Port .*/Port $MINIPC_SSH_PORT/" /etc/ssh/sshd_config
-elif [ "$MINIPC_SSH_PORT" != "22" ]; then
+elif grep -q '^#*Port ' /etc/ssh/sshd_config; then
     sed -i "s/^#*Port .*/Port $MINIPC_SSH_PORT/" /etc/ssh/sshd_config
+elif [ "$MINIPC_SSH_PORT" != "22" ]; then
+    echo "Port $MINIPC_SSH_PORT" >> /etc/ssh/sshd_config
 fi
 
 # Validate sshd config before restarting; fall back to restart (more reliable than reload in containers)
-if sshd -t 2>/dev/null; then
+if command -v sshd >/dev/null 2>&1 && sshd -t 2>/dev/null; then
     sctl restart ssh.service
 else
-    echo "WARNING: sshd config invalid, skipping restart"
+    echo "WARNING: sshd config invalid or sshd not found, skipping restart"
 fi
 
 # ============================================
@@ -270,7 +272,7 @@ ARCH=$(uname -m)
 case "$ARCH" in
     x86_64)  FRANKY_ARCH="amd64" ;;
     aarch64) FRANKY_ARCH="arm64" ;;
-    armv7l)   FRANKY_ARCH="386" ;;
+    armv7l)   FRANKY_ARCH="arm" ;;
     *)        FRANKY_ARCH="amd64" ;;
 esac
 curl -OL "https://github.com/fr12k/franky/releases/download/v${FRANKY_VERSION}/franky_linux_${FRANKY_ARCH}"
@@ -291,7 +293,7 @@ ARCH=$(uname -m)
 case "$ARCH" in
     x86_64)  BOX_ARCH="amd64" ;;
     aarch64)  BOX_ARCH="arm64" ;;
-    armv7l)   BOX_ARCH="386" ;;
+    armv7l)   BOX_ARCH="arm" ;;
     *)        BOX_ARCH="amd64" ;;
 esac
 curl -OL "https://github.com/fr12k/franky-box/releases/download/v${FRANKY_BOX_VERSION}/franky-box_linux_${BOX_ARCH}"
@@ -431,13 +433,14 @@ echo "=== Registering franky agent with franky-box ==="
 # Wait for franky-box to be ready (up to 30s)
 BOX_READY=false
 for i in $(seq 1 30); do
-    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/ 2>/dev/null | grep -qE '^[2-4][0-9][0-9]$'; then
+    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/ 2>/dev/null | grep -qE '^2[0-9][0-9]$'; then
         BOX_READY=true
         break
     fi
     sleep 1
 done
 
+REG_OK=false
 if [ "$BOX_READY" = "true" ]; then
     # Register a new agent via POST /v1/agents
     REG_RESPONSE=$(curl -sf -X POST http://127.0.0.1:8080/v1/agents \
@@ -454,14 +457,18 @@ if [ "$BOX_READY" = "true" ]; then
         if [ -n "$FRANKY_AGENT_ID" ] && [ -n "$FRANKY_AGENT_SECRET" ]; then
             echo "Registered agent: $FRANKY_AGENT_ID (team: $FRANKY_TEAM_ID)"
 
-            # Store agent credentials in the franky environment file
-            echo "FRANKY_AGENT_ID=$FRANKY_AGENT_ID" >> /etc/franky.env
-            echo "FRANKY_AGENT_SECRET=$FRANKY_AGENT_SECRET" >> /etc/franky.env
-            echo "FRANKY_TEAM_ID=$FRANKY_TEAM_ID" >> /etc/franky.env
-            echo "FRANKY_INBOX_SERVER=http://127.0.0.1:8080" >> /etc/franky.env
+            # Ensure env file is secure before writing credentials
+            touch /etc/franky.env
             chmod 0600 /etc/franky.env
 
+            # Store agent credentials using printf to avoid shell expansion
+            printf 'FRANKY_AGENT_ID=%s\n' "$FRANKY_AGENT_ID" >> /etc/franky.env
+            printf 'FRANKY_AGENT_SECRET=%s\n' "$FRANKY_AGENT_SECRET" >> /etc/franky.env
+            printf 'FRANKY_TEAM_ID=%s\n' "$FRANKY_TEAM_ID" >> /etc/franky.env
+            printf 'FRANKY_INBOX_SERVER=%s\n' "http://127.0.0.1:8080" >> /etc/franky.env
+
             echo "Agent credentials written to /etc/franky.env"
+            REG_OK=true
         else
             echo "WARNING: failed to parse agent credentials from response: $REG_RESPONSE"
         fi
@@ -472,9 +479,13 @@ else
     echo "WARNING: franky-box not ready, skipping agent registration"
 fi
 
-# Start franky (after franky-box is up and agent credentials are written)
-sctl start franky
-sctl enable franky
+# Start franky only if registration succeeded (needs agent credentials)
+if [ "$REG_OK" = "true" ]; then
+    sctl start franky
+    sctl enable franky
+else
+    echo "WARNING: skipping franky start — agent registration failed, no credentials"
+fi
 
 # ============================================
 # Cleanup
