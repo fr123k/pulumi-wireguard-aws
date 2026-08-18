@@ -11,6 +11,7 @@ if [ -f /tmp/minipc-template.txt ]; then
         -e 's/{{ MINIPC_DOCKER }}/true/g' \
         -e 's/{{ MINIPC_NIC }}//g' \
         -e 's/{{ FRANKY_VERSION }}//g' \
+        -e 's/{{ FRANKY_BOX_VERSION }}//g' \
         /tmp/minipc-template.txt > /tmp/minipc-rendered.sh
     chmod +x /tmp/minipc-rendered.sh
     echo "Cloud-init template rendered to /tmp/minipc-rendered.sh"

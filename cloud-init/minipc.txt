@@ -125,8 +125,11 @@ if ! grep -q "AllowUsers" /etc/ssh/sshd_config; then
     echo "AllowUsers $MINIPC_USER" >> /etc/ssh/sshd_config
 fi
 
-# Change SSH port if non-default
-if [ "$MINIPC_SSH_PORT" != "22" ]; then
+# Ensure a valid Port directive (also fixes corruption from previous runs
+# that may have written a literal placeholder like {{ MINIPC_SSH_PORT }}).
+if grep -q '^Port ' /etc/ssh/sshd_config; then
+    sed -i "s/^Port .*/Port $MINIPC_SSH_PORT/" /etc/ssh/sshd_config
+elif [ "$MINIPC_SSH_PORT" != "22" ]; then
     sed -i "s/^#*Port .*/Port $MINIPC_SSH_PORT/" /etc/ssh/sshd_config
 fi
 
