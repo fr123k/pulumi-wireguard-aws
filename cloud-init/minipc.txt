@@ -224,7 +224,16 @@ if [ "$MINIPC_SSH_PORT" != "22" ]; then
 fi
 
 sctl enable nftables
-sctl restart nftables || echo "WARNING: nftables restart failed (expected in containers without netfilter modules)"
+# Apply firewall rules only on real servers, not in Docker/Vagrant containers.
+# In containers, conntrack is often unavailable so 'ct state established,related'
+# fails to load, but 'policy drop' still takes effect — blocking DNS responses
+# and all subsequent network access. The config file is still written for real
+# server use, but not applied in containers.
+if [ -f /.dockerenv ] || grep -qE 'docker|containerd|kubepods' /proc/1/cgroup 2>/dev/null; then
+    echo "WARNING: running in a container, skipping nftables rule application"
+else
+    sctl restart nftables || echo "WARNING: nftables restart failed"
+fi
 
 # ============================================
 # WireGuard TCP Tuning (BBR + MTU probing)
