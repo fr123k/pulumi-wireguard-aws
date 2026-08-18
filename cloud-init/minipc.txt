@@ -376,7 +376,7 @@ StartLimitBurst=10
 [Service]
 EnvironmentFile=-/etc/franky.env
 WorkingDirectory=/home/$MINIPC_USER/github/
-ExecStart=/usr/bin/franky --profile ollama-cloud/glm-5.2:cloud --role full --yes --mode worker --inbox-server ${FRANKY_INBOX_SERVER} --agent-id ${FRANKY_AGENT_ID} --agent-secret ${FRANKY_AGENT_SECRET} --team-id ${FRANKY_TEAM_ID} --web-port 8787
+ExecStart=/usr/bin/franky --profile ollama-cloud/glm-5.2:cloud --role full --yes --mode worker --inbox-server \${FRANKY_INBOX_SERVER} --agent-id \${FRANKY_AGENT_ID} --agent-secret \${FRANKY_AGENT_SECRET} --team-id \${FRANKY_TEAM_ID} --web-port 8787
 Restart=on-failure
 RestartSec=10s
 
