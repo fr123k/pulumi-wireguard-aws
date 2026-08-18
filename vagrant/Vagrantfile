@@ -39,6 +39,7 @@ Vagrant.configure("2") do |config|
     override.vm.network "forwarded_port", guest: 22, host: 2222, host_ip: "127.0.0.1", id: "ssh", auto_correct: true
     override.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
     override.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
+    override.vm.network "forwarded_port", guest: 8080, host: 8081, host_ip: "127.0.0.1", auto_correct: true
 
     # Docker provider doesn't need a Vagrant box when building from Dockerfile
     override.vm.box = nil
@@ -77,9 +78,10 @@ Vagrant.configure("2") do |config|
   # Skip for Docker provider - it uses port forwarding instead
   config.vm.network "private_network", ip: "192.168.56.10"
 
-  # Port forwarding for franky web UI and nginx
+  # Port forwarding for franky web UI, nginx, and franky-box
   config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
   config.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
+  config.vm.network "forwarded_port", guest: 8080, host: 8081, host_ip: "127.0.0.1", auto_correct: true
 
   # Sync the project root so provisioning scripts can access cloud-init/ etc.
   # ("." is relative to this Vagrantfile, which is in vagrant/ -- so ".." is the project root)
@@ -229,7 +231,8 @@ Vagrant.configure("2") do |config|
     +--------------------------------------------------------------+
     |                                                               |
     |  SSH:       vagrant ssh                                       |
-    |  Franky UI: http://localhost:8788  (guest:8787)                        |
+    |  Franky UI: http://localhost:8788  (guest:8787)                |
+    |  Franky-box: http://localhost:8081  (guest:8080)               |
     |  Nginx:     http://localhost:8080                              |
     |                                                               |
     |  Test with Pulumi (if using VirtualBox/VMware):               |
