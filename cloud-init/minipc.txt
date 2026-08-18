@@ -374,7 +374,7 @@ StartLimitIntervalSec=120s
 StartLimitBurst=10
 
 [Service]
-Environment=""
+EnvironmentFile=-/etc/franky.env
 WorkingDirectory=/home/$MINIPC_USER/github/
 ExecStart=/usr/bin/franky --profile ollama-deepseek-flash --role full --yes --mode proxy
 Restart=on-failure

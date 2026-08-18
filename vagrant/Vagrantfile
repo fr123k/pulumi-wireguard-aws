@@ -129,6 +129,31 @@ Vagrant.configure("2") do |config|
     }
   SHELL
 
+  # Step 2b: Write secrets from host env vars (OLLAMA_KEY, etc.) into a
+  # systemd environment file. This keeps secrets out of the repo — they're
+  # passed via the host environment at `vagrant up` time.
+  # Usage:  OLLAMA_KEY=sk-xxx vagrant up --provider=docker
+  # The env file is mode 0600 and only readable by root.
+  config.vm.provision "shell", name: "write-secrets", privileged: true, env: { OLLAMA_KEY: ENV.fetch("OLLAMA_KEY", "") }, inline: <<-SHELL
+    echo "=== Writing franky environment file ==="
+    touch /etc/franky.env
+    chmod 0600 /etc/franky.env
+    if [ -n "$OLLAMA_KEY" ]; then
+      echo "OLLAMA_KEY=$OLLAMA_KEY" > /etc/franky.env
+      echo "OLLAMA_KEY written to /etc/franky.env"
+    else
+      echo "WARNING: OLLAMA_KEY not set — franky will start without it."
+      echo "Set it with: OLLAMA_KEY=sk-xxx vagrant up --provider=docker"
+    fi
+  SHELL
+
+  # Step 2c: Restart franky to pick up the environment file written in step 2b
+  config.vm.provision "shell", name: "restart-franky", privileged: true, inline: <<-SHELL
+    if [ -d /run/systemd/system ]; then
+      systemctl restart franky 2>/dev/null || echo "WARNING: could not restart franky service"
+    fi
+  SHELL
+
   # Step 3: Provider-specific workarounds
   # Ensure the Vagrant/Docker SSH key still works after hardening
   config.vm.provision "shell", name: "vagrant-workarounds", inline: <<-SHELL
