@@ -37,9 +37,6 @@ Vagrant.configure("2") do |config|
 
     # Docker provider needs a separate SSH port forward
     override.vm.network "forwarded_port", guest: 22, host: 2222, host_ip: "127.0.0.1", id: "ssh", auto_correct: true
-    override.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
-    override.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
-    override.vm.network "forwarded_port", guest: 8080, host: 8081, host_ip: "127.0.0.1", auto_correct: true
 
     # Docker provider doesn't need a Vagrant box when building from Dockerfile
     override.vm.box = nil
@@ -128,8 +125,7 @@ Vagrant.configure("2") do |config|
   #
   # The env file is mode 0600 and only readable by root.
   teller_env = {}
-  teller_available = system("which teller >/dev/null 2>&1")
-  if teller_available
+  if system("which teller >/dev/null 2>&1")
     Dir.chdir(File.expand_path("..", __dir__)) do
       teller_env_str = `teller env 2>/dev/null`
       if $?.success? && !teller_env_str.empty?
@@ -148,10 +144,7 @@ Vagrant.configure("2") do |config|
     puts "[vagrant] teller not found — install it and authenticate to GCP to fetch secrets"
   end
 
-  if teller_env.empty?
-    puts "[vagrant] WARNING: no secrets fetched from teller."
-    puts "[vagrant] Install teller + GCP auth to fetch API keys."
-  end
+  puts "[vagrant] WARNING: no secrets fetched — install teller + GCP auth" if teller_env.empty?
 
   # Build the dotenv content in Ruby so the shell script just writes it.
   # Values are quoted to handle spaces/special chars in systemd EnvironmentFile parsing.
