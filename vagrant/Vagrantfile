@@ -129,21 +129,81 @@ Vagrant.configure("2") do |config|
     }
   SHELL
 
-  # Step 2b: Write secrets from host env vars (OLLAMA_KEY, etc.) into a
-  # systemd environment file. This keeps secrets out of the repo — they're
-  # passed via the host environment at `vagrant up` time.
-  # Usage:  OLLAMA_KEY=sk-xxx vagrant up --provider=docker
+  # Step 2b: Write secrets into a systemd environment file for franky.
+  # Secrets are fetched from the host via `teller` (using .teller.yml in the
+  # project root) or from plain host env vars as a fallback. Neither path
+  # stores secrets in the repo.
+  #
+  # Usage with teller (requires GCP credentials on the host):
+  #   vagrant up --provider=docker
+  #
+  # Usage with plain env vars (fallback):
+  #   OLLAMA_KEY=sk-xxx vagrant up --provider=docker
+  #
   # The env file is mode 0600 and only readable by root.
-  config.vm.provision "shell", name: "write-secrets", privileged: true, env: { OLLAMA_KEY: ENV.fetch("OLLAMA_KEY", "") }, inline: <<-SHELL
+  teller_env = {}
+  teller_available = system("which teller >/dev/null 2>&1")
+  if teller_available
+    Dir.chdir(File.expand_path("..", __dir__)) do
+      teller_env_str = `teller env 2>/dev/null`
+      if $?.success? && !teller_env_str.empty?
+        teller_env_str.each_line do |line|
+          line.strip!
+          next if line.empty? || line.start_with?("#")
+          key, val = line.split("=", 2)
+          teller_env[key] = val if key && val
+        end
+        puts "[vagrant] teller fetched #{teller_env.size} secret(s) from Google Secret Manager"
+      else
+        puts "[vagrant] teller available but returned no secrets — falling back to host env vars"
+      end
+    end
+  end
+
+  # Merge: teller secrets take priority, then host env vars for any missing keys
+  secrets_env = {}
+  %w[FRANKY_OLLAMA_KEY FRANKY_GEMINI_API_KEY FRANKY_CLOUDFLARE_API_KEY
+     FRANKY_CF_ACCOUNT_ID FRANKY_OPENROUTER_API_KEY FRANKY_MISTRAL_API_KEY
+     FRANKY_OPENAI_API_KEY FRANKY_CEREBRAS_API_KEY].each do |key|
+    val = teller_env.fetch(key, ENV.fetch(key, ""))
+    secrets_env[key] = val unless val.empty?
+  end
+
+  # Also support the short OLLAMA_KEY alias from the previous approach
+  secrets_env["OLLAMA_KEY"] = ENV.fetch("OLLAMA_KEY", "") unless secrets_env.key?("FRANKY_OLLAMA_KEY")
+
+  if secrets_env.empty?
+    puts "[vagrant] WARNING: no secrets found via teller or host env vars."
+    puts "[vagrant] Install teller + GCP auth, or set OLLAMA_KEY=sk-xxx before vagrant up."
+  end
+
+  config.vm.provision "shell", name: "write-secrets", privileged: true, env: secrets_env, inline: <<-SHELL
     echo "=== Writing franky environment file ==="
     touch /etc/franky.env
     chmod 0600 /etc/franky.env
-    if [ -n "$OLLAMA_KEY" ]; then
-      echo "OLLAMA_KEY=$OLLAMA_KEY" > /etc/franky.env
-      echo "OLLAMA_KEY written to /etc/franky.env"
-    else
-      echo "WARNING: OLLAMA_KEY not set — franky will start without it."
-      echo "Set it with: OLLAMA_KEY=sk-xxx vagrant up --provider=docker"
+    : > /etc/franky.env
+
+    write_var() {
+      local key="$1" val="$2"
+      if [ -n "$val" ]; then
+        echo "$key=$val" >> /etc/franky.env
+        echo "$key written to /etc/franky.env"
+      fi
+    }
+
+    write_var "OLLAMA_KEY" "$OLLAMA_KEY"
+    write_var "FRANKY_OLLAMA_KEY" "$FRANKY_OLLAMA_KEY"
+    write_var "FRANKY_GEMINI_API_KEY" "$FRANKY_GEMINI_API_KEY"
+    write_var "FRANKY_CLOUDFLARE_API_KEY" "$FRANKY_CLOUDFLARE_API_KEY"
+    write_var "FRANKY_CF_ACCOUNT_ID" "$FRANKY_CF_ACCOUNT_ID"
+    write_var "FRANKY_OPENROUTER_API_KEY" "$FRANKY_OPENROUTER_API_KEY"
+    write_var "FRANKY_MISTRAL_API_KEY" "$FRANKY_MISTRAL_API_KEY"
+    write_var "FRANKY_OPENAI_API_KEY" "$FRANKY_OPENAI_API_KEY"
+    write_var "FRANKY_CEREBRAS_API_KEY" "$FRANKY_CEREBRAS_API_KEY"
+
+    if [ ! -s /etc/franky.env ]; then
+      echo "WARNING: no secrets written — franky will start without API keys."
+      echo "Install teller + GCP auth, or set OLLAMA_KEY=sk-xxx before vagrant up."
     fi
   SHELL
 

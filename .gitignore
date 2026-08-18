@@ -23,4 +23,7 @@ packer/hetzner/wireguard/packer
 # Builds
 artifacts.txt
 pulumi-wireguard-darwin-arm64
-pulumi-wireguard-linux-arm64
+pulumi-wireguard-linux-arm64-e 
+# Secrets
+franky.env
+.env
