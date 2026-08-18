@@ -69,7 +69,7 @@ if [ -z "$MINIPC_NIC" ]; then
     fi
     [ -z "$MINIPC_NIC" ] && MINIPC_NIC="eth0"
 fi
-1
+
 # ============================================
 # System Update
 # ============================================
@@ -249,8 +249,15 @@ sctl restart fail2ban
 # ============================================
 echo "=== Installing franky v${FRANKY_VERSION} ==="
 cd /tmp
-curl -OL "https://github.com/fr12k/franky/releases/download/v${FRANKY_VERSION}/franky_linux_amd64"
-mv franky_linux_amd64 /usr/bin/franky
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)  FRANKY_ARCH="amd64" ;;
+    aarch64) FRANKY_ARCH="arm64" ;;
+    armv7l)   FRANKY_ARCH="386" ;;
+    *)        FRANKY_ARCH="amd64" ;;
+esac
+curl -OL "https://github.com/fr12k/franky/releases/download/v${FRANKY_VERSION}/franky_linux_${FRANKY_ARCH}"
+mv "franky_linux_${FRANKY_ARCH}" /usr/bin/franky
 chmod +x /usr/bin/franky
 
 # Verify it's a valid ELF binary
