@@ -7,6 +7,6 @@ go 1.26.4
 replace github.com/ngoduykhanh/wireguard-ui => github.com/fr123k/wireguard-ui v0.3.8
 
 require (
-	github.com/containifyci/secret-operator v0.6.1
+	github.com/containifyci/secret-operator v0.6.2
 	github.com/ngoduykhanh/wireguard-ui v0.3.8
 )
