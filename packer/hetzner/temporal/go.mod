@@ -5,10 +5,10 @@ go 1.26.5
 replace github.com/temporalio/cli/cliext => github.com/temporalio/cli/cliext v0.0.0-20260206010435-bf667baf43f7
 
 require (
-	github.com/containifyci/dunebot v0.3.16
+	github.com/containifyci/dunebot v0.3.17
 	github.com/containifyci/oauth2-storage v0.2.3
 	github.com/containifyci/secret-operator v0.6.2
-	github.com/containifyci/temporal-worker v0.10.6
+	github.com/containifyci/temporal-worker v0.10.7
 	github.com/temporalio/cli v1.8.2
 	github.com/temporalio/ui-server/v2 v2.53.3
 	go.temporal.io/server v1.31.2
@@ -117,7 +117,7 @@ require (
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
-	github.com/mattn/go-isatty v0.0.22 // indirect
+	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -143,7 +143,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/rogpeppe/go-internal v1.15.0 // indirect
+	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
