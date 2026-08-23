@@ -427,5 +427,5 @@ make cloudinit-test CLOUDINIT_CLOUD_INIT_FILE=cloud-init/temporal-prebaked.txt C
 ### Local Testing
 
 ```shell
-make cloudinit-test   CLOUDINIT_SOURCE_PATH=~/.virtualbox/packer/packer_base_ubuntu_26.ova   CLOUDINIT_CLOUD_INIT_FILE=cloud-init/minipc.txt CLOUDINIT_DOMAIN=franky.dunebot.io  TARGET=minipc MODE=deployed
+make cloudinit-test CLOUDINIT_SOURCE_PATH=~/.virtualbox/packer/packer_base_ubuntu_26.ova CLOUDINIT_CLOUD_INIT_FILE=cloud-init/minipc.txt CLOUDINIT_DOMAIN=franky.dunebot.io TARGET=minipc MODE=deployed
 ```

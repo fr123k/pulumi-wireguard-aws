@@ -66,7 +66,7 @@ FRANKY_BOX_VERSION="{{ FRANKY_BOX_VERSION }}"
 [ -z "$MINIPC_SSH_PORT" ] && MINIPC_SSH_PORT="22"
 [ -z "$MINIPC_DOCKER" ] && MINIPC_DOCKER="true"
 [ -z "$FRANKY_VERSION" ] && FRANKY_VERSION="0.47.0"
-[ -z "$FRANKY_BOX_VERSION" ] && FRANKY_BOX_VERSION="0.6.0"
+[ -z "$FRANKY_BOX_VERSION" ] && FRANKY_BOX_VERSION="0.6.1"
 if [ -z "$MINIPC_NIC" ]; then
     # Try iproute2 first, fall back to /sys or 'eth0' for minimal containers
     if command -v ip >/dev/null 2>&1; then

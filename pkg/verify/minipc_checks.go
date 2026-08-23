@@ -13,7 +13,7 @@ func MiniPCChecks() []Check {
 		},
 		{
 			Name:    "franky user exists",
-			Command: "id frank.ittermann 2>/dev/null && echo exists || echo missing",
+			Command: "id frank.ittermann >/dev/null 2>&1 && echo exists || echo missing",
 			Equals:  "exists",
 		},
 		{
