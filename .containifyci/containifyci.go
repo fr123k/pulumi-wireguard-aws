@@ -13,19 +13,50 @@ import (
 
 func main() {
 	os.Chdir("../")
-	opts := build.NewGoServiceBuild("pulumi-wireguard")
-	opts.SourcePackages = []string{}
-	opts.SourceFiles = []string{}
-	opts.Verbose = false
-	opts.Image = ""
-	opts.File = "cmd/wireguard/hetzner/wireguard.go"
-	opts.Properties = map[string]*build.ListValue{
+	wireguard := build.NewGoServiceBuild("pulumi-wireguard")
+	wireguard.SourcePackages = []string{}
+	wireguard.SourceFiles = []string{}
+	wireguard.Verbose = false
+	wireguard.Image = ""
+	wireguard.File = "cmd/wireguard/hetzner/wireguard.go"
+	wireguard.Properties = map[string]*build.ListValue{
 		//TODO add a good documentation of possible values (best would build from code)
 		// "pulumi": build.NewList("true"), //disable pulumi for now
 		"stack": build.NewList("wireguard-hetzner"),
 		// "cmd":    build.NewList("up --yes"),
 	}
 	//TODO: adjust the registry to your own container registry
-	opts.Registry = "containifyci"
-	build.Serve(opts)
+	wireguard.Registry = "containifyci"
+
+	temporal := build.NewGoServiceBuild("pulumi-temporal")
+	temporal.SourcePackages = []string{}
+	temporal.SourceFiles = []string{}
+	temporal.Verbose = false
+	temporal.Image = ""
+	temporal.File = "cmd/temporal/hetzner/temporal.go"
+	temporal.Properties = map[string]*build.ListValue{
+		//TODO add a good documentation of possible values (best would build from code)
+		// "pulumi": build.NewList("true"), //disable pulumi for now
+		"stack": build.NewList("wireguard-temporal"),
+		// "cmd":    build.NewList("up --yes"),
+	}
+	//TODO: adjust the registry to your own container registry
+	temporal.Registry = "containifyci"
+
+	minipc := build.NewGoServiceBuild("pulumi-minipc")
+	minipc.SourcePackages = []string{}
+	minipc.SourceFiles = []string{}
+	minipc.Verbose = false
+	minipc.Image = ""
+	minipc.File = "cmd/minipc/local/minipc.go"
+	minipc.Properties = map[string]*build.ListValue{
+		//TODO add a good documentation of possible values (best would build from code)
+		// "pulumi": build.NewList("true"), //disable pulumi for now
+		"stack": build.NewList("wireguard-minipc"),
+		// "cmd":    build.NewList("up --yes"),
+	}
+	//TODO: adjust the registry to your own container registry
+	minipc.Registry = "containifyci"
+
+	build.BuildAsync(wireguard, temporal, minipc)
 }

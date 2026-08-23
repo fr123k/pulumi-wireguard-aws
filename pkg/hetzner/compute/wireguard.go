@@ -147,19 +147,7 @@ func CreateWireguardVM(ctx *pulumi.Context, computeArgs *model.ComputeArgs, vmIP
 	var userData *model.UserData
 	var err error
 
-	// Detect if using a pre-baked snapshot image
-	imageName := ""
-	if len(computeArgs.Images) > 0 && computeArgs.Images[0] != nil {
-		imageName = computeArgs.Images[0].Name
-	}
-
-	if isPrebakedImage(imageName, "prebaked", "wireguard-prebaked") {
-		_ = ctx.Log.Info("Using pre-baked image, loading minimal cloud-init", nil)
-		userData, err = shared.WireguardPrebakedUserData()
-	} else {
-		_ = ctx.Log.Info("Using base image, loading full cloud-init", nil)
-		userData, err = shared.WireguardUserData()
-	}
+	userData, err = shared.WireguardPrebakedUserData()
 
 	if err != nil {
 		return nil, err

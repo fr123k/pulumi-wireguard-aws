@@ -9,21 +9,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func TemporalUserData() (*model.UserData, error) {
-	userDataVariables := map[string]string{
-		"SECRET_OPERATOR_TOKEN": "SECRET_OPERATOR_TOKEN",
-		// "CLIENT_IP_ADDRESS":       "CLIENT_IP_ADDRESS",
-		// "MAILJET_API_CREDENTIALS": "MAILJET_API_CREDENTIALS",
-		// "METADATA_URL":            "METADATA_URL",
-	}
-
-	userData, err := model.NewUserData("cloud-init/temporal.txt", model.TemplateVariablesEnvironment(userDataVariables))
-	if err != nil {
-		return nil, err
-	}
-	return userData, nil
-}
-
 // TemporalPrebakedUserData returns the minimal cloud-init script for pre-baked Temporal images.
 // This script only handles runtime-specific configuration (SSH, secrets, SSL, service startup).
 func TemporalPrebakedUserData() (*model.UserData, error) {

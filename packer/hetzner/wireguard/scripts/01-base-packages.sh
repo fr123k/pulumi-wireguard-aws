@@ -22,6 +22,7 @@ apt-get install -y \
     jq \
     fail2ban \
     pwgen \
+    ufw \
     wireguard \
     wireguard-tools
 

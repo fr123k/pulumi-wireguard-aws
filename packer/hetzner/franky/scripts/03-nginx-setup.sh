@@ -22,9 +22,9 @@ rm -f /etc/nginx/conf.d/default.conf
 
 echo "=== Installing Certbot ==="
 
-# Install Certbot via snap
-snap install --classic certbot
-ln -sf /snap/bin/certbot /usr/bin/certbot
+# Install Certbot via apt (avoids snapd, which hangs in VirtualBox on the
+# "waiting for automatic snapd restart" loop).
+apt-get install -y certbot
 
 # Create directory for certificates (fetched at runtime from Secret Manager)
 mkdir -p /etc/letsencrypt/live

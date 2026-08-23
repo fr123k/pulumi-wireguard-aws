@@ -166,13 +166,14 @@ cat > /etc/systemd/system/temporal-dunebot-worker.service <<'EOF'
 [Unit]
 Description=Temporal Worker
 After=network.target
+After=temporal.service
+Requires=temporal.service
 StartLimitIntervalSec=120s
 StartLimitBurst=10
 
 [Service]
 User=temporal
 Group=temporal
-Environment="ADDRESS=127.0.0.1"
 Environment="ADDRESS=127.0.0.1"
 Environment="DUNEBOT_JWT_SERVER_ADDRESS=localhost:50051"
 Environment="DUNEBOT_GITHUB_OAUTH_SCOPES=repo"
@@ -181,7 +182,6 @@ Environment="DUNEBOT_GITHUB_WEB_URL=https://github.com/"
 Environment="DUNEBOT_APP_CONFIGURATION_REVIEWER_TYPE=direct"
 EnvironmentFile=/etc/systemd/system/temporal-worker.env
 ExecStart=-temporal-dunebot-worker
-ExecStartPre=-temporal-dunebot-worker update
 Restart=on-failure
 RestartSec=10s
 

@@ -12,6 +12,7 @@ chown -R root:root /etc/wireguard
 
 echo "=== Creating WireGuard UI data directory ==="
 mkdir -p /usr/local/bin/db/server
+mkdir -p /usr/local/bin/db/users
 
 echo "=== Creating systemd service files ==="
 
@@ -93,8 +94,8 @@ EOF
 # Placeholder secret-operator-server.env (populated at runtime)
 cat > /etc/systemd/system/secret-operator-server.env <<'EOF'
 # Populated at runtime by cloud-init
-GCP_PROJECT_ID=
-GOOGLE_APPLICATION_CREDENTIALS=
+GCP_PROJECT_ID=gke-1-368016
+GOOGLE_APPLICATION_CREDENTIALS=/etc/systemd/system/service_account_adc.json
 EOF
 chmod 600 /etc/systemd/system/secret-operator-server.env
 
