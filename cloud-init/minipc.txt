@@ -14,6 +14,14 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)   BOX_ARCH="amd64" ;;
+    aarch64)  BOX_ARCH="arm64" ;;
+    armv7l)   BOX_ARCH="386" ;;
+    *)        BOX_ARCH="amd64" ;;
+esac
+
 # ============================================
 # Helper: systemctl fallback for containers without systemd PID 1
 # ============================================
@@ -57,8 +65,8 @@ FRANKY_BOX_VERSION="{{ FRANKY_BOX_VERSION }}"
 [ -z "$MINIPC_USER" ] && MINIPC_USER="frank.ittermann"
 [ -z "$MINIPC_SSH_PORT" ] && MINIPC_SSH_PORT="22"
 [ -z "$MINIPC_DOCKER" ] && MINIPC_DOCKER="true"
-[ -z "$FRANKY_VERSION" ] && FRANKY_VERSION="0.32.1"
-[ -z "$FRANKY_BOX_VERSION" ] && FRANKY_BOX_VERSION="0.5.1"
+[ -z "$FRANKY_VERSION" ] && FRANKY_VERSION="0.47.0"
+[ -z "$FRANKY_BOX_VERSION" ] && FRANKY_BOX_VERSION="0.6.0"
 if [ -z "$MINIPC_NIC" ]; then
     # Try iproute2 first, fall back to /sys or 'eth0' for minimal containers
     if command -v ip >/dev/null 2>&1; then
@@ -69,7 +77,7 @@ if [ -z "$MINIPC_NIC" ]; then
     fi
     [ -z "$MINIPC_NIC" ] && MINIPC_NIC="eth0"
 fi
-1
+
 # ============================================
 # System Update
 # ============================================
@@ -87,6 +95,7 @@ apt-get install -y \
     ca-certificates \
     curl \
     fail2ban \
+    git \
     gnupg2 \
     jq \
     lsb-release \
@@ -116,7 +125,14 @@ chown -R "$MINIPC_USER:$MINIPC_USER" "/home/$MINIPC_USER"
 # SSH Hardening
 # ============================================
 echo "=== Hardening SSH ==="
-sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+# Replace an existing (commented or uncommented) PermitRootLogin line; append if
+# absent. On modern Ubuntu the default is the commented "#PermitRootLogin
+# prohibited-password", so matching only the uncommented form leaves the hardening
+# ineffective and the verify (grep ^PermitRootLogin) fails.
+sed -i -e '/^#*PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+if ! grep -q '^PermitRootLogin' /etc/ssh/sshd_config; then
+    echo 'PermitRootLogin no' >> /etc/ssh/sshd_config
+fi
 sed -i 's|[#]*PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config
 if ! grep -q "PubkeyAcceptedAlgorithms" /etc/ssh/sshd_config; then
     echo "PubkeyAcceptedAlgorithms +ssh-rsa" >> /etc/ssh/sshd_config
@@ -249,8 +265,8 @@ sctl restart fail2ban
 # ============================================
 echo "=== Installing franky v${FRANKY_VERSION} ==="
 cd /tmp
-curl -OL "https://github.com/fr12k/franky/releases/download/v${FRANKY_VERSION}/franky_linux_amd64"
-mv franky_linux_amd64 /usr/bin/franky
+curl -OL "https://github.com/fr12k/franky/releases/download/v${FRANKY_VERSION}/franky_linux_${BOX_ARCH}"
+mv franky_linux_${BOX_ARCH} /usr/bin/franky
 chmod +x /usr/bin/franky
 
 # Verify it's a valid ELF binary
@@ -263,13 +279,7 @@ echo "=== franky installation complete ==="
 # ============================================
 echo "=== Installing franky-box v${FRANKY_BOX_VERSION} ==="
 cd /tmp
-ARCH=$(uname -m)
-case "$ARCH" in
-    x86_64)  BOX_ARCH="amd64" ;;
-    aarch64)  BOX_ARCH="arm64" ;;
-    armv7l)   BOX_ARCH="386" ;;
-    *)        BOX_ARCH="amd64" ;;
-esac
+
 curl -OL "https://github.com/fr12k/franky-box/releases/download/v${FRANKY_BOX_VERSION}/franky-box_linux_${BOX_ARCH}"
 mv "franky-box_linux_${BOX_ARCH}" /usr/bin/franky-box
 chmod +x /usr/bin/franky-box
@@ -320,7 +330,7 @@ case "$ARCH" in
 esac
 
 cd /tmp
-ZIG_URL="https://ziglang.org/builds/zig-${ZIG_ARCH}-linux-0.17.0-dev.1267+300116b02.tar.xz"
+ZIG_URL="https://ziglang.org/builds/zig-${ZIG_ARCH}-linux-0.17.0-dev.1683+5ceec001b.tar.xz"
 wget -q "$ZIG_URL"
 tar -xf zig-${ZIG_ARCH}-linux-*.tar.xz -C /usr/local/bin --strip-components=1
 rm -f zig-${ZIG_ARCH}-linux-*.tar.xz
@@ -334,6 +344,23 @@ ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 rm -f "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
 
 echo "=== tools installation complete ==="
+
+# ============================================
+# Install the pre-built verify binary
+# ============================================
+# The verify binary is built on the host for the guest arch and
+# uploaded to /tmp/verify by the provisioner (packer file provisioner or
+# the cloudinit-test harness) before this script runs. Here we just install it
+# to /usr/local/bin and verify the ELF magic bytes.
+if [ -f /tmp/verify ]; then
+    echo "=== Installing verify binary ==="
+    mv /tmp/verify /usr/local/bin/verify
+    chmod +x /usr/local/bin/verify
+    head -c 4 /usr/local/bin/verify | od -An -tx1 | grep -q '7f 45 4c 46' && echo "valid ELF binary" || echo "WARNING: verify not an ELF binary"
+    echo "=== verify installation complete ==="
+else
+    echo "=== WARNING: /tmp/verify not found; skipping verify install ==="
+fi
 
 # ============================================
 # Franky Systemd Service
@@ -350,7 +377,7 @@ StartLimitBurst=10
 [Service]
 Environment=""
 WorkingDirectory=/home/$MINIPC_USER/github/
-ExecStart=/usr/bin/franky --profile ollama-deepseek-flash --role full --yes --mode proxy
+ExecStart=/usr/bin/franky --profile ollama-cloud/glm-5.2:cloud --role full --yes --mode proxy
 Restart=on-failure
 RestartSec=10s
 
@@ -400,6 +427,33 @@ sctl enable franky
 # Start franky-box
 sctl start franky-box
 sctl enable franky-box
+
+# ============================================
+# Verify Deployment
+# ============================================
+# Wait for services to settle, then run the pre-built verify binary. The checks
+# assert that franky, franky-box, nftables and fail2ban reached active state.
+echo "=== Waiting for services to reach active state ==="
+for svc in nftables fail2ban franky franky-box; do
+    state=inactive
+    for i in $(seq 1 30); do
+        state=$(sctl is-active "$svc" 2>/dev/null)
+        if [ "$state" = "active" ]; then
+            break
+        fi
+        sleep 2
+    done
+    if [ "$state" != "active" ]; then
+        echo "WARNING: $svc did not reach active state (last: $state)"
+    fi
+done
+
+if [ -x /usr/local/bin/verify ]; then
+    echo "=== Verifying deployment ==="
+    /usr/local/bin/verify --local --target minipc --deployed
+else
+    echo "=== WARNING: verify not installed; skipping verification ==="
+fi
 
 # ============================================
 # Cleanup

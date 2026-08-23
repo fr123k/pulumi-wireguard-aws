@@ -56,23 +56,23 @@ func main() {
 
 	switch *target {
 	case "wireguard":
-		if *prebaked {
-			mode = "prebaked"
-			checks = verify.WireguardPrebakedChecks()
-		} else {
+		if *deployed {
 			mode = "deployed"
 			checks = verify.WireguardDeployedChecks()
+		} else {
+			mode = "prebaked"
+			checks = verify.WireguardPrebakedChecks()
 		}
 	case "minipc":
 		mode = "deployed"
 		checks = verify.MiniPCChecks()
 	default: // temporal
-		if *prebaked {
-			mode = "prebaked"
-			checks = verify.PrebakedChecks()
-		} else {
+		if *deployed {
 			mode = "deployed"
 			checks = verify.DeployedChecks()
+		} else {
+			mode = "prebaked"
+			checks = verify.PrebakedChecks()
 		}
 	}
 

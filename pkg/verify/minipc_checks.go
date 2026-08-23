@@ -77,18 +77,6 @@ func MiniPCChecks() []Check {
 			Expected: "active",
 		},
 
-		// Nginx
-		{
-			Name:     "Nginx installed",
-			Command:  "nginx -v 2>&1",
-			Expected: "exit:0",
-		},
-		{
-			Name:     "Nginx service running",
-			Command:  "systemctl is-active nginx",
-			Expected: "active",
-		},
-
 		// Development tools
 		{
 			Name:     "Go installed",

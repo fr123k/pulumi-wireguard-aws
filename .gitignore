@@ -5,6 +5,7 @@ output/
 build/
 keys/
 Pulumi.*.yaml
+.ssh
 .vagrant
 .vscode
 coverage.txt
@@ -13,10 +14,15 @@ coverage.txt
 
 # Packer
 packer/hetzner/temporal/manifest.json
-packer/hetzner/temporal/temporal-verify
 packer/hetzner/wireguard/manifest.json
-packer/hetzner/wireguard/wireguard-verify
-packer/hetzner/wireguard/packer
+packer/hetzner/franky/manifest.json
+packer/cloudinit-test/manifest.json
+# Built verify binary (unified; built by shell-local provisioners)
+packer/hetzner/*/verify
+packer/cloudinit-test/verify
+packer/hetzner/temporal/output-*
+packer/hetzner/wireguard/output-*
+vagrant/output-*
 *.pkrvars.hcl
 !*.pkrvars.hcl.example
 

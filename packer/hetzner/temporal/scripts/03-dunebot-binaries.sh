@@ -14,14 +14,14 @@ cd /tmp
 
 # Install OAuth2 Storage
 echo "=== Installing OAuth2 Storage v${OAUTH2_STORAGE_VERSION} ==="
-curl -OL "https://github.com/containifyci/oauth2-storage/releases/download/v${OAUTH2_STORAGE_VERSION}/oauth2-storage_linux_amd64"
-mv oauth2-storage_linux_amd64 /usr/bin/oauth2-storage
+curl -OL "https://github.com/containifyci/oauth2-storage/releases/download/v${OAUTH2_STORAGE_VERSION}/oauth2-storage_linux_${TARGET_GOARCH}"
+mv oauth2-storage_linux_${TARGET_GOARCH} /usr/bin/oauth2-storage
 chmod +x /usr/bin/oauth2-storage
 
 # Install DuneBot
 echo "=== Installing DuneBot v${DUNEBOT_VERSION} ==="
-curl -OL "https://github.com/containifyci/dunebot/releases/download/v${DUNEBOT_VERSION}/dunebot_linux_amd64"
-mv dunebot_linux_amd64 /usr/bin/dunebot
+curl -OL "https://github.com/containifyci/dunebot/releases/download/v${DUNEBOT_VERSION}/dunebot_linux_${TARGET_GOARCH}"
+mv dunebot_linux_${TARGET_GOARCH} /usr/bin/dunebot
 chmod +x /usr/bin/dunebot
 
 echo "=== DuneBot binaries installation complete ==="

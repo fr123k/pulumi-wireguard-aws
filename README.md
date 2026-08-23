@@ -248,12 +248,8 @@ Example Output:
       {"VPNEnabledSSH":true,"VPNCidr":"10.8.0.0/24"}
       Key: {{ CLIENT_PUBLICKEY }} Value: CLIENT_PUBLICKEY
       Key: {{ CLIENT_IP_ADDRESS }} Value: CLIENT_IP_ADDRESS
-      Key: {{ MAILJET_API_CREDENTIALS }} Value: MAILJET_API_CREDENTIALS
-      Key: {{ METADATA_URL }} Value: METADATA_URL
       Key: {{ CLIENT_PUBLICKEY }} Value: CLIENT_PUBLICKEY
       Key: {{ CLIENT_IP_ADDRESS }} Value: CLIENT_IP_ADDRESS
-      Key: {{ MAILJET_API_CREDENTIALS }} Value: MAILJET_API_CREDENTIALS
-      Key: {{ METADATA_URL }} Value: METADATA_URL
   
   Outputs:
       cloud-init: "#!/bin/bash -v\n\napt-get update -y\napt-get upgrade -y\napt-get install -y wireguard-dkms wireguard-tools \n\numask 077\n#TODO make server public key available outside the vm instance\nwg genkey | tee /tmp/server_privatekey | wg pubkey > /tmp/server_publickey\n\nMYV4IP=$(curl )\n\ncat > /etc/wireguard/wg0.conf <<- EOF\n[Interface]\nAddress = $MYV4IP/24\nPrivateKey = $(cat /tmp/server_privatekey)\nListenPort = 51820\nPostUp   = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\nPostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE\n\n[Peer]\nPublicKey = \"XSG................................Uhw=\"\nAllowedIPs = 10.8.0.2/32\nPersistentKeepalive = 25\nEOF\n\nchown -R root:root /etc/wireguard/\nchmod -R og-rwx /etc/wireguard/*\nsed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf\nsysctl -p\nufw allow ssh\nufw allow 51820/udp\nufw --force enable\nsystemctl enable wg-quick@wg0.service\nsystemctl start wg-quick@wg0.service\n\nMAILJET_AUTH=\"\"\n\nif [ \"$MAILJET_AUTH\" != \"\" ]; then\n\n    # TODO make the list of emails configurable per client ip\n    cat > /tmp/wireguard.email <<- EOF\n    {\n    \"Messages\":[\n        {\n        \"From\": {\n            \"Email\": \"wireguard@fr123k.uk\",\n            \"Name\": \"Wireguard $MYV4IP\"\n        },\n        \"To\": [\n            {\n            \"Email\": \"fr12_k@yahoo.com\",\n            \"Name\": \"Frank\"\n            }\n        ],\n        \"Subject\": \"Wireguard publickey\",\n        \"TextPart\": \"The wireguard public key is $(cat /tmp/server_publickey) and the ip address $MYV4IP\",\n        \"CustomID\": \"Wireguard Publickey\"\n        }\n    ]\n    }\nEOF\n\n    curl -s -X POST \\\n    --user \"${mailjet_api_credentials}\" \\\n    https://api.mailjet.com/v3.1/send \\\n    -H 'Content-Type: application/json' \\\n    --data \"@/tmp/wireguard.email\"\nfi\n"
@@ -386,6 +382,18 @@ PKR_VAR_secret_operator_token="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-cli
 PKR_VAR_secret_operator_token="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName wireguard | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=wg-test.fr123k.uk DOMAIN=wg-test.fr123k.uk STACK_SUFFIX=-test PROJECT=wireguard  PRIVATE_KEY_FILE=./keys/wireguard-test make create
 ```
 
+#### Prebaked Image
+
+```shell
+export SECRET_OPERATOR_TOKEN="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName wireguard | awk '/Generated Token:/ {print $NF}')"
+make packer-build PROJECT=wireguard PACKER_PROVIDER=virtualbox DOMAIN=wg.fr123k.uk PKR_VAR_secret_operator_host=https://wg.fr123k.uk:8443
+```
+
+#### Final Provisioning
+```shell
+make cloudinit-test CLOUDINIT_CLOUD_INIT_FILE=cloud-init/wireguard-prebaked.txt CLOUDINIT_DOMAIN=wg.fr123k.uk CLOUDINIT_TARGET=wireguard MODE=deployed
+```
+
 ## Temporal + DuneBot
 
 ### Server A
@@ -398,4 +406,26 @@ SECRET_OPERATOR_TOKEN="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -ser
 
 ```shell
 SECRET_OPERATOR_TOKEN="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName dunebot | awk '/Generated Token:/ {print $NF}')" PKR_VAR_domain=temporal.dunebot.io DOMAIN=temporal.dunebot.io TEMPORAL_DOMAIN=temporal-1.dunebot.io DUNEBOT_DOMAIN=githubapp-1.dunebot.io PROJECT=temporal PRIVATE_KEY_FILE=./keys/temporal make create
+```
+
+### Local Testing
+
+#### Prebaked Image
+
+```shell
+make packer-build PROJECT=temporal PACKER_PROVIDER=virtualbox DOMAIN=wg.fr123k.uk PKR_VAR_secret_operator_host=https://wg.fr123k.uk:8443
+```
+
+#### Final Provisioning
+```shell
+export SECRET_OPERATOR_TOKEN="$(GCP_PROJECT_ID=gke-1-368016 secret-operator-client -serviceName dunebot | awk '/Generated Token:/ {print $NF}')"
+make cloudinit-test CLOUDINIT_CLOUD_INIT_FILE=cloud-init/temporal-prebaked.txt CLOUDINIT_DOMAIN=temporal.dunebot.io CLOUDINIT_TEMPORAL_DOMAIN=temporal.dunebot.io CLOUDINIT_DUNEBOT_DOMAIN=githubapp.dunebot.io CLOUDINIT_TARGET=temporal MODE=deployed
+```
+
+## Mini PC
+
+### Local Testing
+
+```shell
+make cloudinit-test   CLOUDINIT_SOURCE_PATH=~/.virtualbox/packer/packer_base_ubuntu_26.ova   CLOUDINIT_CLOUD_INIT_FILE=cloud-init/minipc.txt CLOUDINIT_DOMAIN=franky.dunebot.io  TARGET=minipc MODE=deployed
 ```

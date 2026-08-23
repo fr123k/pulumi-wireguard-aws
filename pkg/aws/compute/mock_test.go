@@ -72,6 +72,6 @@ func ProjectFileContent() {
 
 func TestUserData(t *testing.T) {
     ProjectFileContent()
-    _, err := model.Util.ReadFile("cloud-init/wireguard.txt")
+    _, err := model.Util.ReadFile("cloud-init/wireguard-prebaked.txt")
     assert.NoError(t, err)
 }

@@ -28,7 +28,13 @@ chmod 600 /home/frank.ittermann/.ssh/authorized_keys
 chown -R frank.ittermann:frank.ittermann /home/frank.ittermann
 
 # Finalize SSH hardening
-sed -i -e '/^PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+# Replace existing (commented or uncommented) PermitRootLogin line; append if
+# absent. Modern Ubuntu defaults to a commented "#PermitRootLogin
+# prohibited-password", so matching only the uncommented form is a no-op.
+sed -i -e '/^#*PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+if ! grep -q '^PermitRootLogin' /etc/ssh/sshd_config; then
+    echo 'PermitRootLogin no' >> /etc/ssh/sshd_config
+fi
 if ! grep -q "AllowUsers frank.ittermann" /etc/ssh/sshd_config; then
     echo "AllowUsers frank.ittermann" >> /etc/ssh/sshd_config
 fi
@@ -179,7 +185,33 @@ systemctl enable temporal
 systemctl start temporal-ui
 systemctl enable temporal-ui
 
-sleep 5 # Wait for Temporal to be ready
+systemctl restart nginx
+
+# Wait for the Temporal server gRPC endpoint to actually answer, not just
+# bind the socket. The server binds 7236 early but needs SQLite setup plus the
+# cluster membership join (maxJoinDuration: 30s) before it responds. A port
+# check alone passes too early, causing the worker to get a 502 from nginx and
+# crash-loop (still "activating") when the verify runs.
+echo "=== Waiting for Temporal server gRPC to be ready ==="
+TEMPORAL_READY=false
+for i in $(seq 1 15); do
+    if HOME=/root temporal --address localhost:7236 operator cluster health >/dev/null 2>&1; then
+        echo "Temporal server gRPC is ready"
+        TEMPORAL_READY=true
+        break
+    fi
+    sleep 2
+done
+if [ "$TEMPORAL_READY" != "true" ]; then
+    echo "WARNING: Temporal server gRPC did not become ready after 30s; subsequent steps may fail"
+fi
+
+# Create the default namespace before starting the worker. The worker
+# connects to namespace "default" and exits with "Namespace default is not
+# found." if it doesn't exist, so it must be created once the gRPC server is
+# up but before the worker starts.
+echo "=== Creating Temporal namespace ==="
+HOME=/root temporal --address localhost:7236 operator namespace create -n default || true
 
 # Start Temporal Worker
 systemctl start temporal-dunebot-worker
@@ -201,20 +233,28 @@ systemctl enable dunebot-update.timer
 systemctl start dunebot-dispatch-job.timer
 systemctl enable dunebot-dispatch-job.timer
 
-# Start Nginx
-systemctl restart nginx
-
 # ============================================
-# Create Temporal Namespace
+# Wait for services to settle before verification
 # ============================================
-echo "=== Creating Temporal namespace ==="
-sleep 5  # Wait for Temporal to be ready
-HOME=/root temporal --address localhost:7236 operator namespace create -n default || true
+echo "=== Waiting for services to reach active state ==="
+for svc in temporal temporal-ui temporal-dunebot-worker dunebot oauth2-storage; do
+    state=inactive
+    for i in $(seq 1 10); do
+        state=$(systemctl is-active "$svc" 2>/dev/null)
+        if [ "$state" = "active" ]; then
+            break
+        fi
+        sleep 2
+    done
+    if [ "$state" != "active" ]; then
+        echo "WARNING: $svc did not reach active state (last: $state)"
+    fi
+done
 
 # ============================================
 # Verify Deployment
 # ============================================
 echo "=== Verifying deployment ==="
-HOME=/root /usr/local/bin/temporal-verify --local --deployed
+HOME=/root /usr/local/bin/verify --local --deployed --target temporal
 
 echo "=== Cloud-init complete ==="

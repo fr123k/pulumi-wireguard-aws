@@ -4,3 +4,4 @@
 
 export WIREGUARD_UI_VERSION="${wireguard_ui_version}"
 export SECRET_OPERATOR_VERSION="${secret_operator_version}"
+export TARGET_GOARCH="${target_goarch}"

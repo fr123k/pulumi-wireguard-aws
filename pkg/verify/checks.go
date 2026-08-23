@@ -200,7 +200,7 @@ func WireguardPrebakedChecks() []Check {
 		},
 		{
 			Name:     "WireGuard UI data directory exists",
-			Command:  "test -d /usr/local/bin/db/server && echo exists",
+			Command:  "test -d /usr/local/bin/db/server && test -d /usr/local/bin/db/users && echo exists",
 			Expected: "exists",
 		},
 		{
@@ -323,12 +323,12 @@ func WireguardDeployedChecks() []Check {
 		},
 		{
 			Name:     "Nginx router site enabled",
-			Command:  "test -L /etc/nginx/sites-enabled/router && echo enabled",
+			Command:  "test -L /etc/nginx/conf.d/router.conf && echo enabled",
 			Expected: "enabled",
 		},
 		{
 			Name:     "Nginx router.secret site enabled",
-			Command:  "test -L /etc/nginx/sites-enabled/router.secret && echo enabled",
+			Command:  "test -L /etc/nginx/conf.d/router-secret.conf && echo enabled",
 			Expected: "enabled",
 		},
 		{

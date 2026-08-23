@@ -1,0 +1,22 @@
+# ──────────────────────────────────────────────
+# Cloud-Init Test Packer Variables
+# ──────────────────────────────────────────────
+
+# Required: OVA to boot (base Ubuntu or pre-baked project OVA)
+# source_path = "packer/hetzner/wireguard/output-wireguard/packer-wireguard-vagrant-20260822-113607.ova"
+
+# Required: cloud-init template to test
+# cloud_init_file = "cloud-init/wireguard-prebaked.txt"
+
+# Verify target and mode
+# target = "wireguard"
+# mode   = "deployed"  # or "prebaked"
+
+# Template variables for cloud-init rendering
+# domain               = "wg.test.local"
+# client_publickey     = "test-public-key"
+# client_ip_address    = "172.16.16.2"
+# secret_operator_token = ""
+
+# SSH credentials (must match the image)
+# ssh_private_key_file = "/Users/you/.virtualbox/packer/packer_private_key_file"

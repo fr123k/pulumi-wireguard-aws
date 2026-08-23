@@ -1,17 +1,24 @@
-# Hetzner Cloud API Token (required)
+# Hetzner Cloud API Token (required for hcloud source)
 # Get from: https://console.hetzner.cloud/projects/YOUR_PROJECT/security/tokens
-hcloud_token = "YOUR_HCLOUD_TOKEN_HERE"
+# hcloud_token = "YOUR_HCLOUD_TOKEN_HERE"  # or export HCLOUD_TOKEN
 
-# Optional: Override default values
+# Optional: Override Hetzner defaults
 # base_image   = "ubuntu-26.04"
 # server_type  = "cpx12"
 # location     = "nbg1"
 
+# Optional: Override VirtualBox defaults (used with -only=virtualbox-ovf.wireguard)
+# source_path          = "/Users/you/.virtualbox/packer/packer_base_ubuntu_26.ova"
+# ssh_private_key_file = "/Users/you/.virtualbox/packer/packer_private_key_file"
+
 # Optional: Override component versions
-# wireguard_ui_version     = "0.3.8"
+# wireguard_ui_version     = "0.6.2"
 # secret_operator_version  = "0.6.1"
 
 # Bake SSL certs into the image at build time (requires secret-operator-client)
 # If left empty, certs will be fetched at runtime via cloud-init instead.
 # domain                   = "wg.fr123k.uk"
 # secret_operator_token    = "your-secret-operator-token-here"
+# secret_operator_host     = "https://wg.fr123k.uk:8443/secrets"
+# For VirtualBox NAT builds pointing at a local host service:
+# secret_operator_host     = "http://10.0.2.2:8888/secrets"

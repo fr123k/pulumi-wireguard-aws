@@ -1,112 +1,203 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Vagrantfile for testing the mini PC setup locally
+# Unified Vagrantfile for testing cloud-init scripts locally
 #
-# Supports multiple providers:
-#   - Docker (default on macOS without VirtualBox)
-#   - VirtualBox (if installed)
-#   - VMware Fusion (if installed)
-#   - Parallels (if installed)
+# Supports two test profiles selected via the TEST_PROFILE env var:
+#
+#   minipc             - Fresh Ubuntu box/Docker, runs cloud-init/minipc.txt
+#                        (full from-scratch install of franky, nginx, wireguard tools, etc.)
+#   wireguard-prebaked - Pre-built .box from packer, runs cloud-init/wireguard-prebaked.txt
+#                        (runtime config only — binaries pre-installed in the image)
 #
 # Usage:
-#   vagrant up                              # Auto-detect provider
-#   vagrant up --provider=docker           # Force Docker provider
-#   vagrant up --provider=virtualbox       # Force VirtualBox
-#   vagrant up --provider=vmware_desktop   # Force VMware
+#   vagrant up                                         # minipc (default), auto-detect provider
+#   TEST_PROFILE=wireguard-prebaked vagrant up         # wireguard-prebaked, VirtualBox
+#   vagrant up --provider=docker                       # minipc, force Docker
 #
+# The wireguard-prebaked profile uses the .box produced by the packer vagrant
+# builder. Set WIREGUARD_BOX to point to it (defaults to the packer output dir).
+#
+# Makefile shortcuts:
+#   make vagrant-wireguard-test    # TEST_PROFILE=wireguard-prebaked
+#   make vagrant-minipc-test       # TEST_PROFILE=minipc (default)
+
+require 'pathname'
+
+PROJECT_ROOT = Pathname.new(File.expand_path("..", __dir__))
+
+TEST_PROFILE = ENV.fetch("TEST_PROFILE", "minipc")
+
+# ────────────────────────────────────────────────
+# Profile configuration
+# ────────────────────────────────────────────────
+
+case TEST_PROFILE
+when "minipc"
+  CLOUD_INIT_TEMPLATE = "cloud-init/minipc.txt"
+  SSH_USERNAME = "vagrant"
+  VM_NAME = "minipc-test"
+  # Port forwarding: franky UI + nginx
+  FORWARDED_PORTS = [
+    [80, 8080],
+    [8787, 8788],
+  ]
+  # minipc runs on Docker, VirtualBox, VMware, Parallels
+  SUPPORTED_PROVIDERS = ["docker", "virtualbox", "vmware_desktop", "parallels"]
+when "wireguard-prebaked"
+  CLOUD_INIT_TEMPLATE = "cloud-init/wireguard-prebaked.txt"
+  SSH_USERNAME = "packer"
+  VM_NAME = "wireguard-prebaked-test"
+  # Port forwarding: nginx HTTP, nginx HTTPS, secret-operator HTTPS
+  FORWARDED_PORTS = [
+    [80, 8080],
+    [443, 8443],
+    [8443, 8444],
+  ]
+  # wireguard-prebaked uses a pre-built .box (VirtualBox only)
+  SUPPORTED_PROVIDERS = ["virtualbox"]
+else
+  abort "ERROR: Unknown TEST_PROFILE '#{TEST_PROFILE}'. Use 'minipc' or 'wireguard-prebaked'."
+end
+
+# ────────────────────────────────────────────────
+# Vagrant configuration
+# ────────────────────────────────────────────────
 
 Vagrant.configure("2") do |config|
   # ============================================
-  # Provider detection and configuration
+  # Provider configuration
   # ============================================
 
-  # Determine which provider to use based on what's available
-  # Priority: Docker (always works on macOS) > VirtualBox > VMware > Parallels
+  if SUPPORTED_PROVIDERS.include?("docker")
+    config.vm.provider "docker" do |docker, override|
+      # Build our own image from Dockerfile.test which includes systemd + SSH.
+      docker.build_dir = ".."
+      docker.dockerfile = "vagrant/Dockerfile.test"
+      docker.create_args = ["--privileged", "--cap-add=NET_ADMIN", "--cap-add=SYS_ADMIN", "--cgroupns=host"]
+      docker.has_ssh = true
+      docker.remains_running = true
 
-  config.vm.provider "docker" do |docker, override|
-    # Build our own image from Dockerfile.test which includes systemd + SSH.
-    # This ensures systemd runs as PID 1 and systemctl works properly.
-    # Third-party images like jrei/systemd-ubuntu are amd64-only and
-    # pentatonicfunk images don't boot with systemd as PID 1.
-    docker.build_dir = ".."
-    docker.dockerfile = "vagrant/Dockerfile.test"
-    docker.create_args = ["--privileged", "--cap-add=NET_ADMIN", "--cap-add=SYS_ADMIN", "--cgroupns=host"]
-    docker.has_ssh = true
-    docker.remains_running = true
+      # Docker provider needs a separate SSH port forward
+      override.vm.network "forwarded_port", guest: 22, host: 2222, host_ip: "127.0.0.1", id: "ssh", auto_correct: true
+      FORWARDED_PORTS.each do |guest, host|
+        override.vm.network "forwarded_port", guest: guest, host: host, host_ip: "127.0.0.1", auto_correct: true
+      end
 
-    # Docker provider needs a separate SSH port forward
-    override.vm.network "forwarded_port", guest: 22, host: 2222, host_ip: "127.0.0.1", id: "ssh", auto_correct: true
-    override.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
-    override.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
-
-    # Docker provider doesn't need a Vagrant box when building from Dockerfile
-    override.vm.box = nil
-    override.ssh.insert_key = false
+      # Docker provider doesn't need a Vagrant box when building from Dockerfile
+      override.vm.box = nil
+      override.ssh.insert_key = false
+    end
   end
 
   config.vm.provider "virtualbox" do |vb|
-    vb.name = "minipc-test"
+    vb.name = VM_NAME
     vb.memory = "4096"
     vb.cpus = 2
     vb.gui = false
     vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    vb.customize ["modifyvm", :id, "--nat-localhostreachable1", "on"] if TEST_PROFILE == "wireguard-prebaked"
   end
 
-  config.vm.provider "vmware_desktop" do |vmw|
-    vmw.name = "minipc-test"
-    vmw.memory = "4096"
-    vmw.cpus = 2
+  if SUPPORTED_PROVIDERS.include?("vmware_desktop")
+    config.vm.provider "vmware_desktop" do |vmw|
+      vmw.name = VM_NAME
+      vmw.memory = "4096"
+      vmw.cpus = 2
+    end
   end
 
-  config.vm.provider "parallels" do |prl|
-    prl.name = "minipc-test"
-    prl.memory = "4096"
-    prl.cpus = 2
+  if SUPPORTED_PROVIDERS.include?("parallels")
+    config.vm.provider "parallels" do |prl|
+      prl.name = VM_NAME
+      prl.memory = "4096"
+      prl.cpus = 2
+    end
   end
 
   # ============================================
-  # Common configuration (applies to all providers)
+  # Box configuration
   # ============================================
 
-  # Use Ubuntu 26.04 (Resolute Raccoon, matches Docker provider image)
-  # For Docker provider, this is overridden above
-  config.vm.box = "bento/ubuntu-26.04"
+  if TEST_PROFILE == "wireguard-prebaked"
+    # Use the .box produced by the packer vagrant builder.
+    # Override the path with WIREGUARD_BOX env var if needed.
+    box_path = ENV.fetch("WIREGUARD_BOX",
+      File.join(PROJECT_ROOT, "packer/hetzner/wireguard/output-wireguard/package.box"))
+   
+    puts "Using box: #{box_path}"
 
-  # Private network for SSH access (becomes the "physical server" IP)
-  # Skip for Docker provider - it uses port forwarding instead
-  config.vm.network "private_network", ip: "192.168.56.10"
+    config.vm.box = "wireguard-prebaked"
+    config.vm.box_url = "file://#{box_path}"
+    config.ssh.username = SSH_USERNAME
+    # config.ssh.password = "packer"
+    config.ssh.private_key_path  = ENV.fetch("PACKER_SSH_KEY",
+      File.join(Dir.home, ".virtualbox/packer/packer_private_key_file"))
+    config.ssh.insert_key = false
+    config.ssh.extra_args = ["-o", "PubkeyAuthentication=yes", "-o", "PreferredAuthentications=publickey,password"]
+    config.vm.synced_folder PROJECT_ROOT.to_s, "/vagrant", type: "virtualbox"
+  else
+    # minipc: use a fresh Ubuntu box
+    config.vm.box = "bento/ubuntu-26.04"
+    config.vm.network "private_network", ip: "192.168.56.10"
+    config.vm.synced_folder "..", "/vagrant"
+  end
 
-  # Port forwarding for franky web UI and nginx
-  config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1", auto_correct: true
-  config.vm.network "forwarded_port", guest: 8787, host: 8788, host_ip: "127.0.0.1", auto_correct: true
-
-  # Sync the project root so provisioning scripts can access cloud-init/ etc.
-  # ("." is relative to this Vagrantfile, which is in vagrant/ -- so ".." is the project root)
-  config.vm.synced_folder "..", "/vagrant"
+  # Port forwarding (non-Docker providers)
+  FORWARDED_PORTS.each do |guest, host|
+    config.vm.network "forwarded_port", guest: guest, host: host, host_ip: "127.0.0.1", auto_correct: true
+  end
 
   # ============================================
-  # Provisioning: render the cloud-init template and run it
+  # Provisioning: render and run the cloud-init script
   # ============================================
 
-  # Step 1: Render the cloud-init template with defaults
+  # Step 1: Render the cloud-init template with test values
   config.vm.provision "shell", name: "render-cloud-init", inline: <<-SHELL
-    echo "=== Rendering cloud-init template for Vagrant test ==="
-    SOURCE="/vagrant/cloud-init/minipc.txt"
-    TARGET="/tmp/minipc-rendered.sh"
+    echo "=== Rendering cloud-init template (profile: #{TEST_PROFILE}) ==="
+    SOURCE="/vagrant/#{CLOUD_INIT_TEMPLATE}"
+    TARGET="/tmp/cloud-init-rendered.sh"
 
     if [ ! -f "$SOURCE" ]; then
       echo "ERROR: cloud-init template not found at $SOURCE"
       exit 1
     fi
 
-    # The template uses {{ VAR }} placeholders. For Vagrant testing,
-    # we leave them empty so defaults kick in (the script has fallback logic).
-    sed -e 's/{{ MINIPC_USER }}//g' \
-        -e 's/{{ MINIPC_DOCKER }}/true/g' \
-        -e 's/{{ MINIPC_NIC }}//g' \
-        -e 's/{{ FRANKY_VERSION }}//g' \
-        "$SOURCE" > "$TARGET"
+    #{if TEST_PROFILE == "wireguard-prebaked"
+      <<~RENDER
+        # Generate self-signed test SSL certs so nginx can start without real certs
+        DOMAIN="wg-test.fr123k.uk"
+        mkdir -p /etc/letsencrypt/live/${DOMAIN}
+        if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then
+          openssl req -x509 -nodes -days 365 \\
+            -newkey rsa:2048 \\
+            -keyout /etc/letsencrypt/live/${DOMAIN}/privkey.pem \\
+            -out /etc/letsencrypt/live/${DOMAIN}/fullchain.pem \\
+            -subj "/CN=${DOMAIN}" 2>/dev/null
+          chmod 600 /etc/letsencrypt/live/${DOMAIN}/privkey.pem
+          chmod 644 /etc/letsencrypt/live/${DOMAIN}/fullchain.pem
+          echo "Generated self-signed test certs for ${DOMAIN}"
+        fi
+
+        sed -e 's|{{ DOMAIN }}|'"${DOMAIN}"'|g' \\
+            -e 's|{{ SECRET_OPERATOR_TOKEN }}||g' \\
+            -e 's|{{ CLIENT_PUBLICKEY }}||g' \\
+            -e 's|{{ CLIENT_IP_ADDRESS }}|10.8.0.3|g' \\
+            -e 's|{{ MAILJET_API_CREDENTIALS }}||g' \\
+            "$SOURCE" > "$TARGET"
+      RENDER
+    else
+      <<~RENDER
+        # The template uses {{ VAR }} placeholders. For Vagrant testing,
+        # we leave them empty so defaults kick in (the script has fallback logic).
+        sed -e 's/{{ MINIPC_USER }}//g' \\
+            -e 's/{{ MINIPC_DOCKER }}/true/g' \\
+            -e 's/{{ MINIPC_NIC }}//g' \\
+            -e 's/{{ FRANKY_VERSION }}//g' \\
+            -e 's/{{ FRANKY_BOX_VERSION }}//g' \\
+            "$SOURCE" > "$TARGET"
+      RENDER
+    end}
 
     chmod +x "$TARGET"
     echo "Rendered cloud-init saved to $TARGET"
@@ -114,59 +205,56 @@ Vagrant.configure("2") do |config|
   SHELL
 
   # Step 2: Run the rendered cloud-init script
-  # NOTE: Some steps may fail in Vagrant/Docker (e.g., SSH hardening
-  # may lock out the default SSH key). Workarounds are applied below.
-  # The script is run with bash (not bash -v) to avoid verbose output noise.
-  config.vm.provision "shell", name: "run-minipc-setup", inline: <<-SHELL
-    echo "=== Running mini PC setup script ==="
-    bash /tmp/minipc-rendered.sh || {
-      echo "WARNING: Some setup steps failed (this can be expected in Vagrant/Docker)"
+  config.vm.provision "shell", name: "run-cloud-init", privileged: true, inline: <<-SHELL
+    echo "=== Running cloud-init setup (profile: #{TEST_PROFILE}) ==="
+    bash /tmp/cloud-init-rendered.sh || {
+      echo "WARNING: Some setup steps failed (expected in local testing)"
       echo "Key services will be verified in the next step"
     }
   SHELL
 
-  # Step 3: Provider-specific workarounds
-  # Ensure the Vagrant/Docker SSH key still works after hardening
-  config.vm.provision "shell", name: "vagrant-workarounds", inline: <<-SHELL
-    echo "=== Applying Vagrant/Docker workarounds ==="
+  # Step 3: Re-enable SSH access (hardening may have locked out the Vagrant/packer user)
+  config.vm.provision "shell", name: "ssh-workaround", privileged: true, inline: <<-SHELL
+    echo "=== Re-enabling SSH for #{SSH_USERNAME} user ==="
 
-    # Ensure vagrant user can still SSH in after hardening
-    VAGRANT_USER="vagrant"
-    if id "$VAGRANT_USER" &>/dev/null; then
-      # Add vagrant user to AllowUsers in sshd_config
+    SSH_USER="#{SSH_USERNAME}"
+    if id "$SSH_USER" &>/dev/null; then
       if grep -q "^AllowUsers" /etc/ssh/sshd_config; then
-        sed -i "s/^AllowUsers .*/& $VAGRANT_USER/" /etc/ssh/sshd_config
+        sed -i "s/^AllowUsers .*/& $SSH_USER/" /etc/ssh/sshd_config
       fi
 
-      # Ensure vagrant SSH directory exists
-      mkdir -p "/home/$VAGRANT_USER/.ssh/"
-      if [ -f /root/.ssh/authorized_keys ]; then
-        cp /root/.ssh/authorized_keys "/home/$VAGRANT_USER/.ssh/authorized_keys" 2>/dev/null || true
+      # Ensure SSH directory and authorized_keys exist
+      HOME_DIR=$(getent passwd "$SSH_USER" | cut -d: -f6)
+      if [ -n "$HOME_DIR" ]; then
+        mkdir -p "$HOME_DIR/.ssh/"
+        if [ -f /root/.ssh/authorized_keys ]; then
+          cp /root/.ssh/authorized_keys "$HOME_DIR/.ssh/authorized_keys" 2>/dev/null || true
+        fi
+        chown -R "$SSH_USER:$SSH_USER" "$HOME_DIR/.ssh/" 2>/dev/null || true
+        chmod 600 "$HOME_DIR/.ssh/authorized_keys" 2>/dev/null || true
       fi
-      chown -R "$VAGRANT_USER:$VAGRANT_USER" "/home/$VAGRANT_USER/.ssh/" 2>/dev/null || true
-      chmod 600 "/home/$VAGRANT_USER/.ssh/authorized_keys" 2>/dev/null || true
 
-      # Add vagrant to sudoers
-      echo "$VAGRANT_USER ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$VAGRANT_USER" 2>/dev/null || true
-      chmod 0440 "/etc/sudoers.d/$VAGRANT_USER" 2>/dev/null || true
+      # Add to sudoers if not already
+      echo "$SSH_USER ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/$SSH_USER" 2>/dev/null || true
+      chmod 0440 "/etc/sudoers.d/$SSH_USER" 2>/dev/null || true
     fi
 
-    # Re-enable password auth for Vagrant/Docker (they need it for SSH)
+    # Re-enable password auth (Vagrant/Docker need it for SSH)
     sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
 
-    # Restart SSH to pick up changes (fallback for containers without systemd)
+    # Restart SSH (fallback for containers without systemd)
     if [ -d /run/systemd/system ]; then
       systemctl restart ssh.service || systemctl restart sshd || true
     else
       service ssh restart 2>/dev/null || service sshd restart 2>/dev/null || true
     fi
 
-    echo "=== Workarounds applied ==="
+    echo "=== SSH workaround applied ==="
   SHELL
 
-  # Step 4: Verify key services are running
-  config.vm.provision "shell", name: "verify-setup", inline: <<-SHELL
-    echo "=== Verifying mini PC setup ==="
+  # Step 4: Verify key services
+  config.vm.provision "shell", name: "verify-setup", privileged: true, inline: <<-SHELL
+    echo "=== Verifying setup (profile: #{TEST_PROFILE}) ==="
 
     check() {
       local name="$1"
@@ -181,7 +269,7 @@ Vagrant.configure("2") do |config|
       fi
     }
 
-    # Define systemctl fallback for Docker containers without systemd PID 1
+    # systemctl fallback for Docker containers without systemd PID 1
     sctl_status() {
       if [ -d /run/systemd/system ]; then
         systemctl is-active "$1" 2>/dev/null || systemctl is-active "$2" 2>/dev/null
@@ -190,64 +278,82 @@ Vagrant.configure("2") do |config|
       fi
     }
 
-    # SSH
+    # ── Common checks ──
     check "SSH service running" "sctl_status ssh sshd" "active"
-
-    # nftables
-    check "nftables service running" "sctl_status nftables" "active"
-
-    # fail2ban
-    check "fail2ban service running" "sctl_status fail2ban" "active"
-
-    # WireGuard tools
-    check "WireGuard tools installed" "which wg && echo installed" "installed"
-
-    # Franky
-    check "franky binary exists" "test -f /usr/bin/franky && echo exists" "exists"
-
-    # Nginx
     check "Nginx service running" "sctl_status nginx" "active"
+    check "fail2ban service running" "sctl_status fail2ban" "active"
+    check "frank.ittermann user exists" "id frank.ittermann && echo exists" "exists"
 
-    # Go
-    check "Go installed" "go version && echo installed" "installed"
+    #{if TEST_PROFILE == "wireguard-prebaked"
+      <<~CHECKS
+        # ── WireGuard prebaked checks ──
+        check "WireGuard config exists" "test -f /etc/wireguard/wg0.conf && echo exists" "exists"
+        check "wg-quick service active" "systemctl is-active wg-quick@wg0" "active"
+        check "wireguard-ui binary exists" "test -f /usr/local/bin/wireguard-ui && echo exists" "exists"
+        check "wgui service active" "systemctl is-active wgui" "active"
+        check "WireGuard UI data dir (server)" "test -d /usr/local/bin/db/server && echo exists" "exists"
+        check "WireGuard UI data dir (users)" "test -d /usr/local/bin/db/users && echo exists" "exists"
+        check "keypair.json exists" "test -f /usr/local/bin/db/server/keypair.json && echo exists" "exists"
+        check "interfaces.json exists" "test -f /usr/local/bin/db/server/interfaces.json && echo exists" "exists"
+        check "wgui.env exists" "test -f /etc/systemd/system/wgui.env && echo exists" "exists"
+        check "secret-operator-server binary" "test -f /usr/bin/secret-operator-server && echo exists" "exists"
+        check "secret-operator-server service" "systemctl is-active secret-operator-server" "active"
+        check "Nginx router config" "test -f /etc/nginx/sites-available/router.conf && echo exists" "exists"
+        check "UFW active" "ufw status | grep -q 'Status: active' && echo active" "active"
+      CHECKS
+    else
+      <<~CHECKS
+        # ── MiniPC checks ──
+        check "nftables service running" "sctl_status nftables" "active"
+        check "WireGuard tools installed" "which wg && echo installed" "installed"
+        check "franky binary exists" "test -f /usr/bin/franky && echo exists" "exists"
+        check "Go installed" "go version && echo installed" "installed"
+        check "Unattended upgrades configured" "test -f /etc/apt/apt.conf.d/20auto-upgrades && echo configured" "configured"
+      CHECKS
+    end}
 
-    # User
-    check "franky user exists" "id frank.ittermann && echo exists" "exists"
-
-    # Security
-    check "Unattended upgrades configured" "test -f /etc/apt/apt.conf.d/20auto-upgrades && echo configured" "configured"
-
-    echo "=== Verification complete ==="
+    echo ""
+    echo "=== Verification complete (profile: #{TEST_PROFILE}) ==="
+    echo ""
+    #{if TEST_PROFILE == "wireguard-prebaked"
+      '"  WireGuard UI:  https://localhost:8443  (self-signed/test cert)\n' \
+      '  Nginx HTTP:    http://localhost:8080\n"'
+    else
+      '"  Franky UI: http://localhost:8788  (guest:8787)\n' \
+      '  Nginx:     http://localhost:8080\n"'
+    end}
+    echo ""
+    echo "  SSH:  vagrant ssh  (or ssh #{SSH_USERNAME}@localhost -o Port=2222)"
+    echo ""
   SHELL
 
-  # Helpful message after provisioning
+  # ============================================
+  # Post-up message
+  # ============================================
   config.vm.post_up_message = <<-MSG
     +--------------------------------------------------------------+
-    |           Mini PC Vagrant Test Environment Ready             |
+    |       Vagrant Test Environment Ready (#{TEST_PROFILE.ljust(18)})       |
     +--------------------------------------------------------------+
-    |                                                               |
-    |  SSH:       vagrant ssh                                       |
-    |  Franky UI: http://localhost:8788  (guest:8787)                        |
-    |  Nginx:     http://localhost:8080                              |
-    |                                                               |
-    |  Test with Pulumi (if using VirtualBox/VMware):               |
-    |    export MINIPC_SERVER_IP=192.168.56.10                      |
-    |    make minipc-create                                          |
-    |                                                               |
-    |  Test with Pulumi (if using Docker):                          |
-    |    export MINIPC_SERVER_IP=127.0.0.1                          |
-    |    export MINIPC_SSH_PORT=2222                                 |
-    |    make minipc-create                                          |
-    |                                                               |
-    |  Re-provision:  vagrant provision                              |
-    |  Tear down:     vagrant destroy                                |
-    |                                                               |
-    |  Useful commands inside the VM:                                |
-    |    sudo systemctl status franky                                 |
-    |    sudo systemctl status nginx                                  |
-    |    sudo systemctl status nftables                               |
-    |    sudo nft list ruleset                                        |
-    |                                                               |
+    |                                                              |
+    |  Profile:     #{TEST_PROFILE}
+    |  Cloud-init:  #{CLOUD_INIT_TEMPLATE}
+    |  SSH user:    #{SSH_USERNAME}
+    |
+    #{if TEST_PROFILE == "wireguard-prebaked"
+      "|  WireGuard UI: https://localhost:8443  (self-signed test cert)\n" \
+      "|  Nginx HTTP:   http://localhost:8080\n"
+    else
+      "|  Franky UI: http://localhost:8788  (guest:8787)\n" \
+      "|  Nginx:     http://localhost:8080\n"
+    end}
+    |  Re-provision:  vagrant provision
+    |  Tear down:     vagrant destroy
+    |  SSH:           vagrant ssh
+    |
+    |  Switch profile:
+    |    TEST_PROFILE=wireguard-prebaked vagrant up --provider=virtualbox
+    |    TEST_PROFILE=minipc vagrant up
+    |
     +--------------------------------------------------------------+
   MSG
 end
