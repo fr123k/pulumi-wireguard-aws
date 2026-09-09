@@ -435,8 +435,8 @@ func (e *UndecryptableCredentialsError) Error() string { return e.Err.Error() }
 func (e *UndecryptableCredentialsError) Unwrap() error { return e.Err }
 
 func IsUndecryptableCredentials(err error) bool {
-	var undecryptable *UndecryptableCredentialsError
-	return errors.As(err, &undecryptable)
+	_, ok := errors.AsType[*UndecryptableCredentialsError](err)
+	return ok
 }
 
 func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
@@ -691,6 +691,14 @@ type AgentClaim struct {
 	ValidUntil         time.Time  `json:"validUntil"`
 	CloudURL           string     `json:"cloudUrl"`
 	ClaimUnavailableAt *time.Time `json:"claimUnavailableAt,omitempty"`
+}
+
+// Active reports whether the claim can still be surfaced to the user: it has a
+// claim URL, has not been marked unavailable, and has not expired.
+func (c AgentClaim) Active(now time.Time) bool {
+	return c.ClaimURL != "" &&
+		c.ClaimUnavailableAt == nil &&
+		(c.ValidUntil.IsZero() || c.ValidUntil.After(now))
 }
 
 // FormatAgentClaimInstruction returns the structured instruction shown to
