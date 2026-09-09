@@ -39,7 +39,7 @@ variable "snapshot_name" {
 // Component Version Pins
 variable "temporal_cli_version" {
   type        = string
-  default     = "1.8.2"
+  default     = "1.8.3"
   description = "Temporal CLI version"
 }
 
@@ -75,7 +75,7 @@ variable "oauth2_storage_version" {
 
 variable "dunebot_version" {
   type        = string
-  default     = "0.3.17"
+  default     = "0.3.18"
   description = "DuneBot version"
 }
 
