@@ -10,7 +10,7 @@ require (
 	github.com/containifyci/secret-operator v0.6.2
 	github.com/containifyci/temporal-worker v0.10.7
 	github.com/temporalio/cli v1.8.3
-	github.com/temporalio/ui-server/v2 v2.53.3
+	github.com/temporalio/ui-server/v2 v2.54.0
 	go.temporal.io/server v1.31.2
 )
 
@@ -112,7 +112,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/labstack/echo/v4 v4.15.3 // indirect
+	github.com/labstack/echo/v4 v4.15.4 // indirect
 	github.com/labstack/gommon v0.5.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
