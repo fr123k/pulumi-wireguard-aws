@@ -141,8 +141,8 @@ github.com/cloudflare/circl/math/mlsbset
 github.com/cloudflare/circl/sign
 github.com/cloudflare/circl/sign/ed25519
 github.com/cloudflare/circl/sign/ed448
-# github.com/creasty/defaults v1.8.0
-## explicit; go 1.14
+# github.com/creasty/defaults v1.11.0
+## explicit; go 1.22
 github.com/creasty/defaults
 # github.com/danieljoos/wincred v1.2.3
 ## explicit; go 1.18
@@ -396,11 +396,11 @@ github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/internal
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/route53
-# github.com/pulumi/pulumi-hcloud/sdk v1.41.0
+# github.com/pulumi/pulumi-hcloud/sdk v1.42.0
 ## explicit; go 1.25.11
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud/internal
-# github.com/pulumi/pulumi/sdk/v3 v3.262.0
+# github.com/pulumi/pulumi/sdk/v3 v3.263.0
 ## explicit; go 1.26.6
 github.com/pulumi/pulumi/sdk/v3/go/common/apitype
 github.com/pulumi/pulumi/sdk/v3/go/common/constant
