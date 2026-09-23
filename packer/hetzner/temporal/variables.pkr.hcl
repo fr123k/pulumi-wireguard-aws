@@ -39,19 +39,19 @@ variable "snapshot_name" {
 // Component Version Pins
 variable "temporal_cli_version" {
   type        = string
-  default     = "1.8.3"
+  default     = "1.9.1"
   description = "Temporal CLI version"
 }
 
 variable "temporal_server_version" {
   type        = string
-  default     = "1.31.2"
+  default     = "1.32.0"
   description = "Temporal Server version"
 }
 
 variable "temporal_ui_version" {
   type        = string
-  default     = "2.54.0"
+  default     = "2.54.1"
   description = "Temporal UI Server version"
 }
 
