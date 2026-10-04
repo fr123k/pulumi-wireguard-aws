@@ -51,7 +51,7 @@ variable "temporal_server_version" {
 
 variable "temporal_ui_version" {
   type        = string
-  default     = "2.54.1"
+  default     = "2.55.0"
   description = "Temporal UI Server version"
 }
 
