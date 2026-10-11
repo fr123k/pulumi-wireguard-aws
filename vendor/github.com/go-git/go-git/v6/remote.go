@@ -13,8 +13,10 @@ import (
 	"github.com/go-git/go-git/v6/internal/repository"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/client"
+	formatcfg "github.com/go-git/go-git/v6/plumbing/format/config"
 	"github.com/go-git/go-git/v6/plumbing/format/packfile"
 	"github.com/go-git/go-git/v6/plumbing/object"
+	"github.com/go-git/go-git/v6/plumbing/protocol"
 	"github.com/go-git/go-git/v6/plumbing/protocol/capability"
 	"github.com/go-git/go-git/v6/plumbing/protocol/packp"
 	"github.com/go-git/go-git/v6/plumbing/revlist"
@@ -77,12 +79,14 @@ func (r *Remote) String() string {
 
 // Push performs a push to the remote. Returns NoErrAlreadyUpToDate if the
 // remote was already up-to-date.
+// Malformed wildcard source patterns are rejected before contacting the remote.
 func (r *Remote) Push(o *PushOptions) error {
 	return r.PushContext(context.Background(), o)
 }
 
 // PushContext performs a push to the remote. Returns NoErrAlreadyUpToDate if
 // the remote was already up-to-date.
+// Malformed wildcard source patterns are rejected before contacting the remote.
 //
 // The provided Context must be non-nil. If the context expires before the
 // operation is complete, an error is returned. The context only affects the
@@ -97,6 +101,23 @@ func (r *Remote) PushContext(ctx context.Context, o *PushOptions) (err error) {
 
 	if err := o.Validate(); err != nil {
 		return err
+	}
+
+	for _, spec := range o.RefSpecs {
+		if !spec.IsWildcard() {
+			continue
+		}
+		// A source glob must satisfy Git's refname rules with one wildcard
+		// and one-level names allowed. A fixed invalid prefix or suffix must
+		// fail before pruning can mistake filtered sources for missing refs.
+		// See https://github.com/git/git/blob/1630431f326e15fcde608827b5ff38422528eb59/refspec.c#L119-L134.
+		name := strings.ReplaceAll(spec.Src(), "*", "x")
+		if !strings.Contains(name, "/") {
+			name = plumbing.RefPrefix + name
+		}
+		if err := plumbing.ReferenceName(name).Validate(); err != nil {
+			return fmt.Errorf("%w: invalid source pattern %q", plumbing.ErrInvalidReferenceName, spec.Src())
+		}
 	}
 
 	if o.RemoteName != r.c.Name {
@@ -119,12 +140,12 @@ func (r *Remote) PushContext(ctx context.Context, o *PushOptions) (err error) {
 	}
 	defer ioutil.CheckClose(sess, &err)
 
-	rRefs, err := sess.GetRemoteRefs(ctx)
+	rRefs, err := sess.GetRemoteRefs(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	remoteRefs := referenceStorageFromRefs(rRefs, true)
+	remoteRefs := referenceStorageFromRefs(rRefs.References, true)
 	if err := r.checkRequireRemoteRefs(o.RequireRemoteRefs, remoteRefs); err != nil {
 		return err
 	}
@@ -165,6 +186,27 @@ func (r *Remote) sendPack(ctx context.Context, sess transport.Session, remoteRef
 	if err != nil {
 		return err
 	}
+	// Storage enumeration is also used by repository maintenance and must
+	// remain complete. Only push candidates exclude malformed ordinary refs,
+	// including stale lock files that Git's files ref iterator skips.
+	pushRefs := localRefs[:0]
+	for _, ref := range localRefs {
+		if ref.Name().IsUnderRefs() {
+			if err := ref.Name().Validate(); err != nil {
+				// An explicit source must fail rather than disappear: prune
+				// would interpret its absence as a request to delete its
+				// mapped destination. Wildcards still skip malformed entries.
+				for _, spec := range o.RefSpecs {
+					if !spec.IsWildcard() && spec.Match(ref.Name()) {
+						return err
+					}
+				}
+				continue
+			}
+		}
+		pushRefs = append(pushRefs, ref)
+	}
+	localRefs = pushRefs
 
 	cmds := make([]*packp.Command, 0)
 	if err := r.addReferencesToUpdate(o.RefSpecs, localRefs, remoteRefs, &cmds, o.Prune, o.ForceWithLease); err != nil {
@@ -173,6 +215,13 @@ func (r *Remote) sendPack(ctx context.Context, sess transport.Session, remoteRef
 
 	if o.FollowTags {
 		if err := r.addReachableTags(localRefs, remoteRefs, &cmds); err != nil {
+			return err
+		}
+	}
+	// Refspecs can turn a valid source into an invalid destination. Validate
+	// the complete command list before any update is sent to the remote.
+	for _, cmd := range cmds {
+		if err := cmd.Name.Validate(); err != nil {
 			return err
 		}
 	}
@@ -335,6 +384,71 @@ func (r *Remote) FetchContext(ctx context.Context, o *FetchOptions) error {
 	return err
 }
 
+// fetchRefPrefixes derives the ls-refs "ref-prefix" hints for a fetch from its
+// refspecs and tag mode, mirroring canonical git (builtin/fetch.c,
+// builtin/clone.c). HEAD is always included so default-branch resolution keeps
+// working (e.g. on clone), and refs/tags/ is added when tags are being
+// followed.
+//
+// ref-prefix is purely an optimization, so the returned prefixes must cover
+// every ref the fetch could match. When a refspec cannot be safely turned into
+// a prefix (an exact-OID source) or there are no refspecs, it returns nil to
+// request the full advertisement rather than risk under-scoping it.
+func fetchRefPrefixes(specs []config.RefSpec, tags plumbing.TagMode) []string {
+	if len(specs) == 0 {
+		return nil
+	}
+
+	prefixes := make([]string, 0, len(specs)+2)
+	for _, rs := range specs {
+		if rs.IsExactSHA1() {
+			return nil
+		}
+		src := rs.Src()
+		if src == "" {
+			return nil
+		}
+		if prefix, _, found := strings.Cut(src, "*"); found {
+			// A wildcard: the prefix is the literal part before '*'. A leading
+			// wildcard trims to an empty prefix, which would emit an invalid
+			// "ref-prefix " argument, so request the full advertisement instead
+			// of under-scoping it.
+			if prefix == "" {
+				return nil
+			}
+			prefixes = append(prefixes, prefix)
+			continue
+		}
+
+		// A HEAD source (single-branch clone, "+HEAD:...") resolves through a
+		// symref to a branch under refs/heads/. HEAD itself is appended
+		// unconditionally below, so advertise that namespace too; otherwise a
+		// v2 server that strictly honours ref-prefix omits the resolved branch
+		// and it cannot be fetched. Matches git clone.
+		if src == "HEAD" {
+			prefixes = append(prefixes, plumbing.RefHeadPrefix)
+			continue
+		}
+
+		// A non-wildcard source may be a short name (e.g. "master"). A v2 server
+		// prefix-matches ref-prefix against the full refname, so "master" alone
+		// would never match refs/heads/master. Expand it to every candidate
+		// full name, mirroring canonical git's refspec_ref_prefixes ->
+		// expand_ref_prefix (refspec.c, refs.c).
+		for _, rule := range plumbing.RefRevParseRules {
+			prefixes = append(prefixes, fmt.Sprintf(rule, src))
+		}
+	}
+
+	// Order matches canonical git: refspec prefixes, then refs/tags/, then
+	// HEAD last (builtin/clone.c, builtin/fetch.c).
+	if tags == plumbing.AllTags || tags == plumbing.TagFollowing {
+		prefixes = append(prefixes, "refs/tags/")
+	}
+	prefixes = append(prefixes, "HEAD")
+	return prefixes
+}
+
 // Fetch fetches references along with the objects necessary to complete their
 // histories.
 //
@@ -364,6 +478,15 @@ func (r *Remote) fetch(ctx context.Context, o *FetchOptions) (sto storer.Referen
 		return nil, err
 	}
 
+	// Fail before opening a connection rather than after the objects have
+	// landed. A filtered fetch stored as an ordinary pack leaves a repository
+	// git reports as corrupt and refuses to gc, so if this storage cannot record
+	// the pack as coming from a promisor remote, the fetch does not start.
+	if o.Filter != "" && !packfile.SupportsPromisorPacks(r.s) {
+		return nil, fmt.Errorf("%w: refusing to fetch with filter %q",
+			packfile.ErrPromisorPacksUnsupported, o.Filter)
+	}
+
 	if len(o.RefSpecs) == 0 {
 		o.RefSpecs = r.c.Fetch
 	}
@@ -378,6 +501,7 @@ func (r *Remote) fetch(ctx context.Context, o *FetchOptions) (sto storer.Referen
 	}
 
 	req.Command = transport.UploadPackService
+	req.Protocol = r.transportProtocol()
 	sess, err := cl.Handshake(ctx, req)
 	if err != nil {
 		return nil, err
@@ -388,12 +512,14 @@ func (r *Remote) fetch(ctx context.Context, o *FetchOptions) (sto storer.Referen
 		return nil, err
 	}
 
-	rRefs, err := sess.GetRemoteRefs(ctx)
+	rRefs, err := sess.GetRemoteRefs(ctx, &transport.GetRemoteRefsOptions{
+		RefPrefixes: fetchRefPrefixes(o.RefSpecs, o.Tags),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	remoteRefs := referenceStorageFromRefs(rRefs, true)
+	remoteRefs := referenceStorageFromRefs(rRefs.References, true)
 	localRefs, err := reference.References(r.s)
 	if err != nil {
 		return nil, err
@@ -463,6 +589,12 @@ func (r *Remote) fetch(ctx context.Context, o *FetchOptions) (sto storer.Referen
 			// this point, we have everything we're asking for.
 			return nil, err
 		}
+
+		if o.Filter != "" {
+			if err := r.recordPromisor(o.Filter); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	var updatedPrune bool
@@ -509,9 +641,75 @@ func referenceStorageFromRefs(refs []*plumbing.Reference, filterPeeled bool) mem
 		if filterPeeled && strings.HasSuffix(ref.Name().String(), peeledSuffix) {
 			continue
 		}
+		if !usableRemoteRef(ref.Name()) {
+			trace.General.Printf("ignoring ref with broken name %q", ref.Name().String())
+			continue
+		}
 		_ = refStore.SetReference(ref)
 	}
 	return refStore
+}
+
+// unstorableRefName reports whether err says the storer refused name for what
+// the name is, rather than for anything about the fetch.
+//
+// A refspec builds a destination name the remote did not choose, so a name the
+// storer will not take can arrive even after the advertisement has been
+// filtered — "+refs/*:refs/*" onto a remote name go-git holds to a stricter
+// rule than check_refname_format, say. Git answers per-reference rather than
+// per-fetch, in get_fetch_map:
+//
+//	error(_("* Ignoring funny ref '%s' locally"), (*rmp)->peer_ref->name);
+//
+// and finishes with the references that remain, exiting 0.
+//
+// Every arm of the storer's name gate wraps plumbing.ErrInvalidReferenceName,
+// so this recognises all of them rather than the format rule alone. That
+// matters because go-git refuses a wider set than Git does — the components an
+// HFS+ or NTFS filesystem folds to a dot — and those names reach here having
+// passed the advertisement filter, which is a faithful check_refname_format.
+//
+// https://github.com/git/git/blob/1630431f326e15fcde608827b5ff38422528eb59/remote.c#L2165-L2176
+func unstorableRefName(name, source plumbing.ReferenceName, err error) bool {
+	if !errors.Is(err, plumbing.ErrInvalidReferenceName) {
+		return false
+	}
+
+	trace.General.Printf("ignoring local ref %q from remote ref %q: %q", name.String(), source.String(), err.Error())
+	return true
+}
+
+// usableRemoteRef reports whether an advertised reference name is one this
+// side can do anything with.
+//
+// A remote is free to advertise a name go-git will not store, and one that
+// serves a repository holding a stale lock file or a name some other tool left
+// behind will do exactly that. Dropping it here, where the advertisement first
+// becomes a list, keeps it out of refspec matching, out of the want list and
+// out of the storer, so a single unusable name costs that one reference rather
+// than the whole fetch.
+//
+// This is filter_refs in fetch-pack.c, which checks the same thing in the same
+// place and says nothing about it:
+//
+//	if (starts_with(ref->name, "refs/") &&
+//	    check_refname_format(ref->name, 0)) {
+//		/* trash or a peeled value; do not even add it to unmatched list */
+//		free_one_ref(ref);
+//		continue;
+//	}
+//
+// Only names under refs/ are judged, as there: HEAD is advertised and is not
+// one. Git also relies on this to drop the null-object-id entries it emits for
+// a broken name, which go-git would otherwise ask the remote to send.
+//
+// https://github.com/git/git/blob/1630431f326e15fcde608827b5ff38422528eb59/fetch-pack.c#L711-L718
+func usableRemoteRef(name plumbing.ReferenceName) bool {
+	if !name.IsUnderRefs() {
+		return true
+	}
+
+	return name.Validate() == nil
 }
 
 func depthChanged(before []plumbing.Hash, s storage.Storer) (bool, error) {
@@ -545,6 +743,85 @@ func newClient(rawURL string, opts []client.Option) (*client.Client, *transport.
 
 	cl := client.New(opts...)
 	return cl, &transport.Request{URL: u}, nil
+}
+
+// transportProtocol returns the wire protocol version configured for this
+// remote's repository (the protocol.version setting), defaulting to
+// config.DefaultProtocolVersion. It is used for ref discovery and fetch;
+// push always uses v0/v1, since protocol v2 has no push.
+func (r *Remote) transportProtocol() protocol.Version {
+	if r.s == nil {
+		return config.DefaultProtocolVersion
+	}
+	cfg, err := r.s.Config()
+	if err != nil || cfg == nil {
+		return config.DefaultProtocolVersion
+	}
+	return cfg.Protocol.Version
+}
+
+// recordPromisor marks this remote as a promisor remote and stores the filter
+// that was used, mirroring what git records for a partial clone.
+//
+// Both keys matter. promisor is what lets git accept that the filtered-out
+// objects are absent on purpose, and partialclonefilter is what makes git
+// reapply the same filter on later fetches. Recording the first without the
+// second leaves the repository fetching unfiltered while missing objects, which
+// fails in index-pack resolving deltas against bases it never receives.
+//
+// The filter is recorded once and then left alone, which is git's behaviour: it
+// is the default reapplied to later fetches, not a record of the most recent
+// one.
+//
+// Nothing is recorded for a fetch that did not come from a configured remote:
+// an anonymous URL fetch has no remote section to write to, and git leaves the
+// configured remotes alone in that case too.
+func (r *Remote) recordPromisor(filter packp.Filter) error {
+	if r.s == nil || r.c == nil || r.c.Name == "" {
+		return nil
+	}
+
+	cfg, err := r.s.Config()
+	if err != nil {
+		return err
+	}
+
+	remote, ok := cfg.Remotes[r.c.Name]
+	if !ok {
+		return nil
+	}
+
+	// A filter already recorded for this remote is left alone, even when this
+	// fetch used a different one. Git treats the first filter as the default to
+	// reapply to later fetches and does not rewrite it
+	// (list-objects-filter-options.c partial_clone_register returns early once
+	// the remote has a partialclonefilter), so overwriting it here would change
+	// what an unfiltered `git fetch` does afterwards.
+	if remote.Promisor && remote.PartialCloneFilter != "" {
+		return nil
+	}
+
+	if !remote.Promisor {
+		remote.Promisor = true
+
+		// Partial clone is a repository format extension, so the format
+		// version has to allow extensions to be present at all. Git raises it
+		// when first registering the remote, for the same reason.
+		cfg.Core.RepositoryFormatVersion = formatcfg.Version1
+	}
+
+	remote.PartialCloneFilter = string(filter)
+
+	if err := r.s.SetConfig(cfg); err != nil {
+		return err
+	}
+
+	// Keep the in-memory view consistent with what was just stored, so a
+	// caller holding this Remote sees the recorded filter.
+	r.c.Promisor = remote.Promisor
+	r.c.PartialCloneFilter = remote.PartialCloneFilter
+
+	return nil
 }
 
 func (r *Remote) pruneRemotes(specs []config.RefSpec, localRefs []*plumbing.Reference, remoteRefs storer.ReferenceStorer) (bool, error) {
@@ -704,6 +981,9 @@ func (r *Remote) addObject(rs config.RefSpec,
 		return nil
 	}
 	if !rs.IsForceUpdate() {
+		if err := checkTagUpdate(cmd); err != nil {
+			return err
+		}
 		if err := checkFastForwardUpdate(r.s, remoteRefs, cmd); err != nil {
 			return err
 		}
@@ -752,6 +1032,9 @@ func (r *Remote) addReferenceIfRefSpecMatches(rs config.RefSpec,
 			return err
 		}
 	} else if !rs.IsForceUpdate() {
+		if err := checkTagUpdate(cmd); err != nil {
+			return err
+		}
 		if err := checkFastForwardUpdate(r.s, remoteRefs, cmd); err != nil {
 			return err
 		}
@@ -766,7 +1049,8 @@ func (r *Remote) checkForceWithLease(localRef *plumbing.Reference, cmd *packp.Co
 
 	ref, err := storer.ResolveReference(
 		r.s,
-		plumbing.ReferenceName(remotePrefix+strings.ReplaceAll(localRef.Name().String(), "refs/heads/", "")))
+		plumbing.ReferenceName(remotePrefix+strings.ReplaceAll(localRef.Name().String(), plumbing.RefHeadPrefix, "")),
+	)
 	if err != nil {
 		return err
 	}
@@ -781,6 +1065,14 @@ func (r *Remote) checkForceWithLease(localRef *plumbing.Reference, cmd *packp.Co
 		if cmd.Old != expectedOID {
 			return fmt.Errorf("non-fast-forward update: %s", cmd.Name.String())
 		}
+	}
+
+	return nil
+}
+
+func checkTagUpdate(cmd *packp.Command) error {
+	if cmd.Name.IsTag() && cmd.Old != plumbing.ZeroHash {
+		return fmt.Errorf("tag already exists: %s", cmd.Name.String())
 	}
 
 	return nil
@@ -895,7 +1187,7 @@ func getHaves(
 	return result, nil
 }
 
-const refspecAllTags = "+refs/tags/*:refs/tags/*"
+const refspecAllTags = "refs/tags/*:refs/tags/*"
 
 func calculateRefs(
 	spec []config.RefSpec,
@@ -1024,7 +1316,7 @@ func objectExists(s storer.EncodedObjectStorer, h plumbing.Hash) (bool, error) {
 }
 
 func checkFastForwardUpdate(s storer.EncodedObjectStorer, remoteRefs storer.ReferenceStorer, cmd *packp.Command) error {
-	if cmd.Old == plumbing.ZeroHash {
+	if cmd.Old.IsZero() {
 		_, err := remoteRefs.Reference(cmd.Name)
 		if errors.Is(err, plumbing.ErrReferenceNotFound) {
 			return nil
@@ -1168,7 +1460,7 @@ func (r *Remote) updateLocalReferenceStorage(
 			// a caller uses a bare-hash dst such as "+<hash>:<hash>"). Creating
 			// a branch named after a commit hash is always wrong and produces
 			// spurious refs that confuse ResolveRevision and other callers.
-			if !strings.HasPrefix(localName.String(), "refs/") {
+			if !localName.IsUnderRefs() {
 				if plumbing.IsHash(localName.String()) {
 					// Bare-hash dst: the intent is to fetch the object only;
 					// no local reference should be created.
@@ -1178,6 +1470,11 @@ func (r *Remote) updateLocalReferenceStorage(
 			}
 			old, _ := storer.ResolveReference(r.s, localName)
 			newRef := plumbing.NewHashReference(localName, ref.Hash())
+
+			if old != nil && localName.IsTag() && old.Hash() != newRef.Hash() && !force && !spec.IsForceUpdate() {
+				forceNeeded = true
+				continue
+			}
 
 			// If the ref exists locally as a non-tag and force is not
 			// specified, only update if the new ref is an ancestor of the old
@@ -1194,6 +1491,9 @@ func (r *Remote) updateLocalReferenceStorage(
 			}
 
 			refUpdated, err := checkAndUpdateReferenceStorerIfNeeded(r.s, newRef, old)
+			if unstorableRefName(localName, ref.Name(), err) {
+				continue
+			}
 			if err != nil {
 				return updated, err
 			}
@@ -1212,13 +1512,16 @@ func (r *Remote) updateLocalReferenceStorage(
 	if isWildcard {
 		tags = remoteRefs
 	}
-	tagUpdated, err := r.buildFetchedTags(tags)
+	tagUpdated, tagForceNeeded, err := r.buildFetchedTags(tags, tagMode == plumbing.AllTags, force)
 	if err != nil {
 		return updated, err
 	}
 
 	if tagUpdated {
 		updated = true
+	}
+	if tagForceNeeded {
+		forceNeeded = true
 	}
 
 	if forceNeeded {
@@ -1228,7 +1531,7 @@ func (r *Remote) updateLocalReferenceStorage(
 	return updated, err
 }
 
-func (r *Remote) buildFetchedTags(refs memory.ReferenceStorage) (updated bool, err error) {
+func (r *Remote) buildFetchedTags(refs memory.ReferenceStorage, allTags, force bool) (updated, forceNeeded bool, err error) {
 	for _, ref := range refs {
 		if !ref.Name().IsTag() {
 			continue
@@ -1240,12 +1543,34 @@ func (r *Remote) buildFetchedTags(refs memory.ReferenceStorage) (updated bool, e
 		}
 
 		if err != nil {
-			return false, err
+			return updated, forceNeeded, err
+		}
+
+		old, err := r.s.Reference(ref.Name())
+		if unstorableRefName(ref.Name(), ref.Name(), err) {
+			continue
+		}
+		if err != nil && !errors.Is(err, plumbing.ErrReferenceNotFound) {
+			return updated, forceNeeded, err
+		}
+		if err == nil && old.Hash() != ref.Hash() {
+			if !allTags {
+				// An auto-followed tag only creates one that is missing locally; it
+				// never moves a tag that already points elsewhere.
+				continue
+			}
+			if !force {
+				forceNeeded = true
+				continue
+			}
 		}
 
 		refUpdated, err := updateReferenceStorerIfNeeded(r.s, ref)
+		if unstorableRefName(ref.Name(), ref.Name(), err) {
+			continue
+		}
 		if err != nil {
-			return updated, err
+			return updated, forceNeeded, err
 		}
 
 		if refUpdated {
@@ -1253,7 +1578,7 @@ func (r *Remote) buildFetchedTags(refs memory.ReferenceStorage) (updated bool, e
 		}
 	}
 
-	return updated, err
+	return updated, forceNeeded, err
 }
 
 // ListContext lists the references on the remote repository.
@@ -1290,6 +1615,7 @@ func (r *Remote) list(ctx context.Context, o *ListOptions) (rfs []*plumbing.Refe
 	}
 
 	req.Command = transport.UploadPackService
+	req.Protocol = r.transportProtocol()
 	sess, err := cl.Handshake(ctx, req)
 	if err != nil {
 		return nil, err
@@ -1297,13 +1623,13 @@ func (r *Remote) list(ctx context.Context, o *ListOptions) (rfs []*plumbing.Refe
 
 	defer ioutil.CheckClose(sess, &err)
 
-	allRefs, err := sess.GetRemoteRefs(ctx)
+	allRefs, err := sess.GetRemoteRefs(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var resultRefs []*plumbing.Reference
-	for _, ref := range allRefs {
+	for _, ref := range allRefs.References {
 		isPeeled := strings.HasSuffix(ref.Name().String(), peeledSuffix)
 		switch o.PeelingOption {
 		case IgnorePeeled:
@@ -1325,7 +1651,7 @@ func (r *Remote) list(ctx context.Context, o *ListOptions) (rfs []*plumbing.Refe
 func objectsToPush(commands []*packp.Command) []plumbing.Hash {
 	objects := make([]plumbing.Hash, 0, len(commands))
 	for _, cmd := range commands {
-		if cmd.New == plumbing.ZeroHash {
+		if cmd.New.IsZero() {
 			continue
 		}
 		objects = append(objects, cmd.New)

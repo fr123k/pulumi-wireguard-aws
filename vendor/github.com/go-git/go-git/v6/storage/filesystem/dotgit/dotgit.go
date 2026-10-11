@@ -10,10 +10,12 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -21,13 +23,17 @@ import (
 
 	"github.com/go-git/go-billy/v6"
 
+	"github.com/go-git/go-git/v6/internal/packhandle"
+	"github.com/go-git/go-git/v6/internal/pathutil"
 	"github.com/go-git/go-git/v6/plumbing"
 	formatcfg "github.com/go-git/go-git/v6/plumbing/format/config"
 	"github.com/go-git/go-git/v6/plumbing/format/idxfile"
+	"github.com/go-git/go-git/v6/plumbing/format/packfile"
 	"github.com/go-git/go-git/v6/plumbing/format/revfile"
 	plumbhash "github.com/go-git/go-git/v6/plumbing/hash"
 	"github.com/go-git/go-git/v6/storage"
 	"github.com/go-git/go-git/v6/utils/ioutil"
+	"github.com/go-git/go-git/v6/x/fdpool"
 )
 
 const (
@@ -49,9 +55,39 @@ const (
 	alternatesPath     = "alternates"
 
 	tmpPackedRefsPrefix = "._packed-refs"
+	packedRefsHeader    = "# pack-refs with: "
 
 	packPrefix = "pack-"
 	packExt    = ".pack"
+	idxExt     = ".idx"
+
+	// promisorExt marks a pack as having been received from a promisor
+	// remote, meaning objects it references but does not contain are
+	// promised by that remote rather than missing. Git refuses to treat
+	// such absences as legitimate without this marker: fsck reports them as
+	// broken links and gc fails outright.
+	promisorExt = ".promisor"
+
+	// refLockSuffix is what git's files backend appends to a loose reference
+	// while updating it: .git/refs/heads/main.lock holds the new value of
+	// refs/heads/main until the update is committed by renaming it into place.
+	refLockSuffix = ".lock"
+
+	// maxRefComponentLen bounds one path component of a reference this
+	// package creates. A loose reference and its reflog are files at
+	// .git/<name> and .git/logs/<name>, so every component of the name is a
+	// directory entry, and 255 is the limit those have on the filesystems
+	// go-git runs on.
+	maxRefComponentLen = 255
+
+	// maxRefLeafLen bounds the last component, the one that becomes the file
+	// holding the reference. Git needs room beside it for refLockSuffix, so
+	// the longest reference git can update stops that much short of the
+	// longest one a filesystem can hold. go-git writes the file in place and
+	// would take the longer name, which is the worse outcome of the two: not
+	// a reference that fails to store, but one only go-git can move, that
+	// git reports as unlockable whenever something finally tries.
+	maxRefLeafLen = maxRefComponentLen - len(refLockSuffix)
 )
 
 var (
@@ -83,16 +119,171 @@ var (
 	// resolve outside the modules/ subtree, mirroring canonical Git's
 	// "ignoring suspicious submodule name" defence.
 	ErrModuleNameEscape = errors.New("submodule name escapes modules/ directory")
+	// ErrReferenceNameEscape is returned when a reference name fails the
+	// filesystem storage's name checks. Reads and deletes require a safe path;
+	// writes also require a valid reference name. These errors also wrap
+	// plumbing.ErrInvalidReferenceName.
+	//
+	// A name refused only for its length wraps plumbing.ErrInvalidReferenceName
+	// without this one. Such a name reaches no path it should not; it is simply
+	// longer than git can lock, and calling that an escape would leave the
+	// sentinel meaning nothing in particular.
+	ErrReferenceNameEscape = errors.New("reference name escapes the reference storage")
 )
+
+// validReferenceName rejects reference names that cannot be safely turned into
+// a path under the .git directory. A loose reference (and its reflog) is stored
+// verbatim at ".git/<name>", so a crafted name — for instance one advertised by
+// a malicious remote — could climb out of its reference sub-tree and read,
+// overwrite, or delete unrelated metadata such as .git/config.
+//
+// The first gate is plumbing.ReferenceName.IsSafe, mirroring Git's
+// refname_is_safe: a name must be under refs/ without escaping it, or be a
+// one-level [A-Z_] name. That rejects absolute, drive-prefixed, escaping and
+// lowercase single-level names such as "config".
+//
+// IsSafe is not sufficient on its own. Its [A-Z_] arm accepts *any* shouting
+// one-level name, so "CONFIG", "INDEX" and "SHALLOW" all pass
+// it — and on a case-insensitive filesystem (APFS by default on macOS, NTFS on
+// Windows) each of those resolves to the real .git/config, .git/index,
+// or .git/shallow. Writing a reference there corrupts the
+// repository; ".git/shallow" is worse still, because a bare object id followed
+// by a newline is a *valid* shallow file and silently turns the repository into
+// a shallow one at an attacker-chosen commit. So a one-level name is accepted
+// only when plumbing.ReferenceName.IsRoot says it is a genuine root ref (HEAD,
+// the *_HEAD pseudo-refs, AUTO_MERGE and friends), mirroring Git's
+// is_root_ref. An allowlist is deliberate: denying known .git entries would be
+// incomplete by construction and would drift as Git adds files.
+//
+// On top of that, pathutil.HasUnsafeComponent adds the filesystem-specific
+// hardening IsSafe's literal ".." comparison does not cover: control
+// characters, and components a case-insensitive/NTFS/HFS+ filesystem would fold
+// back to "." or ".." (trailing dots/spaces, Alternate Data Streams, ignorable
+// Unicode code points). The receive-pack refname gate calls the same helper, so
+// the two layers cannot drift apart.
+//
+// This is the whole gate for reading and deleting a reference. Creating or
+// updating one goes through validNewReferenceName, which adds the format rules
+// on top. Enumeration goes through neither: Refs reports what is on disk, and
+// the transport decides what may leave the process.
+func validReferenceName(name plumbing.ReferenceName) error {
+	// Every rejection wraps plumbing.ErrInvalidReferenceName as well as
+	// ErrReferenceNameEscape, because every one of them is a statement about
+	// the name and a caller has to be able to recognise that with one test.
+	// A fetch is the caller that matters: it turns "this name" into "skip
+	// this reference" rather than "abandon the fetch", and it must not have
+	// to know which of these rules the name broke.
+	if !name.IsSafe() {
+		return fmt.Errorf("%w: %w: %q is not a safe reference name",
+			ErrReferenceNameEscape, plumbing.ErrInvalidReferenceName, string(name))
+	}
+
+	if !name.IsUnderRefs() && !name.IsRoot() {
+		return fmt.Errorf("%w: %w: %q is not under refs/ nor a root ref",
+			ErrReferenceNameEscape, plumbing.ErrInvalidReferenceName, string(name))
+	}
+
+	if pathutil.HasUnsafeComponent(string(name)) {
+		return fmt.Errorf("%w: %w: %q has a control character or a path component that folds to a dot",
+			ErrReferenceNameEscape, plumbing.ErrInvalidReferenceName, string(name))
+	}
+
+	return nil
+}
+
+// validNewReferenceName is validReferenceName plus
+// plumbing.ReferenceName.Validate, go-git's check_refname_format, for the
+// character and component rules the path-safety checks do not cover, plus
+// validReferenceNameLength for what the path itself costs. SetRef and
+// ReflogWriter use it for creates, updates, and reflog appends.
+//
+// Of those rules the ".lock" suffix is the one that does damage without looking
+// like an escape, and a fetch reaches here with a name the remote chose. Git's
+// loose-reference iterator skips names ending in ".lock", so the name looks
+// inert, but .git/refs/heads/main.lock is the lock file Git creates to update
+// refs/heads/main:
+// storing one makes every later update of that ref fail with "File exists"
+// until someone deletes it by hand.
+// See https://github.com/git/git/blob/1630431f326e15fcde608827b5ff38422528eb59/refs/files-backend.c#L385-L391.
+//
+// Git's transaction_refname_valid first honors REF_SKIP_REFNAME_VERIFICATION
+// and otherwise rejects pseudorefs. For the remaining refs it applies
+// check_refname_format when the new object ID is present and nonzero, and
+// refname_is_safe otherwise. A name too malformed to create can therefore
+// remain safe to delete with git update-ref -d. Keeping that distinction here
+// allows a repository holding a planted "main.lock" to remove it.
+// See https://github.com/git/git/blob/1630431f326e15fcde608827b5ff38422528eb59/refs.c#L1368-L1396.
+//
+// Validate requires a "/", so a root ref would fail rule 2. IsRoot is what
+// gates a one-level name instead.
+func validNewReferenceName(name plumbing.ReferenceName) error {
+	if err := validReferenceName(name); err != nil {
+		return err
+	}
+
+	if err := validReferenceNameLength(name); err != nil {
+		return err
+	}
+
+	if !name.IsUnderRefs() {
+		return nil
+	}
+
+	if err := name.Validate(); err != nil {
+		return fmt.Errorf("%w: %w", ErrReferenceNameEscape, err)
+	}
+
+	return nil
+}
+
+// validReferenceNameLength rejects a new reference name holding a component no
+// directory entry could hold, or a leaf git could not lock. This is a property
+// of the files backend rather than of the name: check_refname_format has no
+// length rule, so plumbing.ReferenceName.Validate has none either, and the
+// limit belongs here with the rest of what storing a reference as a path costs.
+//
+// Git stops five bytes sooner than the filesystem does on the last component,
+// because updating refs/heads/<name> means creating refs/heads/<name>.lock
+// beside it. A name past that is one go-git stores and git cannot update:
+// git update-ref, git branch -f and a checkout of a worktree on that branch
+// all fail with ENAMETOOLONG, and nothing says so until one of them runs.
+//
+// Both rejections wrap plumbing.ErrInvalidReferenceName, so a fetch skips the
+// reference and keeps the rest, as it does for every other arm of the gate.
+// Neither quotes the name: a name this long would be most of the message.
+func validReferenceNameLength(name plumbing.ReferenceName) error {
+	s := string(name)
+
+	leaf := s
+	if i := strings.LastIndexByte(s, '/'); i >= 0 {
+		leaf = s[i+1:]
+	}
+
+	if len(leaf) > maxRefLeafLen {
+		return fmt.Errorf("%w: reference name ends in a %d byte component, over the %d byte limit a %q file leaves it",
+			plumbing.ErrInvalidReferenceName, len(leaf), maxRefLeafLen, refLockSuffix)
+	}
+
+	for rest := s; ; {
+		i := strings.IndexByte(rest, '/')
+		if i < 0 {
+			return nil
+		}
+
+		if i > maxRefComponentLen {
+			return fmt.Errorf("%w: reference name holds a %d byte path component, over the %d byte limit",
+				plumbing.ErrInvalidReferenceName, i, maxRefComponentLen)
+		}
+
+		rest = rest[i+1:]
+	}
+}
 
 // Options holds configuration for the storage.
 type Options struct {
 	// ExclusiveAccess means that the filesystem is not modified externally
 	// while the repo is open.
 	ExclusiveAccess bool
-	// KeepDescriptors makes the file descriptors to be reused but they will
-	// need to be manually closed calling Close().
-	KeepDescriptors bool
 	// AlternatesFS provides the billy filesystem to be used for Git Alternates.
 	// If none is provided, it falls back to using the underlying instance used for
 	// DotGit.
@@ -107,10 +298,37 @@ type Options struct {
 	// WriteReverseIndex controls whether .rev files are written when
 	// creating new packfiles. Defaults to true.
 	WriteReverseIndex bool
+	// Pool, when non-nil, governs the LRU eviction of file
+	// descriptors held by [packhandle.PackHandle] instances
+	// constructed by this DotGit. Nil disables pooling for the
+	// pack-FD lifecycle (grace-period close on quiescence).
+	//
+	// The Pool field's API stability tracks [fdpool.Pool]'s, not
+	// this package's. Per the x/ package policy, the fdpool API
+	// may change without following semantic versioning; consumers
+	// reading this field should treat it as experimental on the
+	// same timeline.
+	Pool *fdpool.Pool
 }
 
 // The DotGit type represents a local git repository on disk. This
 // type is not zero-value-safe, use the New function to initialize it.
+//
+// Ref and RemoveRef permit malformed names such as refs/heads/main.lock but
+// reject unsafe paths, including backslashes, control characters and components
+// that HFS+ or NTFS could fold to "." or "..", on every operating system.
+// SetRef and ReflogWriter additionally require valid reference-name syntax and
+// a name short enough for git to lock.
+// Refs applies neither name check, so a returned entry may be inaccessible
+// through Ref and RemoveRef.
+//
+// Existing entries rejected by the path checks need external repair. On a
+// filesystem that preserves the exact spelling without aliasing, native Git's
+// update-ref -d may remove them. Otherwise, back up the repository and remove
+// the exact loose file or packed-refs entry with filesystem tools while the
+// repository is idle. Never normalize such a name to a different path.
+//
+// https://github.com/git/git/blob/1630431f326e15fcde608827b5ff38422528eb59/Documentation/git-update-ref.adoc#L39-L40
 type DotGit struct {
 	options Options
 	fs      billy.Filesystem
@@ -126,7 +344,10 @@ type DotGit struct {
 	packList   []plumbing.Hash
 	packMap    map[plumbing.Hash]struct{}
 
-	files map[plumbing.Hash]billy.File
+	// packHandles caches one [*packhandle.PackHandle] per pack hash,
+	// guarded by packHandlesMu. Lazy-initialised on first use.
+	packHandlesMu sync.Mutex
+	packHandles   map[plumbing.Hash]*packhandle.PackHandle
 }
 
 // New returns a DotGit value ready to be used. The path argument must
@@ -178,24 +399,21 @@ func (d *DotGit) Initialize() error {
 
 // Close closes all opened files.
 func (d *DotGit) Close() error {
-	var firstError error
-	if d.files != nil {
-		for _, f := range d.files {
-			err := f.Close()
-			if err != nil && firstError == nil {
-				firstError = err
-				continue
-			}
+	d.packHandlesMu.Lock()
+	handles := d.packHandles
+	d.packHandles = nil
+	d.packHandlesMu.Unlock()
+
+	var phErrs []error
+	for _, h := range handles {
+		if err := h.Close(); err != nil {
+			phErrs = append(phErrs, err)
 		}
-
-		d.files = nil
 	}
 
-	if firstError != nil {
-		return firstError
-	}
+	d.packMap = nil
 
-	return nil
+	return errors.Join(phErrs...)
 }
 
 // ConfigWriter returns a file pointer for write to the config file
@@ -255,6 +473,9 @@ func (d *DotGit) Shallow() (billy.File, error) {
 // ReflogReader returns a file pointer for reading the reflog for the given reference.
 // Returns nil, nil if the reflog file does not exist.
 func (d *DotGit) ReflogReader(name plumbing.ReferenceName) (billy.File, error) {
+	if err := validReferenceName(name); err != nil {
+		return nil, err
+	}
 	p := d.fs.Join(logsPath, string(name))
 	f, err := d.fs.Open(p)
 	if err != nil {
@@ -269,6 +490,9 @@ func (d *DotGit) ReflogReader(name plumbing.ReferenceName) (billy.File, error) {
 // ReflogWriter returns a file pointer for appending to the reflog for the given reference.
 // It creates the file and any necessary parent directories if they don't exist.
 func (d *DotGit) ReflogWriter(name plumbing.ReferenceName) (billy.File, error) {
+	if err := validNewReferenceName(name); err != nil {
+		return nil, err
+	}
 	p := d.fs.Join(logsPath, string(name))
 	if err := d.fs.MkdirAll(filepath.Dir(p), os.ModePerm); err != nil {
 		return nil, err
@@ -278,6 +502,9 @@ func (d *DotGit) ReflogWriter(name plumbing.ReferenceName) (billy.File, error) {
 
 // DeleteReflog removes the reflog file for the given reference.
 func (d *DotGit) DeleteReflog(name plumbing.ReferenceName) error {
+	if err := validReferenceName(name); err != nil {
+		return err
+	}
 	p := d.fs.Join(logsPath, string(name))
 	err := d.fs.Remove(p)
 	if os.IsNotExist(err) {
@@ -289,11 +516,74 @@ func (d *DotGit) DeleteReflog(name plumbing.ReferenceName) error {
 // NewObjectPack return a writer for a new packfile, it saves the packfile to
 // disk and also generates and save the index for the given packfile.
 func (d *DotGit) NewObjectPack() (*PackWriter, error) {
-	d.cleanPackList()
-	return newPackWrite(d.fs, d.options.ObjectFormat, d.options.WriteReverseIndex)
+	cleanErr := d.cleanPackList()
+	pw, err := newPackWrite(d.fs, d.options.ObjectFormat, d.options.WriteReverseIndex)
+	if err != nil {
+		return nil, errors.Join(cleanErr, err)
+	}
+	if cleanErr != nil {
+		return nil, cleanErr
+	}
+	return pw, nil
 }
 
-// ObjectPacks returns the list of availables packfiles
+// NewPromisorObjectPack is NewObjectPack for a packfile received from a
+// promisor remote, as a filtered (partial clone) fetch produces. Alongside the
+// pack it writes a .promisor sidecar containing marker, which is how git tells
+// objects the remote deliberately withheld from ones that are genuinely
+// missing. Without it git reports the withheld objects as broken links and
+// refuses to gc the repository.
+//
+// Git writes the refs it sought as the marker, one "<hash> <ref>" line each,
+// when the pack came from a fetch, and an empty marker when repacking. Either
+// is accepted: only the file's presence is ever consulted, never its contents.
+func (d *DotGit) NewPromisorObjectPack(marker string) (*PackWriter, error) {
+	pw, err := d.NewObjectPack()
+	if err != nil {
+		return nil, err
+	}
+
+	pw.promisor = &marker
+	return pw, nil
+}
+
+// PromisorObjectPacks returns the hashes of the packs that were received from a
+// promisor remote, that is those carrying a .promisor marker.
+func (d *DotGit) PromisorObjectPacks() ([]plumbing.Hash, error) {
+	packs, err := d.ObjectPacks()
+	if err != nil {
+		return nil, err
+	}
+
+	var promisors []plumbing.Hash
+	for _, h := range packs {
+		ok, err := d.hasPromisor(h)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			promisors = append(promisors, h)
+		}
+	}
+
+	return promisors, nil
+}
+
+// hasPromisor reports whether the pack carries a .promisor marker.
+func (d *DotGit) hasPromisor(hash plumbing.Hash) (bool, error) {
+	fi, err := d.fs.Lstat(d.objectPackPath(hash, promisorExt[1:]))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return fi.Mode().IsRegular(), nil
+}
+
+// ObjectPacks returns the hashes of packfiles that have corresponding index
+// files. Packs without indexes are ignored because they cannot be read, and
+// PackWriter publishes each index before making its pack visible.
 func (d *DotGit) ObjectPacks() ([]plumbing.Hash, error) {
 	if !d.options.ExclusiveAccess {
 		return d.objectPacks()
@@ -319,21 +609,33 @@ func (d *DotGit) objectPacks() ([]plumbing.Hash, error) {
 	}
 
 	packs := make([]plumbing.Hash, 0, len(files))
+	indexes := make(map[string]struct{}, len(files))
 	for _, f := range files {
 		n := f.Name()
-		if !strings.HasSuffix(n, packExt) || !strings.HasPrefix(n, packPrefix) {
+		if !strings.HasPrefix(n, packPrefix) {
 			continue
 		}
 
-		h := plumbing.NewHash(n[5 : len(n)-5]) // pack-(hash).pack
-		if h.IsZero() {
-			// Ignore files with badly-formatted names.
-			continue
+		switch {
+		case strings.HasSuffix(n, packExt):
+			name := n[len(packPrefix) : len(n)-len(packExt)]
+			h := plumbing.NewHash(name)
+			if !h.IsZero() && h.String() == name {
+				packs = append(packs, h)
+			}
+		case strings.HasSuffix(n, idxExt):
+			name := n[len(packPrefix) : len(n)-len(idxExt)]
+			h := plumbing.NewHash(name)
+			if !h.IsZero() && h.String() == name {
+				indexes[name] = struct{}{}
+			}
 		}
-		packs = append(packs, h)
 	}
 
-	return packs, nil
+	return slices.DeleteFunc(packs, func(h plumbing.Hash) bool {
+		_, ok := indexes[h.String()]
+		return !ok
+	}), nil
 }
 
 func (d *DotGit) objectPackPath(hash plumbing.Hash, extension string) string {
@@ -341,17 +643,6 @@ func (d *DotGit) objectPackPath(hash plumbing.Hash, extension string) string {
 }
 
 func (d *DotGit) objectPackOpen(hash plumbing.Hash, extension string) (billy.File, error) {
-	if d.options.KeepDescriptors && extension == "pack" {
-		if d.files == nil {
-			d.files = make(map[plumbing.Hash]billy.File)
-		}
-
-		f, ok := d.files[hash]
-		if ok {
-			return f, nil
-		}
-	}
-
 	err := d.hasPack(hash)
 	if err != nil {
 		return nil, err
@@ -365,10 +656,6 @@ func (d *DotGit) objectPackOpen(hash plumbing.Hash, extension string) (billy.Fil
 		}
 
 		return nil, err
-	}
-
-	if d.options.KeepDescriptors && extension == "pack" {
-		d.files[hash] = pack
 	}
 
 	return pack, nil
@@ -462,26 +749,223 @@ func newBytesReadAtCloser(data []byte) *bytesReadAtCloser {
 
 func (b *bytesReadAtCloser) Close() error { return nil }
 
-// DeleteOldObjectPackAndIndex removes a pack and its index if older than t.
-func (d *DotGit) DeleteOldObjectPackAndIndex(hash plumbing.Hash, t time.Time) error {
-	d.cleanPackList()
+// packHandle returns the cached [packhandle.PackHandle] for the
+// given pack hash, constructing one on first access. Rev is
+// served through [DotGit.OpenPackRev] so the in-memory fallback
+// applies when the .rev file is absent or [Options.ReadReverseIndex]
+// is false. Returns [ErrPackfileNotFound] when the .pack file
+// cannot be located.
+func (d *DotGit) packHandle(hash plumbing.Hash) (*packhandle.PackHandle, error) {
+	d.packHandlesMu.Lock()
+	defer d.packHandlesMu.Unlock()
 
-	path := d.objectPackPath(hash, `pack`)
+	if h, ok := d.packHandles[hash]; ok {
+		return h, nil
+	}
+
+	if err := d.hasPack(hash); err != nil {
+		return nil, err
+	}
+
+	packPath := d.objectPackPath(hash, "pack")
+	idxPath := d.objectPackPath(hash, "idx")
+
+	sources := packhandle.Sources{
+		Pack: packhandle.Source{
+			Open: func() (packhandle.ReadAtCloser, error) {
+				return d.ObjectPack(hash)
+			},
+			Size: func() (int64, error) {
+				fi, err := d.fs.Stat(packPath)
+				if err != nil {
+					return 0, err
+				}
+				return fi.Size(), nil
+			},
+		},
+		Idx: packhandle.Source{
+			Open: func() (packhandle.ReadAtCloser, error) {
+				return d.ObjectPackIdx(hash)
+			},
+			Size: func() (int64, error) {
+				fi, err := d.fs.Stat(idxPath)
+				if err != nil {
+					return 0, err
+				}
+				return fi.Size(), nil
+			},
+		},
+		Rev: packhandle.Source{
+			Open: func() (packhandle.ReadAtCloser, error) {
+				return d.OpenPackRev(hash)
+			},
+			// Rev may be served from an in-memory buffer with no
+			// stat-able size. [idxfile.LazyIndex] does not consult
+			// Rev.Size, so a zero stub is correct here.
+			Size: func() (int64, error) { return 0, nil },
+		},
+	}
+
+	ph, err := packhandle.NewWithPool(sources, hash, d.options.Pool)
+	if err != nil {
+		return nil, err
+	}
+
+	if d.packHandles == nil {
+		d.packHandles = make(map[plumbing.Hash]*packhandle.PackHandle)
+	}
+	d.packHandles[hash] = ph
+	return ph, nil
+}
+
+// walkPackHandles snapshots the [packhandle.PackHandle] catalog
+// under packHandlesMu and invokes fn on each entry with the lock
+// released. The snapshot shortens the critical section so
+// concurrent [DotGit.packHandle] lookups do not block on slow
+// per-handle work such as file-close syscalls.
+//
+// The catalog is left intact; fn observes the same PackHandle
+// pointers that subsequent lookups return. Callers that want to
+// drain the catalog must do so separately — Close and
+// cleanPackList keep their inline snapshot-with-clear because
+// they need the drain to be atomic with the snapshot.
+//
+// Errors returned by fn are joined; the walk continues past a
+// failing entry so one bad pack does not strand FDs in others.
+func (d *DotGit) walkPackHandles(fn func(*packhandle.PackHandle) error) error {
+	d.packHandlesMu.Lock()
+	handles := slices.Collect(maps.Values(d.packHandles))
+	d.packHandlesMu.Unlock()
+
+	var errs []error
+	for _, h := range handles {
+		if err := fn(h); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// CloseIdleDescriptors releases the FDs held by every cached
+// [packhandle.PackHandle] without evicting them from the
+// catalog. The catalog and each PackHandle's cached state
+// (`PackMeta`, `LazyIndex`) survive the call; subsequent
+// operations reopen FDs on demand.
+//
+// Idempotent and safe to call concurrently with other DotGit
+// operations. After [DotGit.Close] the catalog is empty, so the
+// call is a no-op.
+func (d *DotGit) CloseIdleDescriptors() error {
+	return d.walkPackHandles(func(ph *packhandle.PackHandle) error {
+		return ph.CloseIdleDescriptors()
+	})
+}
+
+// PackHandle returns the cached [packfile.PackHandle] for the
+// given pack hash, constructing one on first access. The returned
+// interface does not expose Close; dotgit owns the handle's
+// lifetime and tears it down via [DotGit.Close] or
+// [DotGit.cleanPackList].
+func (d *DotGit) PackHandle(hash plumbing.Hash) (packfile.PackHandle, error) {
+	ph, err := d.packHandle(hash)
+	if err != nil {
+		return nil, err
+	}
+	return packHandleAdapter{ph}, nil
+}
+
+// packHandleAdapter satisfies [packfile.PackHandle] by delegating
+// to the dotgit-owned [packhandle.PackHandle]. Unexported so
+// callers cannot type-assert back to the concrete type and reach
+// [packhandle.PackHandle.Close].
+type packHandleAdapter struct{ ph *packhandle.PackHandle }
+
+func (a packHandleAdapter) OpenPackReader() (io.ReadSeekCloser, error) {
+	return a.ph.OpenPackReader()
+}
+
+func (a packHandleAdapter) OpenRandomReader() (packfile.RandomReader, error) {
+	return a.ph.OpenRandomReader()
+}
+
+func (a packHandleAdapter) PackHash() (plumbing.Hash, error) {
+	m, err := a.ph.Meta()
+	if err != nil {
+		return plumbing.ZeroHash, err
+	}
+	return m.ID, nil
+}
+
+// DeleteOldObjectPackAndIndex removes a pack and its index if older than t.
+// The .pack, .idx, .rev and .promisor files are each attempted independently;
+// any failures are joined into the returned error so a partial failure cannot
+// leave orphaned siblings on disk. A missing .rev is not an error — the
+// reverse index is optional and may have been generated only in memory — and
+// neither is a missing .promisor, which only packs fetched from a promisor
+// remote carry.
+//
+// The .promisor is the one sibling that is not independent: it is removed only
+// once the pack itself is gone, since a pack left on disk without it reads as
+// corrupt.
+func (d *DotGit) DeleteOldObjectPackAndIndex(hash plumbing.Hash, t time.Time) error {
+	var errs []error
+	if err := d.cleanPackList(); err != nil {
+		errs = append(errs, err)
+	}
+
+	packPath := d.objectPackPath(hash, `pack`)
 	if !t.IsZero() {
-		fi, err := d.fs.Stat(path)
+		fi, err := d.fs.Stat(packPath)
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			return errors.Join(errs...)
 		}
 		// too new, skip deletion.
 		if !fi.ModTime().Before(t) {
-			return nil
+			return errors.Join(errs...)
 		}
 	}
-	err := d.fs.Remove(path)
-	if err != nil {
-		return err
+
+	// The pack goes first, because the .promisor may only outlive it, never the
+	// other way round. A marker removed while its pack is still readable turns
+	// every object the promisor remote withheld into what git reports as a
+	// broken link, so on a removal that leaves the pack behind the marker stays
+	// too. An already-absent pack is a different matter: the marker is then an
+	// orphan vouching for nothing, and goes.
+	packGone := true
+	if err := d.fs.Remove(packPath); err != nil {
+		if !os.IsNotExist(err) {
+			packGone = false
+		}
+		errs = append(errs, err)
 	}
-	return d.fs.Remove(d.objectPackPath(hash, `idx`))
+
+	siblings := []string{`idx`, `rev`}
+	if packGone {
+		siblings = append(siblings, `promisor`)
+	}
+
+	for _, ext := range siblings {
+		if err := d.fs.Remove(d.objectPackPath(hash, ext)); err != nil {
+			if (ext == `rev` || ext == `promisor`) && os.IsNotExist(err) {
+				continue
+			}
+			errs = append(errs, err)
+		}
+	}
+
+	d.packHandlesMu.Lock()
+	ph, ok := d.packHandles[hash]
+	if ok {
+		delete(d.packHandles, hash)
+	}
+	d.packHandlesMu.Unlock()
+	if ok {
+		if err := ph.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // NewObject return a writer for a new object file.
@@ -660,9 +1144,32 @@ func (d *DotGit) hasObject(h plumbing.Hash) error {
 	return nil
 }
 
-func (d *DotGit) cleanPackList() {
+// cleanPackList resets the pack catalog and drops every cached
+// [packhandle.PackHandle]. A pack-set mutation may have
+// invalidated the handles' underlying files, so they cannot
+// safely be reused. Idle readers finish normally; their cursor
+// Close becomes a no-op release.
+//
+// PackHandle.Close owns the underlying sharedfile and LazyIndex
+// FDs, so a close failure here means an FD has not been released.
+// The errors are joined and returned so callers can surface them
+// rather than silently masking I/O failures during cleanup.
+func (d *DotGit) cleanPackList() error {
 	d.packMap = nil
 	d.packList = nil
+
+	d.packHandlesMu.Lock()
+	handles := d.packHandles
+	d.packHandles = nil
+	d.packHandlesMu.Unlock()
+
+	var errs []error
+	for _, h := range handles {
+		if err := h.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func (d *DotGit) genPackList() error {
@@ -844,7 +1351,12 @@ func (d *DotGit) checkReferenceAndTruncate(f billy.File, old *plumbing.Reference
 }
 
 // SetRef stores a reference, optionally checking that old matches the current value.
+// The reference name must pass the write checks described by DotGit.
 func (d *DotGit) SetRef(r, old *plumbing.Reference) error {
+	if err := validNewReferenceName(r.Name()); err != nil {
+		return err
+	}
+
 	var content string
 	switch r.Type() {
 	case plumbing.SymbolicReference:
@@ -879,10 +1391,22 @@ func (d *DotGit) Refs() ([]*plumbing.Reference, error) {
 }
 
 // Ref returns the reference for a given reference name.
+// It rejects names that fail the path-safety checks described by DotGit, even
+// when Refs returns an entry with that name.
+// It falls back to packed-refs when the loose reference is missing, empty, or
+// its path is a directory. Other loose-reference read errors are returned to the
+// caller.
 func (d *DotGit) Ref(name plumbing.ReferenceName) (*plumbing.Reference, error) {
+	if err := validReferenceName(name); err != nil {
+		return nil, err
+	}
+
 	ref, err := d.readReferenceFile(".", name.String())
 	if err == nil {
 		return ref, nil
+	}
+	if !os.IsNotExist(err) && !errors.Is(err, ErrIsDir) && !errors.Is(err, ErrEmptyRefFile) {
+		return nil, err
 	}
 
 	return d.packedRef(name)
@@ -942,7 +1466,12 @@ func (d *DotGit) packedRef(name plumbing.ReferenceName) (*plumbing.Reference, er
 }
 
 // RemoveRef removes a reference by name.
+// It permits invalid-format names but rejects unsafe paths as described by DotGit.
 func (d *DotGit) RemoveRef(name plumbing.ReferenceName) error {
+	if err := validReferenceName(name); err != nil {
+		return err
+	}
+
 	path := d.fs.Join(".", name.String())
 	_, err := d.fs.Stat(path)
 	if err == nil {
@@ -969,10 +1498,6 @@ func refsRecvFunc(refs *[]*plumbing.Reference, seen map[plumbing.ReferenceName]b
 
 func (d *DotGit) addRefsFromPackedRefs(refs *[]*plumbing.Reference, seen map[plumbing.ReferenceName]bool) (err error) {
 	return d.findPackedRefs(refsRecvFunc(refs, seen))
-}
-
-func (d *DotGit) addRefsFromPackedRefsFile(refs *[]*plumbing.Reference, f billy.File, seen map[plumbing.ReferenceName]bool) (err error) {
-	return d.findPackedRefsInFile(f, refsRecvFunc(refs, seen))
 }
 
 func (d *DotGit) openAndLockPackedRefs(doCreate bool) (
@@ -1062,16 +1587,22 @@ func (d *DotGit) rewritePackedRefsWithoutRef(name plumbing.ReferenceName) (err e
 	}()
 
 	s := bufio.NewScanner(pr)
-	found := false
+	found, dropping := false, false
 	for s.Scan() {
 		line := s.Text()
+		// A peeled line belongs to the reference before it, and goes with it.
+		if dropping && strings.HasPrefix(line, "^") {
+			continue
+		}
+		dropping = false
+
 		ref, err := d.processLine(line)
 		if err != nil {
 			return err
 		}
 
 		if ref != nil && ref.Name() == name {
-			found = true
+			found, dropping = true, true
 			continue
 		}
 
@@ -1199,7 +1730,10 @@ func (d *DotGit) CountLooseRefs() (int, error) {
 	return len(refs), nil
 }
 
-// PackRefs packs all loose refs into the packed-refs file.
+// PackRefs packs loose nonzero hash references with valid Git names into
+// packed-refs. Symbolic references, zero hashes and malformed names remain
+// loose. It does not verify whether referenced objects exist. Existing packed
+// references are retained unless replaced by a packable loose reference.
 //
 // This implementation only works under the assumption that the view
 // of the file system won't be updated during this operation.  This
@@ -1222,19 +1756,86 @@ func (d *DotGit) PackRefs() (err error) {
 	}
 	defer ioutil.CheckClose(f, &err)
 
-	// Gather all refs using addRefsFromRefDir and addRefsFromPackedRefs.
+	// Keep enumeration complete, but pack only loose references representable
+	// in packed-refs. A skipped loose reference must not suppress the existing
+	// packed value it shadows; it continues to shadow that value on disk.
 	var refs []*plumbing.Reference
 	seen := make(map[plumbing.ReferenceName]bool)
 	if err = d.addRefsFromRefDir(&refs, seen); err != nil {
 		return err
 	}
-	if len(refs) == 0 {
-		// Nothing to do!
-		return nil
+	packable := refs[:0]
+	for _, ref := range refs {
+		if ref.Type() != plumbing.HashReference || ref.Hash().IsZero() || ref.Name().Validate() != nil {
+			delete(seen, ref.Name())
+			continue
+		}
+		packable = append(packable, ref)
 	}
-	numLooseRefs := len(refs)
-	if err = d.addRefsFromPackedRefsFile(&refs, f, seen); err != nil {
+	refs = packable
+	if len(refs) == 0 {
+		// Nothing to pack, but a file without the sorted trait is rewritten
+		// sorted, so that readers can stop scanning it early.
+		header, err := bufio.NewReader(f).ReadString('\n')
+		if err != nil && err != io.EOF {
+			return err
+		}
+		traits, ok := strings.CutPrefix(strings.TrimSuffix(header, "\n"), packedRefsHeader)
+		if header == "" || ok && slices.Contains(strings.Split(traits, " "), "sorted") {
+			return nil
+		}
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return err
+		}
+	}
+
+	// Existing records, a reference line and the peeled lines after it, are
+	// kept verbatim, so that PackRefs neither drops their peeled values nor
+	// rewrites an ID it could not parse. A packed loose reference replaces
+	// the record of the same name, and the first of repeated names is kept.
+	type record struct{ name, text string }
+	var records []record
+	for _, ref := range refs {
+		records = append(records, record{ref.Name().String(), ref.String() + "\n"})
+	}
+	content, err := io.ReadAll(f)
+	if err != nil {
 		return err
+	}
+	// A peeled line may only follow a reference line, at most once, as git
+	// requires. peeledOwner is the record it then belongs to, or -1 when it
+	// belongs to a record being dropped.
+	peeledOwner, peelable := -1, false
+	for line := range strings.Lines(string(content)) {
+		if !strings.HasSuffix(line, "\n") {
+			line += "\n"
+		}
+		switch {
+		case line == "\n" || line[0] == '#':
+			continue
+		case line[0] == '^':
+			if !peelable {
+				return ErrPackedRefsBadFormat
+			}
+			peelable = false
+			if peeledOwner >= 0 {
+				records[peeledOwner].text += line
+			}
+			continue
+		}
+
+		peelable = true
+		_, name, ok := strings.Cut(strings.TrimSuffix(line, "\n"), " ")
+		if !ok || strings.Contains(name, " ") {
+			return ErrPackedRefsBadFormat
+		}
+		if seen[plumbing.ReferenceName(name)] {
+			peeledOwner = -1
+			continue
+		}
+		seen[plumbing.ReferenceName(name)] = true
+		records = append(records, record{name, line})
+		peeledOwner = len(records) - 1
 	}
 
 	// Write them all to a new temp packed-refs file.
@@ -1248,10 +1849,22 @@ func (d *DotGit) PackRefs() (err error) {
 		_ = d.fs.Remove(tmpName) // don't check err, we might have renamed it
 	}()
 
+	// Write the records sorted by name under a header saying so, which lets
+	// readers stop scanning early, as git's writer does:
+	// https://github.com/git/git/blob/0f8e75abebff0877cae681a3d5ff31ac47f54220/refs/packed-backend.c#L1334-L1343
+	// Only records kept from the old file carry peeled values, so the peeled
+	// traits must not be claimed; they would tell readers that no other tag
+	// can be peeled:
+	// https://github.com/git/git/blob/0f8e75abebff0877cae681a3d5ff31ac47f54220/refs/packed-backend.c#L697-L724
+	slices.SortStableFunc(records, func(a, b record) int {
+		return strings.Compare(a.name, b.name)
+	})
 	w := bufio.NewWriter(tmp)
-	for _, ref := range refs {
-		_, err = w.WriteString(ref.String() + "\n")
-		if err != nil {
+	if _, err = w.WriteString(packedRefsHeader + "sorted \n"); err != nil {
+		return err
+	}
+	for _, r := range records {
+		if _, err = w.WriteString(r.text); err != nil {
 			return err
 		}
 	}
@@ -1266,9 +1879,8 @@ func (d *DotGit) PackRefs() (err error) {
 		return err
 	}
 
-	// Delete all the loose refs, while still holding the packed-refs
-	// lock.
-	for _, ref := range refs[:numLooseRefs] {
+	// Delete only the loose refs packed above, while holding the packed-refs lock.
+	for _, ref := range refs {
 		path := d.fs.Join(".", ref.Name().String())
 		err = d.fs.Remove(path)
 		if err != nil && !os.IsNotExist(err) {
@@ -1377,7 +1989,17 @@ func (d *DotGit) Alternates() ([]*DotGit, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot chroot %q: %w", path, err)
 		}
-		alternates = append(alternates, New(afs))
+		// Inherit the parent DotGit's ObjectFormat so the alternate
+		// reads and writes hashes at the same width as the
+		// repository it serves. Inherit the FD pool too so the
+		// storage-wide budget covers alternate packs and idxes.
+		// Other Options keep their defaults from New.
+		alternates = append(alternates, NewWithOptions(afs, Options{
+			ObjectFormat:      d.options.ObjectFormat,
+			ReadReverseIndex:  true,
+			WriteReverseIndex: true,
+			Pool:              d.options.Pool,
+		}))
 	}
 
 	if err = scanner.Err(); err != nil {
@@ -1452,7 +2074,7 @@ func isHexAlpha(b byte) bool {
 func incBytes(in []byte) (out []byte, overflow bool) {
 	out = make([]byte, len(in))
 	copy(out, in)
-	for i := len(out) - 1; i >= 0; i-- {
+	for i := range slices.Backward(out) {
 		out[i]++
 		if out[i] != 0 {
 			return out, overflow // Didn't overflow.
