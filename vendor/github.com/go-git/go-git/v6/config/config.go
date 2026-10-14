@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/go-git/go-billy/v6/osfs"
 
@@ -31,7 +30,7 @@ const (
 	// should be marshalled or not.
 	// Note that this does not need to align with the default protocol
 	// version from plumbing/protocol.
-	DefaultProtocolVersion = protocol.V0 // go-git only supports V0 at the moment
+	DefaultProtocolVersion = protocol.V2
 )
 
 // ConfigStorer is a generic storage of Config object.
@@ -210,8 +209,8 @@ type Config struct {
 	// equal Branch.Name
 	Branches map[string]*Branch
 	// URLs list of url rewrite rules, if repo url starts with URL.InsteadOf value, it will be replaced with the
-	// key instead.
-	URLs map[string]*URL
+	// URL.Name instead. Ordered by appearance in config file.
+	URLs []*URL
 	// Raw contains the raw information of a config file. The main goal is
 	// preserve the parsed information from the original format, to avoid
 	// dropping unsupported fields.
@@ -326,7 +325,7 @@ func NewConfig() *Config {
 		Remotes:    make(map[string]*RemoteConfig),
 		Submodules: make(map[string]*Submodule),
 		Branches:   make(map[string]*Branch),
-		URLs:       make(map[string]*URL),
+		URLs:       make([]*URL, 0),
 		Raw:        format.New(),
 	}
 
@@ -474,6 +473,8 @@ const (
 	objectFormatKey            = "objectformat"
 	worktreeConfigKey          = "worktreeConfig"
 	mirrorKey                  = "mirror"
+	promisorKey                = "promisor"
+	partialCloneFilterKey      = "partialclonefilter"
 	versionKey                 = "version"
 	autoCRLFKey                = "autocrlf"
 	fileModeKey                = "filemode"
@@ -565,23 +566,17 @@ func (c *Config) unmarshalCore() {
 func (c *Config) unmarshalExtensions() {
 	s := c.Raw.Section(extensionsSection)
 	c.Extensions.ObjectFormat = format.ObjectFormat(s.Options.Get(objectFormatKey))
-	c.Extensions.WorktreeConfig = strings.EqualFold(s.Options.Get(worktreeConfigKey), "true")
+	c.Extensions.WorktreeConfig = parseConfigBool(s.Options.Get(worktreeConfigKey)).IsTrue()
 }
 
 func (c *Config) unmarshalTag() {
 	s := c.Raw.Section(tagSection)
-	v, err := strconv.ParseBool(s.Options.Get(gpgSignKey))
-	if err == nil {
-		c.Tag.GpgSign = NewOptBool(v)
-	}
+	c.Tag.GpgSign = parseConfigBool(s.Options.Get(gpgSignKey))
 }
 
 func (c *Config) unmarshalCommit() {
 	s := c.Raw.Section(commitSection)
-	v, err := strconv.ParseBool(s.Options.Get(gpgSignKey))
-	if err == nil {
-		c.Commit.GpgSign = NewOptBool(v)
-	}
+	c.Commit.GpgSign = parseConfigBool(s.Options.Get(gpgSignKey))
 }
 
 func (c *Config) unmarshalUser() {
@@ -666,13 +661,14 @@ func (c *Config) unmarshalRemotes() error {
 
 func (c *Config) unmarshalURLs() error {
 	s := c.Raw.Section(urlSection)
+	c.URLs = make([]*URL, 0, len(s.Subsections))
 	for _, sub := range s.Subsections {
 		r := &URL{}
 		if err := r.unmarshal(sub); err != nil {
 			return err
 		}
 
-		c.URLs[r.Name] = r
+		c.URLs = append(c.URLs, r)
 	}
 
 	return nil
@@ -727,10 +723,7 @@ func (c *Config) unmarshalProtocol() error {
 
 func (c *Config) unmarshalIndex() {
 	s := c.Raw.Section(indexSection)
-	v, err := strconv.ParseBool(s.Options.Get(skipHashKey))
-	if err == nil {
-		c.Index.SkipHash = NewOptBool(v)
-	}
+	c.Index.SkipHash = parseConfigBool(s.Options.Get(skipHashKey))
 }
 
 func (c *Config) unmarshalInit() {
@@ -740,10 +733,7 @@ func (c *Config) unmarshalInit() {
 
 func (c *Config) unmarshalUploadArchive() {
 	s := c.Raw.Section(uploadArchiveSection)
-	v, err := strconv.ParseBool(s.Options.Get(allowUnreachableKey))
-	if err == nil {
-		c.UploadArchive.AllowUnreachable = NewOptBool(v)
-	}
+	c.UploadArchive.AllowUnreachable = parseConfigBool(s.Options.Get(allowUnreachableKey))
 }
 
 // Marshal returns Config encoded as a git-config file.
@@ -990,10 +980,23 @@ func (c *Config) marshalURLs() {
 }
 
 func (c *Config) marshalProtocol() {
-	// Only marshal protocol section if a version was set.
 	if c.Protocol.Version != DefaultProtocolVersion {
 		s := c.Raw.Section(protocolSection)
 		s.SetOption(versionKey, c.Protocol.Version.String())
+		return
+	}
+
+	// The struct holds the default version. Clear any stale protocol.version
+	// left over in the raw config so switching back to the default persists,
+	// and drop the section if it becomes empty. Guard on HasSection so a
+	// non-default round-trip does not introduce an empty [protocol].
+	if !c.Raw.HasSection(protocolSection) {
+		return
+	}
+	s := c.Raw.Section(protocolSection)
+	s.RemoveOption(versionKey)
+	if len(s.Options) == 0 && len(s.Subsections) == 0 {
+		c.Raw.RemoveSection(protocolSection)
 	}
 }
 
@@ -1035,6 +1038,23 @@ type RemoteConfig struct {
 
 	// Fetch the default set of "refspec" for fetch operation
 	Fetch []RefSpec
+
+	// Promisor indicates that the remote is a promisor remote: objects it
+	// filtered out of a partial clone are expected to be absent locally and
+	// can be fetched from it on demand. It is what tells git that a missing
+	// object is promised rather than a sign of a corrupt repository, so it
+	// must be set whenever a fetch from this remote used a Filter, alongside
+	// the .promisor marker on each pack received from it.
+	Promisor bool
+
+	// PartialCloneFilter is the object filter git reapplies to fetches from this
+	// remote, in the wire format git records (e.g. "blob:none").
+	//
+	// It is the filter the partial clone was first established with, not the one
+	// most recently used: git records it once and treats it as the default from
+	// then on. Leaving it unset while Promisor is true makes later fetches ask
+	// for objects the local repository is missing the delta bases for.
+	PartialCloneFilter string
 
 	// raw representation of the subsection, filled by marshal or unmarshal are
 	// called
@@ -1082,6 +1102,8 @@ func (c *RemoteConfig) unmarshal(s *format.Subsection) error {
 	c.URLs = append(c.URLs, c.raw.Options.GetAll(pushurlKey)...)
 	c.Fetch = fetch
 	c.Mirror = c.raw.Options.Get(mirrorKey) == "true"
+	c.Promisor = c.raw.Options.Get(promisorKey) == "true"
+	c.PartialCloneFilter = c.raw.Options.Get(partialCloneFilterKey)
 
 	return nil
 }
@@ -1118,6 +1140,22 @@ func (c *RemoteConfig) marshal() *format.Subsection {
 		c.raw.SetOption(mirrorKey, strconv.FormatBool(c.Mirror))
 	}
 
+	// Both keys are removed when unset rather than left behind: a stale
+	// promisor = true without a matching partialclonefilter makes git fetch
+	// unfiltered into a repository that is missing objects, which fails while
+	// resolving deltas against bases it never received.
+	if c.Promisor {
+		c.raw.SetOption(promisorKey, strconv.FormatBool(c.Promisor))
+	} else {
+		c.raw.RemoveOption(promisorKey)
+	}
+
+	if c.PartialCloneFilter != "" {
+		c.raw.SetOption(partialCloneFilterKey, c.PartialCloneFilter)
+	} else {
+		c.raw.RemoveOption(partialCloneFilterKey)
+	}
+
 	return c.raw
 }
 
@@ -1126,14 +1164,14 @@ func (c *RemoteConfig) IsFirstURLLocal() bool {
 	return url.IsLocalEndpoint(c.URLs[0])
 }
 
-func (c *RemoteConfig) applyURLRules(urlRules map[string]*URL) {
+func (c *RemoteConfig) applyURLRules(urlRules []*URL) {
 	// save original urls
 	originalURLs := make([]string, len(c.URLs))
 	copy(originalURLs, c.URLs)
 
 	for i, url := range c.URLs {
-		if matchingURLRule := findLongestInsteadOfMatch(url, urlRules); matchingURLRule != nil {
-			c.URLs[i] = matchingURLRule.ApplyInsteadOf(c.URLs[i])
+		if rewrittenURL, matched := applyLongestInsteadOfMatch(url, urlRules); matched {
+			c.URLs[i] = rewrittenURL
 			c.insteadOfRulesApplied = true
 		}
 	}
