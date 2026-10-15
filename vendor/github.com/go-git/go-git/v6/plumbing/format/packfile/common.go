@@ -1,6 +1,8 @@
 package packfile
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -51,6 +53,62 @@ func UpdateObjectStorage(s storer.Storer, packfile io.Reader) error {
 	return err
 }
 
+// ErrPromisorPacksUnsupported is returned when a packfile from a promisor
+// remote would be stored by a storer that writes packfiles but cannot record
+// them as promisor packs. Writing it unmarked would leave a repository whose
+// fsck reports broken links and whose gc fails, so the write is refused.
+var ErrPromisorPacksUnsupported = errors.New("storage writes packfiles but cannot record them as promisor packs")
+
+// SupportsPromisorPacks reports whether a packfile from a promisor remote can be
+// stored without losing the fact that it came from one.
+//
+// Storage that records promisor packs qualifies. So does storage that does not
+// write packfiles at all: it stores objects individually, so there is no pack to
+// mark and nothing to lose — in-memory storage works this way. What does not
+// qualify is storage that writes a packfile but cannot mark it, which is exactly
+// how an unmarked pack of deliberately absent objects reaches disk.
+func SupportsPromisorPacks(s storer.Storer) bool {
+	if _, ok := s.(storer.PromisorPackfileWriter); ok {
+		return true
+	}
+
+	_, writesPacks := s.(storer.PackfileWriter)
+	return !writesPacks
+}
+
+// UpdatePromisorObjectStorage is UpdateObjectStorage for a packfile received
+// from a promisor remote, as a filtered (partial clone) fetch returns. The pack
+// is recorded as a promisor pack so that the objects the filter excluded are
+// understood to be promised by that remote rather than missing.
+//
+// Storage that writes packfiles without being able to mark them is refused with
+// ErrPromisorPacksUnsupported rather than silently producing the corruption this
+// marking exists to prevent. Storage that writes no packfiles at all stores the
+// objects individually, where there is no marking to lose.
+func UpdatePromisorObjectStorage(s storer.Storer, packfile io.Reader, marker string) error {
+	if trace.Performance.Enabled() {
+		start := time.Now()
+		defer func() {
+			trace.Performance.Printf("performance: %.9f s: update_promisor_obj_storage", time.Since(start).Seconds())
+		}()
+	}
+
+	pw, ok := s.(storer.PromisorPackfileWriter)
+	if !ok {
+		if !SupportsPromisorPacks(s) {
+			return ErrPromisorPacksUnsupported
+		}
+		return UpdateObjectStorage(s, packfile)
+	}
+
+	w, err := pw.PromisorPackfileWriter(marker)
+	if err != nil {
+		return err
+	}
+
+	return copyPackfile(w, packfile)
+}
+
 // WritePackfileToObjectStorage writes all the packfile objects into the given
 // object storage.
 func WritePackfileToObjectStorage(
@@ -62,6 +120,10 @@ func WritePackfileToObjectStorage(
 		return err
 	}
 
+	return copyPackfile(w, packfile)
+}
+
+func copyPackfile(w io.WriteCloser, packfile io.Reader) (err error) {
 	defer ioutil.CheckClose(w, &err)
 
 	n, err := ioutil.CopyBufferPool(w, packfile)
@@ -70,4 +132,27 @@ func WritePackfileToObjectStorage(
 	}
 
 	return err
+}
+
+// ValidateOFSDeltaBase enforces the canonical-Git invariant on an
+// OFS-delta's encoded negative offset: the resolved base offset
+// (deltaOffset - negativeOffset) must be strictly positive (past the
+// 12-byte pack header) and strictly less than deltaOffset, since an
+// OFS-delta can only reference an earlier entry in the same pack.
+//
+// Mirrors canonical Git's predicate in packfile.c[1]:
+//
+//	base_offset = delta_obj_offset - base_offset;
+//	if (base_offset <= 0 || base_offset >= delta_obj_offset)
+//		return 0;  /* out of bound */
+//
+// Returns a wrapped ErrMalformedPackfile when the bounds are violated;
+// returns nil otherwise.
+//
+// [1]: https://github.com/git/git/blob/v2.54.0/packfile.c#L1289-L1290
+func ValidateOFSDeltaBase(deltaOffset, negativeOffset int64) error {
+	if negativeOffset <= 0 || negativeOffset >= deltaOffset {
+		return fmt.Errorf("%w: invalid OFS delta offset", ErrMalformedPackfile)
+	}
+	return nil
 }
