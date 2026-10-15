@@ -45,7 +45,7 @@ variable "temporal_cli_version" {
 
 variable "temporal_server_version" {
   type        = string
-  default     = "1.32.0"
+  default     = "1.32.1"
   description = "Temporal Server version"
 }
 
@@ -75,7 +75,7 @@ variable "oauth2_storage_version" {
 
 variable "dunebot_version" {
   type        = string
-  default     = "0.3.18"
+  default     = "0.3.19"
   description = "DuneBot version"
 }
 
