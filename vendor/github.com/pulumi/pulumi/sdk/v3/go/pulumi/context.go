@@ -1508,11 +1508,27 @@ func (ctx *Context) readPackageResource(
 			logging.V(9).Infof("ReadResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
 		}
 		if resp != nil {
-			urn, resID = resp.Urn, string(idToRead)
+			urn = resp.Urn
 			state = resp.Properties
-			// A skipped read reports Unknown=true; resolve outputs as unknown so dependents
-			// propagate unknowns instead of seeing empty values as real.
-			keepUnknowns = resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown
+			// A skipped read reports Unknown=true and a failed read reports a non-success result;
+			// resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+			// seeing empty values as real.
+			if resp.Result != pulumirpc.Result_SUCCESS {
+				state = nil
+			}
+			keepUnknowns = resp.Result != pulumirpc.Result_SUCCESS || resp.Unknown
+			// Prefer the id returned by the provider's Read, which may differ from the id
+			// supplied on the request. An empty response id during preview means "unknown"
+			// (resolve() will mark the output as computed); during update it indicates an
+			// older engine that did not populate the field, so fall back to the request id.
+			switch {
+			case resp.Id != "":
+				resID = resp.Id
+			case ctx.DryRun():
+				resID = ""
+			default:
+				resID = string(idToRead)
+			}
 		}
 	}()
 
@@ -2068,6 +2084,7 @@ func (ctx *Context) registerResource(
 				Transforms:                 transforms,
 				StateMigrations:            stateMigrations,
 				SupportsResultReporting:    true,
+				SupportsPartialValues:      true,
 				PackageRef:                 packageRef,
 				Hooks:                      hooks,
 				EnvVarMappings:             inputs.envVarMappings,
@@ -2085,19 +2102,16 @@ func (ctx *Context) registerResource(
 			for key, propertyDependencies := range resp.GetPropertyDependencies() {
 				var resources []Resource
 				for _, urn := range propertyDependencies.GetUrns() {
-					resources = append(resources, &ResourceState{
-						urn: URNInput(URN(urn)).ToURNOutput(),
-					})
+					resources = append(resources, ctx.newDependencyResource(URN(urn)))
 				}
 				deps[key] = resources
 			}
-			// If the engine reported that the resource failed or was skipped, synthesize an
-			// error so downstream outputs fault. This allows Output.Recover to intercept the
-			// failure.
-			if err == nil && resp.Result != pulumirpc.Result_SUCCESS {
-				err = fmt.Errorf("resource %s [%s] failed to register", name, t)
-			}
-			if custom && resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown {
+			// If the engine reported that the resource failed, resolve all of its outputs as
+			// unknown so the rest of the program can continue.
+			if resp.Result != pulumirpc.Result_SUCCESS {
+				state = nil
+				keepUnknowns = true
+			} else if custom && resp.Unknown {
 				keepUnknowns = true
 			}
 		}
@@ -2560,7 +2574,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		}
 
 		known := true
-		if v.IsNull() || v.IsComputed() || v.IsOutput() {
+		if v.ContainsUnknowns() {
+			known = false
+		} else if v.IsNull() || v.IsOutput() {
 			known = !keepUnknowns
 		}
 
