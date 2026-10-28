@@ -5,9 +5,9 @@ go 1.26.6
 require (
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/creasty/defaults v1.11.0
-	github.com/pulumi/pulumi-aws/sdk/v7 v7.51.0
+	github.com/pulumi/pulumi-aws/sdk/v7 v7.51.1
 	github.com/pulumi/pulumi-hcloud/sdk v1.43.1
-	github.com/pulumi/pulumi/sdk/v3 v3.269.0
+	github.com/pulumi/pulumi/sdk/v3 v3.272.0
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/crypto v0.58.0
 )
