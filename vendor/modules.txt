@@ -414,21 +414,21 @@ github.com/pkg/term/termios
 github.com/pulumi/appdash
 github.com/pulumi/appdash/internal/wire
 github.com/pulumi/appdash/opentracing
-# github.com/pulumi/pulumi-aws/sdk/v7 v7.52.1
+# github.com/pulumi/pulumi-aws/sdk/v7 v7.53.0
 ## explicit; go 1.26.6
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/internal
 github.com/pulumi/pulumi-aws/sdk/v7/go/aws/route53
-# github.com/pulumi/pulumi-cloud-sdk/go v1.20260918.0
+# github.com/pulumi/pulumi-cloud-sdk/go v1.20261104.0
 ## explicit; go 1.26.6
 github.com/pulumi/pulumi-cloud-sdk/go/apitype
 github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue
-# github.com/pulumi/pulumi-hcloud/sdk v1.43.3
+# github.com/pulumi/pulumi-hcloud/sdk v1.43.4
 ## explicit; go 1.26.6
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud
 github.com/pulumi/pulumi-hcloud/sdk/go/hcloud/internal
-# github.com/pulumi/pulumi/sdk/v3 v3.273.0
+# github.com/pulumi/pulumi/sdk/v3 v3.274.1
 ## explicit; go 1.26.6
 github.com/pulumi/pulumi/sdk/v3/go/common/apitype
 github.com/pulumi/pulumi/sdk/v3/go/common/constant

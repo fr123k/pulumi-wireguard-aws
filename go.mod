@@ -5,9 +5,9 @@ go 1.26.6
 require (
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/creasty/defaults v1.11.0
-	github.com/pulumi/pulumi-aws/sdk/v7 v7.52.1
-	github.com/pulumi/pulumi-hcloud/sdk v1.43.3
-	github.com/pulumi/pulumi/sdk/v3 v3.273.0
+	github.com/pulumi/pulumi-aws/sdk/v7 v7.53.0
+	github.com/pulumi/pulumi-hcloud/sdk v1.43.4
+	github.com/pulumi/pulumi/sdk/v3 v3.274.1
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/crypto v0.58.0
 )
@@ -78,7 +78,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
-	github.com/pulumi/pulumi-cloud-sdk/go v1.20260918.0 // indirect
+	github.com/pulumi/pulumi-cloud-sdk/go v1.20261104.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
