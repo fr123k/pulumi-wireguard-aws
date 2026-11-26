@@ -9,7 +9,7 @@ require (
 	github.com/containifyci/oauth2-storage v0.2.3
 	github.com/containifyci/secret-operator v0.6.2
 	github.com/containifyci/temporal-worker v0.10.7
-	github.com/temporalio/cli v1.10.0
+	github.com/temporalio/cli v1.10.1
 	github.com/temporalio/ui-server/v2 v2.58.1
 	go.temporal.io/server v1.32.2
 )
@@ -125,8 +125,8 @@ require (
 	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.18.7 // indirect
-	github.com/labstack/echo/v4 v4.16.1 // indirect
+	github.com/klauspost/compress v1.20.4 // indirect
+	github.com/labstack/echo/v4 v4.16.4 // indirect
 	github.com/labstack/gommon v0.5.0 // indirect
 	github.com/lib/pq v1.12.3 // indirect
 	github.com/mailru/easyjson v0.9.2 // indirect
