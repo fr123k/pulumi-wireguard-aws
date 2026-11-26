@@ -610,7 +610,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 	return cb, nil
 }
 
-// registerTransform starts up a callback server if not already running and registers the given transform.
+// registerInvokeTransform starts up a callback server if not already running and registers the given invoke transform.
 func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callback, error) {
 	if !ctx.state.supportsInvokeTransforms {
 		return nil, errors.New("the Pulumi CLI does not support invoke transforms. Please update the Pulumi CLI")
@@ -2834,10 +2834,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	// Convert the property dependencies map for RPC and remove duplicates.
 	rpcPropertyDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
 	for k, deps := range propertyDeps {
-		urns := make([]string, len(deps))
-		for i, d := range deps {
-			urns[i] = string(d)
-		}
+		urns := slice.Cast[string](deps)
 		sort.Strings(urns)
 
 		rpcPropertyDeps[k] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
